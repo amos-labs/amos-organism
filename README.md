@@ -53,6 +53,12 @@ buy its own survival.
   HRR attention and typed transition predictions.
 - A value-of-computation policy based only on vested improvement, with quality
   lexicographically ahead of speed.
+- A durable, append-only JSONL event chain plus a host-gated AMOS/AWS trace
+  intake boundary. Failed or ineligible runs become zero-fitness negative
+  experience; verified procedures remain candidates until separately approved.
+- Three initial strategy genes extracted and separately admitted from verified,
+  AMOS-owned Qwen swarm traces: bounded provider recovery, typed-tool recovery,
+  and lossless context compaction.
 
 See [First Principles](docs/FIRST_PRINCIPLES.md),
 [Model Manifest](docs/MODEL_MANIFEST.md), and [Roadmap](docs/ROADMAP.md).
@@ -64,6 +70,12 @@ Requires Node.js 22.18 or newer.
 ```bash
 npm install
 npm run check
+```
+
+Research trace bundles can be settled without trusting model-authored status:
+
+```bash
+node scripts/importTraceBundle.ts INPUT.json OUTPUT.jsonl
 ```
 
 ## Status

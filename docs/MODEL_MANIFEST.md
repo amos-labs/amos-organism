@@ -36,9 +36,15 @@ is not automatically eligible for adapter training or redistribution.
 
 ## Known gaps
 
-- Durable event-store adapter and cryptographic receipt verification.
-- Extraction of initial genes from existing AMOS organism traces.
-- Integration with the AWS research plane and AMOS mission runtime.
+- The research JSONL event store is durable and tamper-evident but
+  single-writer; transactional DynamoDB persistence and AWS signature
+  verification remain.
+- Automatic AWS settlement currently writes one immutable ledger segment per
+  Harbor run; transactional cross-run DynamoDB projection remains.
+- The first three seed genes are admitted, but unseen-mission reuse and
+  generalization have not yet vested.
+- Integration with the live AMOS mission runtime remains; the AWS research
+  runner is the first connected host.
 - Interruptible leases and recovery semantics.
 - Learned HRR transition head and calibration benchmark.
 - Frozen-holdout experiment registry and blind promotion gate.

@@ -5,6 +5,7 @@ export type HostReceiptKind =
   | "official-verification"
   | "regression-recorded"
   | "gene-approved"
+  | "trace-imported"
   | "transition-observed";
 
 export interface HostReceipt {

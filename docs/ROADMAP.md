@@ -3,7 +3,11 @@
 ## Slice A — minimum organism
 
 - Persist energy, escrow, causal edges, and fitness as append-only events.
-- Connect existing AMOS/Harbor receipts to the host gate.
+- Connect existing AMOS/Harbor receipts to the host gate. The initial JSONL
+  research adapter is a verified hash chain; production moves the same ordering
+  contract to DynamoDB.
+- Settle every cloud Harbor iteration into a per-run organism ledger before its
+  artifacts leave the runner; preserve positive and negative experience.
 - Vest only consumed contributions cited by the official verifier.
 - Decay unused provisional credit and claw back regressions.
 - Add interruptible leases so steering, stopping, and sleep recovery are safe.
@@ -12,7 +16,8 @@ Exit: busy work cannot purchase cross-mission survival.
 
 ## Slice B — procedural heredity
 
-- Extract host-authored seed genes from verified traces:
+- Expand the first admitted AMOS-owned seed genes (bounded provider recovery,
+  typed-tool recovery, and lossless context compaction) with
   inspect-then-compile, deliver-first, repair-only-cited-gaps, and
   stop-on-hot-flat-lease.
 - Reuse genes on unseen missions.
