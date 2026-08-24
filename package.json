@@ -1,0 +1,20 @@
+{
+  "name": "@amos-labs/organism",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Governed self-improving intelligence runtime with causal credit and procedural lineage",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
