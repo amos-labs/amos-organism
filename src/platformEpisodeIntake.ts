@@ -40,9 +40,6 @@ export class PlatformEpisodeIntake {
       ["platform-episode-attested"],
       episode.missionId,
     );
-    if (receipt.id !== episode.attestationReceiptId) {
-      throw new Error("Platform episode does not match its attestation receipt");
-    }
     if (receipt.payloadDigest !== digest(episode)) {
       throw new Error("Platform episode bytes do not match the host receipt");
     }
@@ -90,13 +87,25 @@ function requireMatchingSourceIdentity(episode: PlatformMissionLearningEpisodeCo
 }
 
 function allChecksPassed(source: Readonly<Record<string, unknown>>): boolean {
-  if (!Array.isArray(source.verification) || source.verification.length === 0) return false;
-  return source.verification.every((result) => (
-    !!result
-    && typeof result === "object"
-    && !Array.isArray(result)
-    && (result as Record<string, unknown>).verdict === "pass"
-  ));
+  if (Array.isArray(source.verification)) {
+    return source.verification.length > 0 && source.verification.every((result) => (
+      !!result
+      && typeof result === "object"
+      && !Array.isArray(result)
+      && (result as Record<string, unknown>).verdict === "pass"
+    ));
+  }
+  if (!source.verification || typeof source.verification !== "object") return false;
+  const summary = source.verification as Record<string, unknown>;
+  const totalCount = Number(summary.totalCount ?? 0);
+  const passedCount = Number(summary.passedCount ?? 0);
+  const failedCount = Number(summary.failedCount ?? 0);
+  return Number.isSafeInteger(totalCount)
+    && totalCount > 0
+    && passedCount === totalCount
+    && failedCount === 0
+    && summary.allPassed === true
+    && typeof summary.fullTraceDigest === "string";
 }
 
 function appendIdempotent(store: EventStore, proposal: OrganismEventProposal): OrganismEvent {

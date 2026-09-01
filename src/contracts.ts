@@ -36,7 +36,6 @@ export interface PlatformMissionLearningEpisodeContract {
   readonly sourceEpisodeDigest: string;
   readonly rightsTags: readonly string[];
   readonly consentReceiptId: string;
-  readonly attestationReceiptId: string;
   readonly source: Readonly<Record<string, unknown>>;
 }
 
@@ -57,7 +56,6 @@ export function isPlatformMissionLearningEpisodeContract(
     && Array.isArray(episode.rightsTags)
     && episode.rightsTags.length > 0
     && typeof episode.consentReceiptId === "string"
-    && typeof episode.attestationReceiptId === "string"
     && !!episode.source
     && typeof episode.source === "object"
     && !Array.isArray(episode.source);
