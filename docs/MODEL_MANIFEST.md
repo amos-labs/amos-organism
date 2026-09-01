@@ -12,7 +12,8 @@
 
 This kernel can represent mission compute rights, conservative causal credit,
 fitness escrow, immutable procedural lineage, contextual signaling, separate
-exact/lossy world state, and a quality-first stopping decision.
+exact/lossy world state, durable reward and regression punishment, replayable
+candidate promotion, and a quality-first stopping decision.
 
 It does **not** claim that the current swarm outperforms a frontier model, that
 HRR is already a learned causal world model, that any adapter is trained, or
@@ -42,9 +43,15 @@ is not automatically eligible for adapter training or redistribution.
 - Automatic AWS settlement currently writes one immutable ledger segment per
   Harbor run; transactional cross-run DynamoDB projection remains.
 - The first three seed genes are admitted, but unseen-mission reuse and
-  generalization have not yet vested.
-- Integration with the live AMOS mission runtime remains; the AWS research
-  runner is the first connected host.
+  generalization have not yet vested. The kernel can now replay, context-select,
+  host-attest, and express them; the v12 experiment must prove the second-mission
+  vesting loop.
+- The live AMOS Mission runtime now emits canonical, consent-gated learning
+  episodes through a transactional outbox, and this kernel has digest-verified,
+  idempotent intake after Platform KMS verification. The private intake service,
+  KMS public-key verification adapter, and production endpoint configuration
+  remain deployment work; the AWS research runner is still the first fully
+  connected host.
 - Interruptible leases and recovery semantics.
 - Learned HRR transition head and calibration benchmark.
 - Frozen-holdout experiment registry and blind promotion gate.

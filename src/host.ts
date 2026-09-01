@@ -6,7 +6,10 @@ export type HostReceiptKind =
   | "regression-recorded"
   | "gene-approved"
   | "trace-imported"
-  | "transition-observed";
+  | "platform-episode-attested"
+  | "transition-observed"
+  | "gene-expressed"
+  | "candidate-evaluated";
 
 export interface HostReceipt {
   readonly id: string;

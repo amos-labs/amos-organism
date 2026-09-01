@@ -56,6 +56,19 @@ buy its own survival.
 - A durable, append-only JSONL event chain plus a host-gated AMOS/AWS trace
   intake boundary. Failed or ineligible runs become zero-fitness negative
   experience; verified procedures remain candidates until separately approved.
+- Deterministic replay of fitness escrow, settlement, regression punishment,
+  candidate lineage/promotion, admitted genes, host-attested expressions, and
+  verifier outcomes, so neither reward nor punishment disappears on restart.
+- Versioned canonical contracts under `contracts/` for candidates,
+  expressions, trace bundles, and consent-gated Platform Mission episodes.
+- Contextual gene selection and a host `gene-expressed` receipt. A model cannot
+  self-report which procedure deserves credit.
+- Research-only mutation/recombination proposals that run without approval;
+  admission, external authority, promotion, and success claims remain
+  host/verifier controlled.
+- Lexicographic gene selection. Genuine verified failure produces negative
+  guidance; successful but unconsumed work is recorded separately as
+  `uncredited` and cannot poison a procedure.
 - Three initial strategy genes extracted and separately admitted from verified,
   AMOS-owned Qwen swarm traces: bounded provider recovery, typed-tool recovery,
   and lossless context compaction.
@@ -65,7 +78,9 @@ See [First Principles](docs/FIRST_PRINCIPLES.md),
 
 ## Development
 
-Requires Node.js 22.18 or newer.
+Requires Node.js 22.18 or newer. Development and CI are pinned to Node 24;
+`npm install` fails closed on unsupported runtimes because Node 20 cannot execute
+the repository's type-stripped TypeScript tests.
 
 ```bash
 npm install
@@ -80,9 +95,12 @@ node scripts/importTraceBundle.ts INPUT.json OUTPUT.jsonl
 
 ## Status
 
-Research-stage kernel. It does not yet serve inference, replace the external
-AMOS verifier, train adapters, or make production decisions. Those boundaries
-are deliberate.
+Research-stage kernel. The first metabolism loop now exists, including
+canonical consent-gated Platform Mission episode intake after host/KMS
+attestation, but it has not yet
+demonstrated repeatable quality improvement on frozen holdouts. It does not
+replace the external AMOS verifier, train adapters, or make production
+decisions. Those boundaries are deliberate.
 
 ## License
 

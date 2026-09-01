@@ -1,4 +1,6 @@
 export * from "./causalGraph.ts";
+export * from "./candidateEvolution.ts";
+export * from "./contracts.ts";
 export * from "./digest.ts";
 export * from "./energyLedger.ts";
 export * from "./eventStore.ts";
@@ -6,6 +8,7 @@ export * from "./fitnessLedger.ts";
 export * from "./host.ts";
 export * from "./organism.ts";
 export * from "./pheromoneField.ts";
+export * from "./platformEpisodeIntake.ts";
 export * from "./strategyGenes.ts";
 export * from "./traceIntake.ts";
 export * from "./valueOfComputation.ts";

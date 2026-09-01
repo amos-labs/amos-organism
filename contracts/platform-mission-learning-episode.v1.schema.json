@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/platform-mission-learning-episode.v1.schema.json",
+  "title": "AMOS Platform Mission Learning Episode v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "episodeId", "tenantId", "missionId", "terminalStatus", "sourceEpisodeDigest", "rightsTags", "consentReceiptId", "attestationReceiptId", "source"],
+  "properties": {
+    "schema": { "const": "amos.platform-mission-learning-episode" },
+    "schemaVersion": { "const": 1 },
+    "episodeId": { "type": "string", "minLength": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "missionId": { "type": "string", "minLength": 1 },
+    "terminalStatus": { "enum": ["completed", "failed", "cancelled", "expired"] },
+    "sourceEpisodeDigest": { "type": "string", "minLength": 32 },
+    "rightsTags": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+    "consentReceiptId": { "type": "string", "minLength": 1 },
+    "attestationReceiptId": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episodeId", "tenantId", "missionId", "contractId", "terminalStatus", "task", "trajectory", "outcome", "verification"],
+      "properties": {
+        "episodeId": { "type": "string", "minLength": 1 },
+        "tenantId": { "type": "string", "minLength": 1 },
+        "missionId": { "type": "string", "minLength": 1 },
+        "contractId": { "type": ["string", "null"] },
+        "terminalStatus": { "enum": ["completed", "failed", "cancelled", "expired"] },
+        "task": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["objectiveDigest", "completionConditionDigest", "operationKeys", "contractDigest"],
+          "properties": {
+            "objective": { "type": "string" },
+            "objectiveDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "completionConditionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "operationKeys": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "contractDigest": { "type": ["string", "null"] }
+          }
+        },
+        "trajectory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stepKinds", "operations"],
+          "properties": {
+            "stepKinds": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["position", "kind"],
+                "properties": {
+                  "position": { "type": "integer", "minimum": 1 },
+                  "kind": { "type": "string" }
+                }
+              }
+            },
+            "operations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["operationKey", "status", "inputDigest", "receiptId", "claimedAt", "resolvedAt"],
+                "properties": {
+                  "operationKey": { "type": "string" },
+                  "status": { "type": "string" },
+                  "inputDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "receiptId": { "type": ["string", "null"] },
+                  "claimedAt": { "type": "string", "format": "date-time" },
+                  "resolvedAt": { "type": ["string", "null"], "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "statusReasonDigest", "createdAt", "startedAt", "finishedAt", "budgets"],
+          "properties": {
+            "status": { "enum": ["completed", "failed", "cancelled", "expired"] },
+            "statusReasonDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "startedAt": { "type": ["string", "null"], "format": "date-time" },
+            "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+            "budgets": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["toolCalls", "costMicrousd", "providerCredits", "decisions"],
+              "properties": {
+                "toolCalls": { "$ref": "#/$defs/budget" },
+                "costMicrousd": { "$ref": "#/$defs/budget" },
+                "providerCredits": { "$ref": "#/$defs/budget" },
+                "decisions": { "$ref": "#/$defs/budget" }
+              }
+            }
+          }
+        },
+        "verification": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["requirementId", "checkerId", "checkerVersion", "definitionDigest", "resultDigest", "authority", "verdict", "coverage", "evidenceRefs"],
+            "properties": {
+              "requirementId": { "type": "string" },
+              "checkerId": { "type": "string" },
+              "checkerVersion": { "type": "string" },
+              "definitionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "resultDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "authority": { "type": "string" },
+              "verdict": { "enum": ["pass", "fail", "unknown"] },
+              "coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+              "evidenceRefs": { "type": "array" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used", "max"],
+      "properties": {
+        "used": { "type": "integer", "minimum": 0 },
+        "max": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    }
+  }
+}

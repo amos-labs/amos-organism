@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/strategy-gene-candidate.v1.schema.json",
+  "title": "AMOS Strategy Gene Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "id", "runId", "trialId", "spec", "parentIds", "evidenceRefs"],
+  "properties": {
+    "schema": { "const": "amos.strategy-gene-candidate" },
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "trialId": { "type": "string", "minLength": 1 },
+    "spec": { "$ref": "#/$defs/spec" },
+    "parentIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "evidenceRefs": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+  },
+  "$defs": {
+    "stringSet": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "preconditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phases", "artifactClasses", "failureModes", "toolFamilies"],
+      "properties": {
+        "phases": { "$ref": "#/$defs/stringSet" },
+        "artifactClasses": { "$ref": "#/$defs/stringSet" },
+        "failureModes": { "$ref": "#/$defs/stringSet" },
+        "toolFamilies": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "preconditions", "rolePolicy", "retrievalRecipe", "procedure", "stopConditions", "rightsTags", "contaminationTags"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "preconditions": { "$ref": "#/$defs/preconditions" },
+        "rolePolicy": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/stringSet" }
+        },
+        "retrievalRecipe": { "$ref": "#/$defs/stringSet" },
+        "procedure": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "stopConditions": { "$ref": "#/$defs/stringSet" },
+        "rightsTags": { "$ref": "#/$defs/stringSet" },
+        "contaminationTags": { "$ref": "#/$defs/stringSet" }
+      }
+    }
+  }
+}

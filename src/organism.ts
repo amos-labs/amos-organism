@@ -1,14 +1,23 @@
 import { CausalGraph, type CausalEdge, type CausalNode } from "./causalGraph.ts";
+import { CandidateEvolutionArchive } from "./candidateEvolution.ts";
+import { digest } from "./digest.ts";
 import { EnergyLedger } from "./energyLedger.ts";
+import type { EventStore, OrganismEvent } from "./eventStore.ts";
 import { FitnessLedger, type FitnessContext } from "./fitnessLedger.ts";
 import type { HostGate, HostReceipt } from "./host.ts";
 import { PheromoneField } from "./pheromoneField.ts";
-import { StrategyGeneArchive } from "./strategyGenes.ts";
+import {
+  StrategyGeneArchive,
+  type GeneExpression,
+  type StrategySelectionContext,
+} from "./strategyGenes.ts";
 import { SharedWorldState } from "./worldState.ts";
 
 export interface OrganismKernelOptions {
   readonly hostGate: HostGate;
   readonly fitnessPolicy?: HostFitnessPolicy;
+  readonly eventStore?: EventStore;
+  readonly replayEvents?: readonly OrganismEvent[];
 }
 
 export interface HostFitnessPolicy {
@@ -21,6 +30,7 @@ export interface ProposedContribution {
   readonly missionId: string;
   readonly actorId: string;
   readonly geneId: string;
+  readonly expressionId: string;
   readonly createdAt: string;
   readonly context: FitnessContext;
 }
@@ -56,23 +66,57 @@ export class OrganismKernel {
   readonly energy: EnergyLedger;
   readonly fitness: FitnessLedger;
   readonly causality: CausalGraph;
+  readonly candidates: CandidateEvolutionArchive;
   readonly genes: StrategyGeneArchive;
   readonly pheromones: PheromoneField;
   readonly world: SharedWorldState;
   readonly #fitnessPolicy: HostFitnessPolicy;
+  readonly #eventStore: EventStore | null;
 
   constructor(options: OrganismKernelOptions) {
+    const replayEvents = options.replayEvents ?? options.eventStore?.events() ?? [];
     this.energy = new EnergyLedger(options.hostGate);
     this.fitness = new FitnessLedger(options.hostGate);
     this.causality = new CausalGraph(options.hostGate);
+    this.candidates = new CandidateEvolutionArchive(
+      options.hostGate,
+      options.eventStore ?? null,
+      replayEvents,
+    );
     this.genes = new StrategyGeneArchive(options.hostGate);
     this.pheromones = new PheromoneField(options.hostGate);
     this.world = new SharedWorldState(options.hostGate);
     this.#fitnessPolicy = options.fitnessPolicy ?? { provisionalCredit: () => 1 };
+    this.#eventStore = options.eventStore ?? null;
+    this.fitness.replay(replayEvents);
+    this.genes.replay(replayEvents);
+  }
+
+  expressGenes(
+    context: StrategySelectionContext,
+    receipt: HostReceipt,
+    limit = 8,
+  ): GeneExpression {
+    const expression = this.genes.express(context, receipt, limit);
+    this.#eventStore?.append({
+      id: `gene:expressed:${expression.id}`,
+      type: "gene.expressed",
+      missionId: context.missionId,
+      occurredAt: receipt.issuedAt,
+      authority: "host",
+      hostReceiptId: receipt.id,
+      payload: { expression, contextDigest: digest(context) },
+    });
+    return expression;
   }
 
   recordContribution(proposal: ProposedContribution): void {
     this.genes.require(proposal.geneId);
+    this.genes.requireExpressed(
+      proposal.expressionId,
+      proposal.geneId,
+      proposal.missionId,
+    );
     const provisionalFitness = this.#fitnessPolicy.provisionalCredit(proposal);
     this.causality.addContribution({
       id: proposal.id,
@@ -83,7 +127,7 @@ export class OrganismKernel {
       createdAt: proposal.createdAt,
       authority: "organism",
     });
-    this.fitness.openEscrow({
+    const escrow = this.fitness.openEscrow({
       id: proposal.escrowId,
       missionId: proposal.missionId,
       contributionId: proposal.id,
@@ -91,6 +135,14 @@ export class OrganismKernel {
       geneId: proposal.geneId,
       amount: provisionalFitness,
       context: proposal.context,
+    });
+    this.#eventStore?.append({
+      id: `fitness:escrow:${escrow.id}`,
+      type: "fitness.escrow-opened",
+      missionId: proposal.missionId,
+      occurredAt: proposal.createdAt,
+      authority: "organism",
+      payload: { escrow },
     });
   }
 
@@ -169,23 +221,59 @@ export class OrganismKernel {
       receipt,
       verification.outcome,
     );
+    this.#eventStore?.append({
+      id: `fitness:settlement:${verification.missionId}:${receipt.id}`,
+      type: "fitness.mission-settled",
+      missionId: verification.missionId,
+      occurredAt: receipt.issuedAt,
+      authority: "host",
+      hostReceiptId: receipt.id,
+      payload: {
+        outcome: verification.outcome,
+        vestedEscrowIds: settlement.vested,
+        clawedBackEscrowIds: settlement.clawedBack,
+      },
+    });
 
     const vestedIds = new Set(settlement.vested);
     const geneTotals = new Map<string, number>();
+    const attemptedGenes = new Set<string>();
     for (const entry of this.fitness.entries()) {
-      if (!vestedIds.has(entry.id)) continue;
-      geneTotals.set(entry.geneId, (geneTotals.get(entry.geneId) ?? 0) + entry.amount);
+      if (entry.missionId !== verification.missionId || entry.settlementReceiptId !== receipt.id) {
+        continue;
+      }
+      attemptedGenes.add(entry.geneId);
+      if (vestedIds.has(entry.id)) {
+        geneTotals.set(entry.geneId, (geneTotals.get(entry.geneId) ?? 0) + entry.amount);
+      }
     }
-    for (const [geneId, fitnessVested] of geneTotals) {
-      this.genes.recordOutcome(
+    for (const geneId of attemptedGenes) {
+      const fitnessVested = geneTotals.get(geneId) ?? 0;
+      const credited = verification.outcome === "pass" && fitnessVested > 0;
+      const verifierOutcome = verification.outcome === "fail"
+        ? "fail" as const
+        : credited
+        ? "pass" as const
+        : "uncredited" as const;
+      const outcome = this.genes.recordOutcome(
         {
           geneId,
           missionId: verification.missionId,
-          verifiedQuality: verification.verifiedQuality,
+          verifiedQuality: credited ? verification.verifiedQuality : 0,
           fitnessVested,
+          verifierOutcome,
         },
         receipt,
       );
+      this.#eventStore?.append({
+        id: `gene:outcome:${verification.missionId}:${geneId}:${receipt.id}`,
+        type: "gene.outcome-recorded",
+        missionId: verification.missionId,
+        occurredAt: receipt.issuedAt,
+        authority: "host",
+        hostReceiptId: receipt.id,
+        payload: { outcome },
+      });
     }
     this.energy.closeMission(verification.missionId);
     return Object.freeze({
@@ -193,6 +281,64 @@ export class OrganismKernel {
       vestedEscrowIds: settlement.vested,
       clawedBackEscrowIds: settlement.clawedBack,
     });
+  }
+
+  /**
+   * Apply a later host-observed regression and persist the punishment so a
+   * restart cannot resurrect previously clawed-back fitness.
+   */
+  recordRegression(
+    contributionIds: readonly string[],
+    receipt: HostReceipt,
+  ): Readonly<{ clawedBackEscrowIds: readonly string[]; affectedGeneIds: readonly string[] }> {
+    const before = new Map(this.fitness.entries().map((entry) => [entry.id, entry]));
+    const clawedBackEscrowIds = this.fitness.recordRegression(contributionIds, receipt);
+    const clawbackByGene = new Map<string, number>();
+    const affectedGeneIds = [...new Set(clawedBackEscrowIds.flatMap((id) => {
+      const entry = before.get(id);
+      if (entry !== undefined) {
+        clawbackByGene.set(
+          entry.geneId,
+          (clawbackByGene.get(entry.geneId) ?? 0) + entry.amount,
+        );
+      }
+      return entry === undefined ? [] : [entry.geneId];
+    }))].sort();
+    this.#eventStore?.append({
+      id: `fitness:regression:${receipt.id}`,
+      type: "fitness.regression-recorded",
+      missionId: receipt.missionId,
+      occurredAt: receipt.issuedAt,
+      authority: "host",
+      hostReceiptId: receipt.id,
+      payload: {
+        contributionIds: [...new Set(contributionIds)].sort(),
+        clawedBackEscrowIds,
+        affectedGeneIds,
+      },
+    });
+    for (const geneId of affectedGeneIds) {
+      const outcome = this.genes.recordOutcome(
+        {
+          geneId,
+          missionId: receipt.missionId,
+          verifiedQuality: 0,
+          fitnessVested: -(clawbackByGene.get(geneId) ?? 0),
+          verifierOutcome: "fail",
+        },
+        receipt,
+      );
+      this.#eventStore?.append({
+        id: `gene:regression-outcome:${receipt.id}:${geneId}`,
+        type: "gene.outcome-recorded",
+        missionId: receipt.missionId,
+        occurredAt: receipt.issuedAt,
+        authority: "host",
+        hostReceiptId: receipt.id,
+        payload: { outcome, cause: "regression" },
+      });
+    }
+    return Object.freeze({ clawedBackEscrowIds, affectedGeneIds });
   }
 }
 

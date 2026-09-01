@@ -3,6 +3,11 @@
 ## Slice A — minimum organism
 
 - Persist energy, escrow, causal edges, and fitness as append-only events.
+- Version the canonical candidate, expression, trace, and Platform episode
+  contracts before adding a second producer.
+- Replay learned genes, expression receipts, and outcomes into live kernel
+  state after restart. Backfill legacy gene-admission events before treating
+  an older ledger as a complete projection.
 - Connect existing AMOS/Harbor receipts to the host gate. The initial JSONL
   research adapter is a verified hash chain; production moves the same ordering
   contract to DynamoDB.
@@ -10,6 +15,8 @@
   artifacts leave the runner; preserve positive and negative experience.
 - Vest only consumed contributions cited by the official verifier.
 - Decay unused provisional credit and claw back regressions.
+- Distinguish genuine failure from successful-but-unconsumed `uncredited` work,
+  and replay reward, punishment, candidate lineage, and promotion state.
 - Add interruptible leases so steering, stopping, and sleep recovery are safe.
 
 Exit: busy work cannot purchase cross-mission survival.
@@ -21,7 +28,12 @@ Exit: busy work cannot purchase cross-mission survival.
   inspect-then-compile, deliver-first, repair-only-cited-gaps, and
   stop-on-hot-flat-lease.
 - Reuse genes on unseen missions.
-- Add controlled mutation and recombination with immutable lineage.
+- Select genes from explicit mission preconditions, host-attest their prompt
+  expression, and attribute both positive and negative outcomes to what was
+  actually expressed.
+- Generate controlled research-only mutation and recombination proposals with
+  immutable lineage. Proposal/testing is approval-free; admission remains
+  verifier-gated.
 - Keep fixed specialist roles while procedure attribution stabilizes.
 
 Exit: a procedure vests on one mission and generalizes to another without a
@@ -63,6 +75,11 @@ Exit: model-weight gains and organism-level gains are independently measurable.
 - Scale logical workers over shared model weights and continuous batching.
 - Evolve team topology only after procedural credit is stable.
 - Add multimodal encoders without weakening receipt or authority boundaries.
+- Ingest only outcome-bearing, consented, rights-tagged Platform Mission
+  episodes through an idempotent outbox and host/KMS attestation boundary.
+  The canonical v1 producer, delivery worker, and kernel intake now exist;
+  deploy the private signature-verifying endpoint and then connect expressed
+  genes to live Mission planning.
 
 Exit: the organism is a governed, replaceable intelligence substrate—not an
 experiment-specific harness.
