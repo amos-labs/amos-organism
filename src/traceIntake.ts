@@ -1,7 +1,12 @@
 import { digest, immutable } from "./digest.ts";
-import type { EventStore, OrganismEvent } from "./eventStore.ts";
+import type { EventStore, OrganismEvent, OrganismEventProposal } from "./eventStore.ts";
 import type { HostGate, HostReceipt } from "./host.ts";
 import { requireHostReceipt } from "./host.ts";
+import {
+  ORGANISM_CONTRACT_VERSION,
+  STRATEGY_GENE_CANDIDATE_SCHEMA,
+  type StrategyGeneCandidateContract,
+} from "./contracts.ts";
 import {
   StrategyGeneArchive,
   type StrategyGene,
@@ -43,6 +48,8 @@ export interface AmosAwsTrace {
   readonly trainingEligibility: TraceEligibility;
   readonly verifier: TraceVerifierResult | null;
   readonly artifactReceiptIds: readonly string[];
+  readonly expressedGeneIds?: readonly string[];
+  readonly geneExpressionReceiptIds?: readonly string[];
   readonly procedure: HostObservedProcedure | null;
   readonly exception?: Readonly<{
     type: string;
@@ -53,14 +60,7 @@ export interface AmosAwsTrace {
   readonly sourceEpisodeDigest?: string;
 }
 
-export interface GeneCandidate {
-  readonly id: string;
-  readonly runId: string;
-  readonly trialId: string;
-  readonly spec: StrategyGeneSpec;
-  readonly parentIds: readonly string[];
-  readonly evidenceRefs: readonly string[];
-}
+export type GeneCandidate = StrategyGeneCandidateContract;
 
 export interface TraceIntakeResult {
   readonly classification: "verified" | "negative";
@@ -84,7 +84,7 @@ export class TraceIntake {
     requireHostReceipt(this.#gate, receipt, ["trace-imported"], trace.runId);
     const appended: OrganismEvent[] = [];
     const traceDigest = digest(trace);
-    appended.push(this.#store.append({
+    appended.push(appendIdempotent(this.#store, {
       id: `trace:${trace.runId}:${trace.trialId}`,
       type: "trace.imported",
       missionId: trace.runId,
@@ -96,7 +96,7 @@ export class TraceIntake {
 
     const reasons = negativeReasons(trace);
     if (reasons.length > 0) {
-      appended.push(this.#store.append({
+      appended.push(appendIdempotent(this.#store, {
         id: `experience:negative:${trace.runId}:${trace.trialId}`,
         type: "experience.negative",
         missionId: trace.runId,
@@ -109,13 +109,15 @@ export class TraceIntake {
           reasons,
           exception: trace.exception ?? null,
           fitnessVested: 0,
+          expressedGeneIds: [...new Set(trace.expressedGeneIds ?? [])].sort(),
+          geneExpressionReceiptIds: [...new Set(trace.geneExpressionReceiptIds ?? [])].sort(),
           geneAdmissionAllowed: false,
         },
       }));
       return immutable({ classification: "negative", geneCandidate: null, events: appended });
     }
 
-    appended.push(this.#store.append({
+    appended.push(appendIdempotent(this.#store, {
       id: `experience:verified:${trace.runId}:${trace.trialId}`,
       type: "experience.verified",
       missionId: trace.runId,
@@ -130,9 +132,11 @@ export class TraceIntake {
       },
     }));
 
-    const geneCandidate = trace.procedure === null
+    const geneCandidate: GeneCandidate | null = trace.procedure === null
       ? null
       : immutable({
+          schema: STRATEGY_GENE_CANDIDATE_SCHEMA,
+          schemaVersion: ORGANISM_CONTRACT_VERSION,
           id: `candidate_${digest({ traceDigest, procedure: trace.procedure }).slice(0, 24)}`,
           runId: trace.runId,
           trialId: trace.trialId,
@@ -141,7 +145,7 @@ export class TraceIntake {
           evidenceRefs: trace.procedure.evidenceRefs,
         });
     if (geneCandidate !== null) {
-      appended.push(this.#store.append({
+      appended.push(appendIdempotent(this.#store, {
         id: `gene:candidate:${geneCandidate.id}`,
         type: "gene.candidate-extracted",
         missionId: trace.runId,
@@ -149,7 +153,7 @@ export class TraceIntake {
         authority: "host",
         hostReceiptId: receipt.id,
         payload: {
-          candidateId: geneCandidate.id,
+          candidate: geneCandidate,
           traceDigest,
           evidenceRefs: geneCandidate.evidenceRefs,
           geneAdmissionAllowed: false,
@@ -162,21 +166,40 @@ export class TraceIntake {
   admit(candidate: GeneCandidate, approval: HostReceipt): StrategyGene {
     requireHostReceipt(this.#gate, approval, ["gene-approved"], candidate.runId);
     const gene = this.#genes.register(candidate.spec, candidate.parentIds, approval);
-    this.#store.append({
-      id: `gene:admitted:${gene.id}:${candidate.trialId}`,
+    appendIdempotent(this.#store, {
+      id: `gene:admitted:${candidate.id}`,
       type: "gene.admitted",
       missionId: candidate.runId,
-      occurredAt: approval.issuedAt,
+      occurredAt: gene.createdAt,
       authority: "host",
-      hostReceiptId: approval.id,
+      hostReceiptId: gene.approvedByReceiptId,
       payload: {
         geneId: gene.id,
+        gene,
         candidateId: candidate.id,
         evidenceRefs: candidate.evidenceRefs,
       },
     });
     return gene;
   }
+}
+
+/**
+ * Deterministic event IDs make intake naturally retry-safe. An identical logical
+ * event is success; reusing the ID for different content is a hard conflict.
+ */
+function appendIdempotent(store: EventStore, proposal: OrganismEventProposal): OrganismEvent {
+  const existing = store.get(proposal.id);
+  if (existing === undefined) return store.append(proposal);
+  if (
+    existing.type !== proposal.type
+    || existing.missionId !== proposal.missionId
+    || existing.authority !== proposal.authority
+    || digest(existing.payload) !== digest(proposal.payload)
+  ) {
+    throw new Error(`Conflicting organism event retry: ${proposal.id}`);
+  }
+  return existing;
 }
 
 function negativeReasons(trace: AmosAwsTrace): readonly string[] {

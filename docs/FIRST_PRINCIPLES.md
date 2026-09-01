@@ -36,6 +36,18 @@ The ledger is accounting, not heredity. The heritable unit is a strategy gene:
 Genes are data. Qwen may execute or propose them. Only the host may admit them
 to the archive after receipt-backed review.
 
+## Governance at the metabolic boundary
+
+Governance is concentrated where consequences or truth claims cross a system
+boundary. Inside a bounded research workspace, selection, expression,
+mutation, recombination, simulation, and local testing do not require human
+approval. The organism needs cheap variation and many attempts to learn.
+
+The hard gates remain: only the host attests which genes were compiled into a
+worker; only receipts authorize external actions; only independent evidence can
+promote a candidate, vest fitness, admit a gene, or declare mission success.
+This preserves the immune system without starving the metabolism.
+
 ## Two ledgers, not five economies
 
 Energy lives for one mission and grants compute/tool rights. It replenishes or
@@ -63,6 +75,17 @@ Live settlement uses host receipts rather than another model's counterfactual:
 Counterfactual and Shapley-like attribution may become offline diagnostics once
 there are frozen traces. They do not mint live fitness in v1.
 
+Outcome semantics remain three-valued: `pass` means the verifier passed and the
+gene was on the consumed path, `fail` means genuine verified failure or a later
+regression, and `uncredited` means the mission passed without consuming that
+gene. Only genuine failure may turn a gene into negative guidance. Reward and
+punishment are both append-only events and both survive replay.
+
+Gene selection follows the same lexicographic rule as evaluation: verified
+evidence class, verified quality, repeated passes, contextual specificity, and
+only then vested fitness and failure counts. The rank is inspectable and is not
+collapsed into a tunable weighted score.
+
 ## Shared world representation
 
 The organism has two physically separate channels:
@@ -75,6 +98,11 @@ valuable for associative attention and, later, learned transition heads. It is
 not authority. Stage 1 transitions predict only host-typed events such as phase
 advance, criterion pass/fail, cost, and failure mode. The exact board remains
 the source of truth.
+
+Mission-local attention, energy, and pheromone signals coordinate one Swarm
+run. The organism owns only durable cross-mission procedures, outcome history,
+fitness, candidate lineage, and learned world representations. Shared schemas
+connect these layers without turning transient coordination into authority.
 
 ## Selection without collapse
 

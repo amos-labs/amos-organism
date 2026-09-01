@@ -8,6 +8,7 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "preinstall": "node scripts/requireNode.mjs",
     "test": "node --test test/*.test.ts",
     "test:coverage": "node --test --experimental-test-coverage test/*.test.ts",
     "typecheck": "tsc --noEmit",

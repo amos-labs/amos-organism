@@ -28,7 +28,18 @@ export interface OrganismEvent extends OrganismEventProposal {
 
 export interface EventStore {
   append(proposal: OrganismEventProposal): OrganismEvent;
+  get(id: string): OrganismEvent | undefined;
   events(): readonly OrganismEvent[];
+}
+
+export class DuplicateOrganismEventError extends Error {
+  readonly eventId: string;
+
+  constructor(eventId: string) {
+    super(`Duplicate organism event: ${eventId}`);
+    this.name = "DuplicateOrganismEventError";
+    this.eventId = eventId;
+  }
 }
 
 /**
@@ -46,7 +57,7 @@ export class FileEventStore implements EventStore {
 
   append(proposal: OrganismEventProposal): OrganismEvent {
     if (this.#events.some((event) => event.id === proposal.id)) {
-      throw new Error(`Duplicate organism event: ${proposal.id}`);
+      throw new DuplicateOrganismEventError(proposal.id);
     }
     const sequence = this.#events.length + 1;
     const previousDigest = this.#events.at(-1)?.digest ?? null;
@@ -67,6 +78,10 @@ export class FileEventStore implements EventStore {
   events(): readonly OrganismEvent[] {
     return immutable(this.#events);
   }
+
+  get(id: string): OrganismEvent | undefined {
+    return this.#events.find((event) => event.id === id);
+  }
 }
 
 export class MemoryEventStore implements EventStore {
@@ -74,7 +89,7 @@ export class MemoryEventStore implements EventStore {
 
   append(proposal: OrganismEventProposal): OrganismEvent {
     if (this.#events.some((event) => event.id === proposal.id)) {
-      throw new Error(`Duplicate organism event: ${proposal.id}`);
+      throw new DuplicateOrganismEventError(proposal.id);
     }
     const sequence = this.#events.length + 1;
     const previousDigest = this.#events.at(-1)?.digest ?? null;
@@ -86,6 +101,10 @@ export class MemoryEventStore implements EventStore {
 
   events(): readonly OrganismEvent[] {
     return immutable(this.#events);
+  }
+
+  get(id: string): OrganismEvent | undefined {
+    return this.#events.find((event) => event.id === id);
   }
 }
 

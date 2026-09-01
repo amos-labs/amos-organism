@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/organism-trace-bundle.v1.schema.json",
+  "title": "AMOS Organism Trace Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "source", "entries"],
+  "properties": {
+    "schema": { "const": "amos.organism-trace-bundle" },
+    "schemaVersion": { "const": 1 },
+    "source": { "type": "object" },
+    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "approvals": { "type": "array", "items": { "type": "object" } }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt", "trace"],
+      "properties": {
+        "receipt": { "type": "object" },
+        "trace": { "type": "object" }
+      }
+    }
+  }
+}

@@ -87,6 +87,16 @@ test("a verified trace yields a candidate but needs separate host admission", ()
   const gene = intake.admit(result.geneCandidate!, approval);
   assert.equal(genes.list()[0]?.id, gene.id);
   assert.equal(store.events().at(-1)?.type, "gene.admitted");
+
+  const eventCount = store.events().length;
+  const retried = intake.ingest(
+    trace,
+    gate.allow(receipt("trace-import-retry", trace.runId, "trace-imported")),
+  );
+  assert.equal(retried.geneCandidate?.id, result.geneCandidate?.id);
+  assert.equal(store.events().length, eventCount, "identical intake is idempotent");
+  assert.equal(intake.admit(result.geneCandidate!, approval).id, gene.id);
+  assert.equal(store.events().length, eventCount, "identical admission is idempotent");
 });
 
 function failedTrace(trialId: string, message: string): AmosAwsTrace {

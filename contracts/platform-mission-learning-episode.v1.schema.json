@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/platform-mission-learning-episode.v1.schema.json",
+  "title": "AMOS Platform Mission Learning Episode v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "tenantId", "missionId", "terminalStatus", "sourceEpisodeDigest", "rightsTags", "consentReceiptId", "attestationReceiptId"],
+  "properties": {
+    "schema": { "const": "amos.platform-mission-learning-episode" },
+    "schemaVersion": { "const": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "missionId": { "type": "string", "minLength": 1 },
+    "terminalStatus": { "enum": ["completed", "failed", "cancelled", "expired"] },
+    "sourceEpisodeDigest": { "type": "string", "minLength": 32 },
+    "rightsTags": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+    "consentReceiptId": { "type": "string", "minLength": 1 },
+    "attestationReceiptId": { "type": "string", "minLength": 1 }
+  }
+}

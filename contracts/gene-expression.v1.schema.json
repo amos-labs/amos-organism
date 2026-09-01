@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/gene-expression.v1.schema.json",
+  "title": "AMOS Gene Expression v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "id", "missionId", "context", "selections", "receiptId", "expressedAt"],
+  "properties": {
+    "schema": { "const": "amos.gene-expression" },
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "missionId": { "type": "string", "minLength": 1 },
+    "context": { "type": "object" },
+    "selections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["geneId", "rank", "mode"],
+        "properties": {
+          "geneId": { "type": "string", "minLength": 1 },
+          "rank": { "type": "object" },
+          "mode": { "enum": ["guide", "avoid"] }
+        }
+      }
+    },
+    "receiptId": { "type": "string", "minLength": 1 },
+    "expressedAt": { "type": "string", "format": "date-time" }
+  }
+}

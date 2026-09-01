@@ -1,4 +1,6 @@
 export * from "./causalGraph.ts";
+export * from "./candidateEvolution.ts";
+export * from "./contracts.ts";
 export * from "./digest.ts";
 export * from "./energyLedger.ts";
 export * from "./eventStore.ts";

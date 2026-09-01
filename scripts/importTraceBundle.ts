@@ -1,14 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { digest } from "../src/digest.ts";
 import { FileEventStore } from "../src/eventStore.ts";
 import type { HostGate, HostReceipt } from "../src/host.ts";
 import { StrategyGeneArchive } from "../src/strategyGenes.ts";
 import { TraceIntake, type AmosAwsTrace } from "../src/traceIntake.ts";
+import {
+  ORGANISM_CONTRACT_VERSION,
+  ORGANISM_TRACE_BUNDLE_SCHEMA,
+} from "../src/contracts.ts";
 
 interface TraceBundle {
-  readonly schema: "amos.organism-trace-bundle";
-  readonly version: 1;
+  readonly schema: typeof ORGANISM_TRACE_BUNDLE_SCHEMA;
+  readonly schemaVersion: typeof ORGANISM_CONTRACT_VERSION;
   readonly source: Readonly<Record<string, unknown>>;
   readonly entries: readonly {
     readonly receipt: HostReceipt;
@@ -38,9 +42,11 @@ if (!inputArgument || !outputArgument) {
 }
 const input = resolve(inputArgument);
 const output = resolve(outputArgument);
-if (existsSync(output)) throw new Error(`Refusing to overwrite existing event ledger: ${output}`);
 const bundle = JSON.parse(readFileSync(input, "utf8")) as TraceBundle;
-if (bundle.schema !== "amos.organism-trace-bundle" || bundle.version !== 1) {
+if (
+  bundle.schema !== ORGANISM_TRACE_BUNDLE_SCHEMA
+  || bundle.schemaVersion !== ORGANISM_CONTRACT_VERSION
+) {
   throw new Error("Unsupported trace bundle");
 }
 for (const entry of bundle.entries) {
@@ -55,6 +61,7 @@ const gate = new BundleGate([
 ]);
 const store = new FileEventStore(output);
 const genes = new StrategyGeneArchive(gate);
+genes.replay(store.events());
 const intake = new TraceIntake(gate, store, genes);
 const results = bundle.entries.map((entry) => intake.ingest(entry.trace, entry.receipt));
 for (const [index, result] of results.entries()) {
