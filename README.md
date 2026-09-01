@@ -95,7 +95,9 @@ node scripts/importTraceBundle.ts INPUT.json OUTPUT.jsonl
 
 ## Status
 
-Research-stage kernel. The first metabolism loop now exists, but it has not yet
+Research-stage kernel. The first metabolism loop now exists, including
+canonical consent-gated Platform Mission episode intake after host/KMS
+attestation, but it has not yet
 demonstrated repeatable quality improvement on frozen holdouts. It does not
 replace the external AMOS verifier, train adapters, or make production
 decisions. Those boundaries are deliberate.

@@ -8,6 +8,7 @@ export * from "./fitnessLedger.ts";
 export * from "./host.ts";
 export * from "./organism.ts";
 export * from "./pheromoneField.ts";
+export * from "./platformEpisodeIntake.ts";
 export * from "./strategyGenes.ts";
 export * from "./traceIntake.ts";
 export * from "./valueOfComputation.ts";

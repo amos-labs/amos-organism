@@ -46,9 +46,12 @@ is not automatically eligible for adapter training or redistribution.
   generalization have not yet vested. The kernel can now replay, context-select,
   host-attest, and express them; the v12 experiment must prove the second-mission
   vesting loop.
-- The live AMOS mission runtime still needs to emit canonical, consent-gated
-  learning episodes through a transactional outbox; the AWS research runner is
-  the first connected host.
+- The live AMOS Mission runtime now emits canonical, consent-gated learning
+  episodes through a transactional outbox, and this kernel has digest-verified,
+  idempotent intake after Platform KMS verification. The private intake service,
+  KMS public-key verification adapter, and production endpoint configuration
+  remain deployment work; the AWS research runner is still the first fully
+  connected host.
 - Interruptible leases and recovery semantics.
 - Learned HRR transition head and calibration benchmark.
 - Frozen-holdout experiment registry and blind promotion gate.

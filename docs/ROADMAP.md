@@ -77,6 +77,9 @@ Exit: model-weight gains and organism-level gains are independently measurable.
 - Add multimodal encoders without weakening receipt or authority boundaries.
 - Ingest only outcome-bearing, consented, rights-tagged Platform Mission
   episodes through an idempotent outbox and host/KMS attestation boundary.
+  The canonical v1 producer, delivery worker, and kernel intake now exist;
+  deploy the private signature-verifying endpoint and then connect expressed
+  genes to live Mission planning.
 
 Exit: the organism is a governed, replaceable intelligence substrate—not an
 experiment-specific harness.

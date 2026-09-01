@@ -29,6 +29,7 @@ export interface StrategyGeneProcedureContract {
 export interface PlatformMissionLearningEpisodeContract {
   readonly schema: typeof PLATFORM_MISSION_EPISODE_SCHEMA;
   readonly schemaVersion: typeof ORGANISM_CONTRACT_VERSION;
+  readonly episodeId: string;
   readonly tenantId: string;
   readonly missionId: string;
   readonly terminalStatus: "completed" | "failed" | "cancelled" | "expired";
@@ -36,6 +37,30 @@ export interface PlatformMissionLearningEpisodeContract {
   readonly rightsTags: readonly string[];
   readonly consentReceiptId: string;
   readonly attestationReceiptId: string;
+  readonly source: Readonly<Record<string, unknown>>;
+}
+
+export function isPlatformMissionLearningEpisodeContract(
+  value: unknown,
+): value is PlatformMissionLearningEpisodeContract {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const episode = value as Partial<PlatformMissionLearningEpisodeContract>;
+  return episode.schema === PLATFORM_MISSION_EPISODE_SCHEMA
+    && episode.schemaVersion === ORGANISM_CONTRACT_VERSION
+    && typeof episode.episodeId === "string"
+    && typeof episode.tenantId === "string"
+    && typeof episode.missionId === "string"
+    && ["completed", "failed", "cancelled", "expired"].includes(
+      episode.terminalStatus ?? "",
+    )
+    && typeof episode.sourceEpisodeDigest === "string"
+    && Array.isArray(episode.rightsTags)
+    && episode.rightsTags.length > 0
+    && typeof episode.consentReceiptId === "string"
+    && typeof episode.attestationReceiptId === "string"
+    && !!episode.source
+    && typeof episode.source === "object"
+    && !Array.isArray(episode.source);
 }
 
 export function isStrategyGeneCandidateContract(
