@@ -20,7 +20,25 @@ function episode(status: "completed" | "failed" = "completed") {
     task: {},
     trajectory: {},
     outcome: {},
-    verification: status === "completed" ? [{ verdict: "pass" }] : [{ verdict: "fail" }],
+    verification: status === "completed"
+      ? {
+          totalCount: 1,
+          passedCount: 1,
+          failedCount: 0,
+          allPassed: true,
+          fullTraceDigest: "a".repeat(64),
+          first: [{ verdict: "pass" }],
+          last: [],
+        }
+      : {
+          totalCount: 1,
+          passedCount: 0,
+          failedCount: 1,
+          allPassed: false,
+          fullTraceDigest: "b".repeat(64),
+          first: [{ verdict: "fail" }],
+          last: [],
+        },
   };
   const unsigned = {
     schema: PLATFORM_MISSION_EPISODE_SCHEMA,
@@ -32,7 +50,6 @@ function episode(status: "completed" | "failed" = "completed") {
     sourceEpisodeDigest: digest(source),
     rightsTags: ["amos-owned"],
     consentReceiptId: "consent",
-    attestationReceiptId: "attested",
     source,
   } satisfies PlatformMissionLearningEpisodeContract;
   return unsigned;
