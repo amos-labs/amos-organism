@@ -56,6 +56,8 @@ test("a verified trace yields a candidate but needs separate host admission", ()
     verifier: { status: "pass", evidenceRefs: ["verifier-receipt"] },
     artifactReceiptIds: ["artifact-receipt"],
     procedure: {
+      schema: "amos.strategy-gene-procedure",
+      schemaVersion: 1,
       spec: {
         name: "inspect-then-compile",
         preconditions: {

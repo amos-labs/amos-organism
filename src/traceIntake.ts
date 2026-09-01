@@ -5,12 +5,12 @@ import { requireHostReceipt } from "./host.ts";
 import {
   ORGANISM_CONTRACT_VERSION,
   STRATEGY_GENE_CANDIDATE_SCHEMA,
+  type StrategyGeneProcedureContract,
   type StrategyGeneCandidateContract,
 } from "./contracts.ts";
 import {
   StrategyGeneArchive,
   type StrategyGene,
-  type StrategyGeneSpec,
 } from "./strategyGenes.ts";
 
 export interface TraceEligibility {
@@ -23,11 +23,7 @@ export interface TraceVerifierResult {
   readonly evidenceRefs: readonly string[];
 }
 
-export interface HostObservedProcedure {
-  readonly spec: StrategyGeneSpec;
-  readonly parentIds: readonly string[];
-  readonly evidenceRefs: readonly string[];
-}
+export interface HostObservedProcedure extends StrategyGeneProcedureContract {}
 
 export interface AmosAwsTrace {
   readonly runId: string;

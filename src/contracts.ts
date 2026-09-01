@@ -1,6 +1,7 @@
 import type { StrategyGeneSpec } from "./strategyGenes.ts";
 
 export const STRATEGY_GENE_CANDIDATE_SCHEMA = "amos.strategy-gene-candidate";
+export const STRATEGY_GENE_PROCEDURE_SCHEMA = "amos.strategy-gene-procedure";
 export const GENE_EXPRESSION_SCHEMA = "amos.gene-expression";
 export const ORGANISM_TRACE_BUNDLE_SCHEMA = "amos.organism-trace-bundle";
 export const PLATFORM_MISSION_EPISODE_SCHEMA = "amos.platform-mission-learning-episode";
@@ -12,6 +13,14 @@ export interface StrategyGeneCandidateContract {
   readonly id: string;
   readonly runId: string;
   readonly trialId: string;
+  readonly spec: StrategyGeneSpec;
+  readonly parentIds: readonly string[];
+  readonly evidenceRefs: readonly string[];
+}
+
+export interface StrategyGeneProcedureContract {
+  readonly schema: typeof STRATEGY_GENE_PROCEDURE_SCHEMA;
+  readonly schemaVersion: typeof ORGANISM_CONTRACT_VERSION;
   readonly spec: StrategyGeneSpec;
   readonly parentIds: readonly string[];
   readonly evidenceRefs: readonly string[];

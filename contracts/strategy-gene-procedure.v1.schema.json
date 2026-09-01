@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.amoslabs.com/organism/strategy-gene-procedure.v1.schema.json",
+  "title": "AMOS Strategy Gene Procedure v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "spec", "parentIds", "evidenceRefs"],
+  "properties": {
+    "schema": { "const": "amos.strategy-gene-procedure" },
+    "schemaVersion": { "const": 1 },
+    "spec": { "type": "object" },
+    "parentIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "evidenceRefs": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+  }
+}

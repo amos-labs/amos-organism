@@ -85,6 +85,7 @@ export interface GeneExpression {
     geneId: string;
     rank: SelectedStrategyGene["rank"];
     mode: "guide" | "avoid";
+    procedureDigest: string;
   }>[];
   readonly receiptId: string;
   readonly expressedAt: string;
@@ -221,6 +222,7 @@ export class StrategyGeneArchive {
       geneId: gene.id,
       rank,
       mode: hasVerifiedFailureOnly(this.#outcomes, gene.id) ? "avoid" as const : "guide" as const,
+      procedureDigest: digest(geneSpec(gene)),
     }));
     const body: Omit<GeneExpression, "id"> = {
       schema: GENE_EXPRESSION_SCHEMA,

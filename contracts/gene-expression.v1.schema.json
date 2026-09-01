@@ -16,11 +16,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["geneId", "rank", "mode"],
+        "required": ["geneId", "rank", "mode", "procedureDigest"],
         "properties": {
           "geneId": { "type": "string", "minLength": 1 },
           "rank": { "type": "object" },
-          "mode": { "enum": ["guide", "avoid"] }
+          "mode": { "enum": ["guide", "avoid"] },
+          "procedureDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
         }
       }
     },
