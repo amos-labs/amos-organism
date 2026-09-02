@@ -76,6 +76,16 @@ buy its own survival.
 See [First Principles](docs/FIRST_PRINCIPLES.md),
 [Model Manifest](docs/MODEL_MANIFEST.md), and [Roadmap](docs/ROADMAP.md).
 
+## The swarm experiment
+
+The Qwen swarm self-learning experiment that produces the organism's traces now
+lives in this repository under [`swarm/`](swarm/README.md): the holographic
+swarm kernel, the organism metabolism simulator, the Harbor agents, the frozen
+benchmark fixtures and recorded results, the AWS research plane (Terraform,
+trainer, adapter verifier, runner), and the program documents under
+[`docs/swarm/`](docs/swarm/RECURSIVE_INTELLIGENCE_PROGRAM.md). The swarm imports
+the kernel's contracts and digest; `npm run check` exercises both.
+
 ## Development
 
 Requires Node.js 22.18 or newer. Development and CI are pinned to Node 24;
@@ -84,7 +94,8 @@ the repository's type-stripped TypeScript tests.
 
 ```bash
 npm install
-npm run check
+npm run check        # kernel typecheck + swarm syntax check + all tests
+npm run test:swarm   # swarm suites only
 ```
 
 Research trace bundles can be settled without trusting model-authored status:

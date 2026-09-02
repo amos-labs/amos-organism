@@ -4,116 +4,695 @@
   "title": "AMOS Platform Mission Learning Episode v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "schemaVersion", "episodeId", "tenantId", "missionId", "terminalStatus", "sourceEpisodeDigest", "rightsTags", "consentReceiptId", "attestationReceiptId", "source"],
+  "required": [
+    "schema",
+    "schemaVersion",
+    "episodeId",
+    "tenantId",
+    "missionId",
+    "terminalStatus",
+    "sourceEpisodeDigest",
+    "rightsTags",
+    "consentReceiptId",
+    "source"
+  ],
   "properties": {
-    "schema": { "const": "amos.platform-mission-learning-episode" },
-    "schemaVersion": { "const": 1 },
-    "episodeId": { "type": "string", "minLength": 1 },
-    "tenantId": { "type": "string", "minLength": 1 },
-    "missionId": { "type": "string", "minLength": 1 },
-    "terminalStatus": { "enum": ["completed", "failed", "cancelled", "expired"] },
-    "sourceEpisodeDigest": { "type": "string", "minLength": 32 },
-    "rightsTags": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
-    "consentReceiptId": { "type": "string", "minLength": 1 },
-    "attestationReceiptId": { "type": "string", "minLength": 1 },
+    "schema": {
+      "const": "amos.platform-mission-learning-episode"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "episodeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "missionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "terminalStatus": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled",
+        "expired"
+      ]
+    },
+    "sourceEpisodeDigest": {
+      "type": "string",
+      "minLength": 32
+    },
+    "rightsTags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "consentReceiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attestationReceiptId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Transport-layer attestation receipt. The producer signs the body without it; hosts bind it via the attested receipt's payloadDigest."
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["episodeId", "tenantId", "missionId", "contractId", "terminalStatus", "task", "trajectory", "outcome", "verification"],
+      "required": [
+        "episodeId",
+        "tenantId",
+        "missionId",
+        "contractId",
+        "terminalStatus",
+        "task",
+        "trajectory",
+        "outcome",
+        "verification"
+      ],
       "properties": {
-        "episodeId": { "type": "string", "minLength": 1 },
-        "tenantId": { "type": "string", "minLength": 1 },
-        "missionId": { "type": "string", "minLength": 1 },
-        "contractId": { "type": ["string", "null"] },
-        "terminalStatus": { "enum": ["completed", "failed", "cancelled", "expired"] },
+        "episodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tenantId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "missionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contractId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "terminalStatus": {
+          "enum": [
+            "completed",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
+        },
         "task": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["objectiveDigest", "completionConditionDigest", "operationKeys", "contractDigest"],
+          "required": [
+            "objectiveDigest",
+            "completionConditionDigest",
+            "operationKeys",
+            "contractDigest"
+          ],
           "properties": {
-            "objective": { "type": "string" },
-            "objectiveDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-            "completionConditionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-            "operationKeys": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-            "contractDigest": { "type": ["string", "null"] }
+            "objective": {
+              "type": "string"
+            },
+            "objectiveDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "completionConditionDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "operationKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "contractDigest": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "objectiveOriginalBytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "objectiveTruncated": {
+              "type": "boolean"
+            }
           }
         },
         "trajectory": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["stepKinds", "operations"],
+          "required": [
+            "stepKinds",
+            "operations"
+          ],
           "properties": {
             "stepKinds": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["position", "kind"],
-                "properties": {
-                  "position": { "type": "integer", "minimum": 1 },
-                  "kind": { "type": "string" }
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "position",
+                      "kind"
+                    ],
+                    "properties": {
+                      "position": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "kind": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "totalCount",
+                    "omittedCount",
+                    "fullTraceDigest",
+                    "first",
+                    "last"
+                  ],
+                  "properties": {
+                    "totalCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "omittedCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "fullTraceDigest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "first": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "position",
+                          "kind"
+                        ],
+                        "properties": {
+                          "position": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "kind": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "last": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "position",
+                          "kind"
+                        ],
+                        "properties": {
+                          "position": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "kind": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
-              }
+              ]
             },
             "operations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["operationKey", "status", "inputDigest", "receiptId", "claimedAt", "resolvedAt"],
-                "properties": {
-                  "operationKey": { "type": "string" },
-                  "status": { "type": "string" },
-                  "inputDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-                  "receiptId": { "type": ["string", "null"] },
-                  "claimedAt": { "type": "string", "format": "date-time" },
-                  "resolvedAt": { "type": ["string", "null"], "format": "date-time" }
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operationKey",
+                      "status",
+                      "inputDigest",
+                      "receiptId",
+                      "claimedAt",
+                      "resolvedAt"
+                    ],
+                    "properties": {
+                      "operationKey": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "inputDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "receiptId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "claimedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "resolvedAt": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "totalCount",
+                    "omittedCount",
+                    "fullTraceDigest",
+                    "first",
+                    "last"
+                  ],
+                  "properties": {
+                    "totalCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "omittedCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "fullTraceDigest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "first": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "operationKey",
+                          "status",
+                          "inputDigest",
+                          "receiptId",
+                          "claimedAt",
+                          "resolvedAt"
+                        ],
+                        "properties": {
+                          "operationKey": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "inputDigest": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "receiptId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "claimedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "resolvedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    },
+                    "last": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "operationKey",
+                          "status",
+                          "inputDigest",
+                          "receiptId",
+                          "claimedAt",
+                          "resolvedAt"
+                        ],
+                        "properties": {
+                          "operationKey": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "inputDigest": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "receiptId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "claimedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "resolvedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
-              }
+              ]
             }
           }
         },
         "outcome": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["status", "statusReasonDigest", "createdAt", "startedAt", "finishedAt", "budgets"],
+          "required": [
+            "status",
+            "statusReasonDigest",
+            "createdAt",
+            "startedAt",
+            "finishedAt",
+            "budgets"
+          ],
           "properties": {
-            "status": { "enum": ["completed", "failed", "cancelled", "expired"] },
-            "statusReasonDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "startedAt": { "type": ["string", "null"], "format": "date-time" },
-            "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+            "status": {
+              "enum": [
+                "completed",
+                "failed",
+                "cancelled",
+                "expired"
+              ]
+            },
+            "statusReasonDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "startedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
             "budgets": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["toolCalls", "costMicrousd", "providerCredits", "decisions"],
+              "required": [
+                "toolCalls",
+                "costMicrousd",
+                "providerCredits",
+                "decisions"
+              ],
               "properties": {
-                "toolCalls": { "$ref": "#/$defs/budget" },
-                "costMicrousd": { "$ref": "#/$defs/budget" },
-                "providerCredits": { "$ref": "#/$defs/budget" },
-                "decisions": { "$ref": "#/$defs/budget" }
+                "toolCalls": {
+                  "$ref": "#/$defs/budget"
+                },
+                "costMicrousd": {
+                  "$ref": "#/$defs/budget"
+                },
+                "providerCredits": {
+                  "$ref": "#/$defs/budget"
+                },
+                "decisions": {
+                  "$ref": "#/$defs/budget"
+                }
               }
             }
           }
         },
         "verification": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["requirementId", "checkerId", "checkerVersion", "definitionDigest", "resultDigest", "authority", "verdict", "coverage", "evidenceRefs"],
-            "properties": {
-              "requirementId": { "type": "string" },
-              "checkerId": { "type": "string" },
-              "checkerVersion": { "type": "string" },
-              "definitionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-              "resultDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-              "authority": { "type": "string" },
-              "verdict": { "enum": ["pass", "fail", "unknown"] },
-              "coverage": { "type": "number", "minimum": 0, "maximum": 1 },
-              "evidenceRefs": { "type": "array" }
+          "description": "Either the full checker result list or the producer's bounded summary; intake treats a summary as passing only when allPassed and passedCount === totalCount > 0 and failedCount === 0.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "requirementId",
+                  "checkerId",
+                  "checkerVersion",
+                  "definitionDigest",
+                  "resultDigest",
+                  "authority",
+                  "verdict",
+                  "coverage"
+                ],
+                "properties": {
+                  "requirementId": {
+                    "type": "string"
+                  },
+                  "checkerId": {
+                    "type": "string"
+                  },
+                  "checkerVersion": {
+                    "type": "string"
+                  },
+                  "definitionDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "resultDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "authority": {
+                    "type": "string"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ]
+                  },
+                  "coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "evidenceRefs": {
+                    "type": "array"
+                  },
+                  "evidenceRefsDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "totalCount",
+                "omittedCount",
+                "fullTraceDigest",
+                "first",
+                "last",
+                "passedCount",
+                "failedCount",
+                "allPassed"
+              ],
+              "properties": {
+                "totalCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "omittedCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "fullTraceDigest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "first": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "requirementId",
+                      "checkerId",
+                      "checkerVersion",
+                      "definitionDigest",
+                      "resultDigest",
+                      "authority",
+                      "verdict",
+                      "coverage"
+                    ],
+                    "properties": {
+                      "requirementId": {
+                        "type": "string"
+                      },
+                      "checkerId": {
+                        "type": "string"
+                      },
+                      "checkerVersion": {
+                        "type": "string"
+                      },
+                      "definitionDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "resultDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "authority": {
+                        "type": "string"
+                      },
+                      "verdict": {
+                        "enum": [
+                          "pass",
+                          "fail",
+                          "unknown"
+                        ]
+                      },
+                      "coverage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "evidenceRefs": {
+                        "type": "array"
+                      },
+                      "evidenceRefsDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    }
+                  }
+                },
+                "last": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "requirementId",
+                      "checkerId",
+                      "checkerVersion",
+                      "definitionDigest",
+                      "resultDigest",
+                      "authority",
+                      "verdict",
+                      "coverage"
+                    ],
+                    "properties": {
+                      "requirementId": {
+                        "type": "string"
+                      },
+                      "checkerId": {
+                        "type": "string"
+                      },
+                      "checkerVersion": {
+                        "type": "string"
+                      },
+                      "definitionDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "resultDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "authority": {
+                        "type": "string"
+                      },
+                      "verdict": {
+                        "enum": [
+                          "pass",
+                          "fail",
+                          "unknown"
+                        ]
+                      },
+                      "coverage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "evidenceRefs": {
+                        "type": "array"
+                      },
+                      "evidenceRefsDigest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    }
+                  }
+                },
+                "passedCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "failedCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "allPassed": {
+                  "type": "boolean"
+                }
+              }
             }
-          }
+          ]
         }
       }
     }
@@ -122,11 +701,26 @@
     "budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["used", "max"],
+      "required": [
+        "used",
+        "max"
+      ],
       "properties": {
-        "used": { "type": "integer", "minimum": 0 },
-        "max": { "type": ["integer", "null"], "minimum": 0 }
+        "used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
       }
+    },
+    "_note": {
+      "description": "v1 tolerates both the array form and the Platform producer's bounded-trace summaries (amos-managed-platform organism_learning.rs)."
     }
   }
 }

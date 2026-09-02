@@ -161,7 +161,11 @@ export class TraceIntake {
 
   admit(candidate: GeneCandidate, approval: HostReceipt): StrategyGene {
     requireHostReceipt(this.#gate, approval, ["gene-approved"], candidate.runId);
-    const gene = this.#genes.register(candidate.spec, candidate.parentIds, approval);
+    const gene = this.#genes.register(candidate.spec, candidate.parentIds, approval, {
+      candidateId: candidate.id,
+      evidenceRefs: candidate.evidenceRefs,
+    });
+    // Idempotent with the archive's own admission event when both share a store.
     appendIdempotent(this.#store, {
       id: `gene:admitted:${candidate.id}`,
       type: "gene.admitted",

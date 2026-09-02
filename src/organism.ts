@@ -83,7 +83,7 @@ export class OrganismKernel {
       options.eventStore ?? null,
       replayEvents,
     );
-    this.genes = new StrategyGeneArchive(options.hostGate);
+    this.genes = new StrategyGeneArchive(options.hostGate, options.eventStore ?? null);
     this.pheromones = new PheromoneField(options.hostGate);
     this.world = new SharedWorldState(options.hostGate);
     this.#fitnessPolicy = options.fitnessPolicy ?? { provisionalCredit: () => 1 };

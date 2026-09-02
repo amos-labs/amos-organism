@@ -1,0 +1,7 @@
+**
+!swarm/infra/aws/qwen-inference/gateway/package.json
+!swarm/scripts/runSwarmTurnGateway.js
+!swarm/src/experimentProtocol.js
+!src/digest.ts
+!swarm/src/missionWorkerProtocol.js
+!swarm/src/swarmTurnGateway.js

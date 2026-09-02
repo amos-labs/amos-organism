@@ -3,3 +3,13 @@
 node_modules
 research/events
 test
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/__pycache__
+**/*.pyc
+.amos-agent
+.amos-organism
+output
+docs
