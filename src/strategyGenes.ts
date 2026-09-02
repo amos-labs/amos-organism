@@ -1,5 +1,5 @@
 import { digest, immutable } from "./digest.ts";
-import type { OrganismEvent } from "./eventStore.ts";
+import type { EventStore, OrganismEvent } from "./eventStore.ts";
 import type { HostGate, HostReceipt } from "./host.ts";
 import { requireHostReceipt } from "./host.ts";
 import {
@@ -127,15 +127,23 @@ export class StrategyGeneArchive {
   readonly #genes = new Map<string, StrategyGene>();
   readonly #outcomes: GeneOutcome[] = [];
   readonly #expressions = new Map<string, GeneExpression>();
+  readonly #eventStore: EventStore | null;
 
-  constructor(gate: HostGate) {
+  constructor(gate: HostGate, eventStore: EventStore | null = null) {
     this.#gate = gate;
+    this.#eventStore = eventStore;
   }
 
+  /**
+   * Admit a host-approved procedure. When the archive owns an event store the
+   * admission is written as a `gene.admitted` event carrying the full gene, so a
+   * restart replays it; otherwise the caller (e.g. TraceIntake) must persist it.
+   */
   register(
     spec: StrategyGeneSpec,
     parentIds: readonly string[],
     receipt: HostReceipt,
+    provenance: Readonly<{ candidateId?: string; evidenceRefs?: readonly string[] }> = {},
   ): StrategyGene {
     requireHostReceipt(this.#gate, receipt, ["gene-approved", "official-verification"]);
     for (const parentId of parentIds) this.require(parentId);
@@ -153,6 +161,20 @@ export class StrategyGeneArchive {
       createdAt: receipt.issuedAt,
     });
     this.#genes.set(id, gene);
+    this.#eventStore?.append({
+      id: `gene:admitted:${provenance.candidateId ?? gene.id}`,
+      type: "gene.admitted",
+      missionId: receipt.missionId,
+      occurredAt: receipt.issuedAt,
+      authority: "host",
+      hostReceiptId: receipt.id,
+      payload: {
+        geneId: gene.id,
+        gene,
+        candidateId: provenance.candidateId ?? null,
+        evidenceRefs: [...(provenance.evidenceRefs ?? [])],
+      },
+    });
     return gene;
   }
 

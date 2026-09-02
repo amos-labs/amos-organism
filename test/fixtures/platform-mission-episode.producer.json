@@ -1,0 +1,118 @@
+{
+  "schema": "amos.platform-mission-learning-episode",
+  "schemaVersion": 1,
+  "episodeId": "platform-mission:0d1f4f6e-9d2b-4b0e-9a55-1c2a3b4c5d6e:7b1e2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d:completed:v1",
+  "tenantId": "0d1f4f6e-9d2b-4b0e-9a55-1c2a3b4c5d6e",
+  "missionId": "7b1e2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
+  "terminalStatus": "completed",
+  "sourceEpisodeDigest": "a18c40857c09fd0e2d15715f835018af5958e12da6c73e414dd7cae6ca25bc50",
+  "rightsTags": [
+    "amos-owned",
+    "strategy_learning"
+  ],
+  "consentReceiptId": "consent-4f5e6d7c",
+  "source": {
+    "episodeId": "platform-mission:0d1f4f6e-9d2b-4b0e-9a55-1c2a3b4c5d6e:7b1e2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d:completed:v1",
+    "tenantId": "0d1f4f6e-9d2b-4b0e-9a55-1c2a3b4c5d6e",
+    "missionId": "7b1e2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
+    "contractId": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f",
+    "terminalStatus": "completed",
+    "task": {
+      "objectiveDigest": "befef3deec51cd76f5d7183ae9cc408ca51443d31fef0330aec71999460e525c",
+      "objective": "Reconcile the August vendor statements against AP",
+      "objectiveOriginalBytes": 49,
+      "objectiveTruncated": false,
+      "completionConditionDigest": "843f56755c00b28f0e572016e60351c64aa780309889e35307b67010ef183179",
+      "operationKeys": [
+        "finance.read",
+        "finance.reconcile"
+      ],
+      "contractDigest": "1f5e0d7c9b8a7f6e5d4c3b2a19087f6e5d4c3b2a19087f6e5d4c3b2a19087f6e"
+    },
+    "trajectory": {
+      "stepKinds": {
+        "totalCount": 3,
+        "omittedCount": 0,
+        "fullTraceDigest": "ec72307907996329d12eed48f0a8c73d058877979db68e480184d4690eb3c5fc",
+        "first": [
+          {
+            "position": 1,
+            "kind": "plan"
+          },
+          {
+            "position": 2,
+            "kind": "tool"
+          },
+          {
+            "position": 3,
+            "kind": "verify"
+          }
+        ],
+        "last": []
+      },
+      "operations": {
+        "totalCount": 1,
+        "omittedCount": 0,
+        "fullTraceDigest": "49871da1c221d5c440cde2d1cbcabce6bd9aafdd30fe96a9fe16eeef600309d4",
+        "first": [
+          {
+            "operationKey": "finance.reconcile",
+            "status": "resolved",
+            "inputDigest": "3b6d771588d8eeb6331a1fa0fc59d21c5c4039ce3a5f20bd0b862840bb3a1f84",
+            "receiptId": "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+            "claimedAt": "2026-09-01T10:00:00Z",
+            "resolvedAt": "2026-09-01T10:00:04Z"
+          }
+        ],
+        "last": []
+      }
+    },
+    "outcome": {
+      "status": "completed",
+      "statusReasonDigest": "3d136ad25b8443d79228570b6103d400ced5af1c9b3937111ac42278a46dd093",
+      "createdAt": "2026-09-01T09:59:58Z",
+      "startedAt": "2026-09-01T10:00:00Z",
+      "finishedAt": "2026-09-01T10:00:09Z",
+      "budgets": {
+        "toolCalls": {
+          "used": 1,
+          "max": 20
+        },
+        "costMicrousd": {
+          "used": 1250,
+          "max": 500000
+        },
+        "providerCredits": {
+          "used": 0,
+          "max": null
+        },
+        "decisions": {
+          "used": 0,
+          "max": 2
+        }
+      }
+    },
+    "verification": {
+      "totalCount": 1,
+      "omittedCount": 0,
+      "fullTraceDigest": "2bcbdd34a2a233bd8236aeafa4e6016b1cc47b5b30fba6b5e05adf34f81a9487",
+      "first": [
+        {
+          "requirementId": "ap-reconciled",
+          "checkerId": "finance.ap-reconciliation",
+          "checkerVersion": "1.2.0",
+          "definitionDigest": "6a14d25a13660638209ee1b81f17ee125330113c15e99ede36c84ac5cc85c155",
+          "resultDigest": "02ba32d5ecc5b3b74f3773df51f8af222f08b6cf0c5a38d683a26d98c85f8dad",
+          "authority": "platform-checker",
+          "verdict": "pass",
+          "coverage": 0.98,
+          "evidenceRefsDigest": "2239243e36aad59c38ca40617f5f80af8142ccaf72a8e0050b7290a034752333"
+        }
+      ],
+      "last": [],
+      "passedCount": 1,
+      "failedCount": 0,
+      "allPassed": true
+    }
+  }
+}

@@ -12,7 +12,10 @@ import {
 
 interface TraceBundle {
   readonly schema: typeof ORGANISM_TRACE_BUNDLE_SCHEMA;
-  readonly schemaVersion: typeof ORGANISM_CONTRACT_VERSION;
+  /** Current bundles carry `schemaVersion`; bundles exported before the contract
+   * rename carry `version`. Both mean the same contract version. */
+  readonly schemaVersion?: typeof ORGANISM_CONTRACT_VERSION;
+  readonly version?: typeof ORGANISM_CONTRACT_VERSION;
   readonly source: Readonly<Record<string, unknown>>;
   readonly entries: readonly {
     readonly receipt: HostReceipt;
@@ -22,6 +25,14 @@ interface TraceBundle {
     readonly trialId: string;
     readonly receipt: HostReceipt;
   }[];
+}
+
+export function isSupportedTraceBundle(bundle: TraceBundle): boolean {
+  if (bundle.schema !== ORGANISM_TRACE_BUNDLE_SCHEMA) return false;
+  const version = bundle.schemaVersion ?? bundle.version;
+  return version === ORGANISM_CONTRACT_VERSION
+    && (bundle.schemaVersion === undefined || bundle.version === undefined
+      || bundle.schemaVersion === bundle.version);
 }
 
 class BundleGate implements HostGate {
@@ -43,10 +54,7 @@ if (!inputArgument || !outputArgument) {
 const input = resolve(inputArgument);
 const output = resolve(outputArgument);
 const bundle = JSON.parse(readFileSync(input, "utf8")) as TraceBundle;
-if (
-  bundle.schema !== ORGANISM_TRACE_BUNDLE_SCHEMA
-  || bundle.schemaVersion !== ORGANISM_CONTRACT_VERSION
-) {
+if (!isSupportedTraceBundle(bundle)) {
   throw new Error("Unsupported trace bundle");
 }
 for (const entry of bundle.entries) {
