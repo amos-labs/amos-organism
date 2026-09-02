@@ -10,14 +10,14 @@ data, training, and research-system experiments.
 The initial implementation is a local, provider-neutral contract and evidence
 store:
 
-- `src/research/experimentProtocol.js`
-- `src/research/evaluationAttestation.js`
-- `src/research/experimentStore.js`
-- `src/research/qwenResearchEnvironment.js`
-- `test/researchExperimentProtocol.test.js`
-- `test/researchEvaluationAttestation.test.js`
-- `test/researchExperimentStore.test.js`
-- `test/qwenResearchEnvironment.test.js`
+- `swarm/src/experimentProtocol.js`
+- `swarm/src/evaluationAttestation.js`
+- `swarm/src/experimentStore.js`
+- `swarm/src/qwenResearchEnvironment.js`
+- `swarm/test/researchExperimentProtocol.test.js`
+- `swarm/test/researchEvaluationAttestation.test.js`
+- `swarm/test/researchExperimentStore.test.js`
+- `swarm/test/qwenResearchEnvironment.test.js`
 
 The Qwen worker can execute explicitly supplied research fixtures against a
 pinned local endpoint or a private AWS vLLM endpoint reached through an SSM
@@ -297,7 +297,7 @@ contract gate. Qwen completed the underlying reasoning, but the original
 128-token answer reserve truncated six direct answers and 33 of 36 typed swarm
 stages required recovery; only three stage envelopes parsed successfully. The
 run is preserved as development evidence in
-`benchmarks/results/qwen-swarm-v0-contract-qualification-2026-08-22.json`.
+`swarm/benchmarks/results/qwen-swarm-v0-contract-qualification-2026-08-22.json`.
 It is not evidence that either control won. A first hard-gated rerun showed
 that 768 visible-answer tokens were still insufficient for Direct Qwen. The
 corrected quality regime therefore reserves 3,072 tokens for direct and
@@ -344,7 +344,7 @@ answer envelope and stopping rule. Direct Qwen remains an ablation and runtime
 baseline; the target quality contest is complete Swarm Qwen versus Opus.
 
 For accounts that keep Bedrock's default retention mode, the alternate
-`benchmarks/swarm-experiment-opus-v0.json` configuration replaces Fable with
+`swarm/benchmarks/swarm-experiment-opus-v0.json` configuration replaces Fable with
 the already-qualified `us.anthropic.claude-opus-5` control. Direct Qwen, Swarm
 Qwen, and Opus must all use that same configuration and mission manifest so
 their report digests remain comparison-compatible. Selecting Opus does not
@@ -353,7 +353,7 @@ fixtures may cross that provider boundary.
 
 ### Blind quality comparison
 
-`src/research/blindComparison.js` creates two digest-bound artifacts from two
+`swarm/src/blindComparison.js` creates two digest-bound artifacts from two
 or more compatible experiment reports:
 
 - `amos.blind-comparison-bundle` contains the common mission evidence,
@@ -390,12 +390,12 @@ only after a complete judgment and emits control-level rank and dimension
 totals bound to the bundle, private map, and judgment digests.
 
 The original three cases remain fast contract fixtures. The visible
-`benchmarks/swarm-challenge-missions-v0.json` suite adds six multi-constraint
+`swarm/benchmarks/swarm-challenge-missions-v0.json` suite adds six multi-constraint
 development missions for quality iteration: cash allocation, partner capacity,
 incident reconstruction, zero-downtime migration, experiment portfolio
 selection, and KPI reconciliation. It is intentionally visible and cannot
 serve as sealed promotion evidence. Run it by passing
-`--missions benchmarks/swarm-challenge-missions-v0.json` to
+`--missions swarm/benchmarks/swarm-challenge-missions-v0.json` to
 `research:swarm`.
 
 The corrected stage-budget qualification completed on 2026-08-22. Direct Qwen
@@ -406,7 +406,7 @@ cost 2.297x the wall time and 2.929x the output tokens of Direct Qwen. A manual
 audit found useful explicit risks but also one absolute-loss error and
 unsupported benchmark claims, so no quality winner is declared. The compact
 qualification record is
-`benchmarks/results/qwen-swarm-v0-stage-budget-qualification-2026-08-22.json`.
+`swarm/benchmarks/results/qwen-swarm-v0-stage-budget-qualification-2026-08-22.json`.
 Blind judging and the Fable control remain mandatory.
 
 ### Run the local baseline

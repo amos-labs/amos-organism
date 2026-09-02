@@ -441,7 +441,7 @@ therefore AMOS-owned operational competence plus explicitly trainable public
 capability data—not benchmark leakage disguised as learning.
 
 The public intake queue is recorded in
-`benchmarks/swarm-public-dataset-intake-v1.json`. It begins in quarantine with
+`swarm/benchmarks/swarm-public-dataset-intake-v1.json`. It begins in quarantine with
 `trainingApproved=false`; a dataset card claim is evidence to audit, not an
 approval. The first audit wave prioritizes execution-verified function calls,
 open-weight SWE success/failure pairs, AppWorld train/development rollouts,
@@ -453,7 +453,7 @@ The TF-PM and processmining.org pages are indexes, while commercial simulated
 log libraries require explicit model-training and derivative-data rights.
 
 Private or organization-authorized data uses a separate lineage registry in
-`benchmarks/swarm-private-dataset-intake-v1.json`; raw records never enter the
+`swarm/benchmarks/swarm-private-dataset-intake-v1.json`; raw records never enter the
 repository or public benchmark artifacts. The first private intake is the
 Process Mining Data Accounts Payable package: 75,234 invoice cases, 701,929
 events, and 10 complete process variants. Its source archive and derived
@@ -495,7 +495,7 @@ may update it, and every retrieved item must resolve back to an exact entry and
 evidence reference before it can affect an action.
 
 The first isolated HRR-v2 algebra treatment is frozen in
-`benchmarks/swarm-holographic-world-v2-experiment-v1.json`. It introduces
+`swarm/benchmarks/swarm-holographic-world-v2-experiment-v1.json`. It introduces
 frequency-unitary role codes, exact multi-key FFT unbinding, a raw shared world
 vector `W` that is never projected after superposition, and two retrieval arms:
 per-item scan and true-`W` presence plus exact-dictionary cleanup. The harness
@@ -505,7 +505,7 @@ missing-receipt hard negatives. It is model-free and cannot touch Harbor,
 Qwen, live swarm state, or organism policy.
 
 The predeclared run is preserved at
-`benchmarks/results/holographic-world-v2-algebra-2026-08-24.json`, evidence
+`swarm/benchmarks/results/holographic-world-v2-algebra-2026-08-24.json`, evidence
 digest `d663d401012efe6dac053554101d8c039b5772b6b3ae8d5b355d25477006f293`.
 At 100 entries, exact dictionary cleanup reached 100% top-1 and top-5 and the
 typed slot index reduced mean cleanup scans by 97.77%. The promotion gate still
@@ -519,7 +519,7 @@ semantic-association channel, then require both to resolve through the same
 authoritative entry and receipt dictionary.
 
 That follow-up treatment is now frozen in
-`benchmarks/swarm-holographic-world-dual-channel-experiment-v1.json`. Its
+`swarm/benchmarks/swarm-holographic-world-dual-channel-experiment-v1.json`. Its
 exact channel maps canonical typed content to an atomic frequency-unitary code;
 its semantic channel remains the deterministic token encoder as a development
 control. Semantic retrieval may propose candidates but is structurally unable
@@ -527,7 +527,7 @@ to authorize them. Authorization requires both an exact-channel presence signal
 and a matching host dictionary entry carrying a verified receipt.
 
 The first run is preserved at
-`benchmarks/results/holographic-world-dual-channel-2026-08-24.json`, evidence
+`swarm/benchmarks/results/holographic-world-dual-channel-2026-08-24.json`, evidence
 digest `9968271ec3e6770301e3abb275984aa60792afa9b3378df8f796d0fc14be2de4`.
 It passed the predeclared 100-entry, 4,096-dimensional algebra gate: 100% exact
 positive acceptance, zero observed false positives across all five typed hard-
@@ -630,10 +630,10 @@ regression floor, and tenant facts, hidden reasoning, and benchmark answers are
 never training targets.
 
 The corresponding executable research contracts are
-`benchmarks/swarm-organism-policy-training-v1.json` and
-`benchmarks/swarm-qwen-adapter-training-v1.json`. The independently attributable
+`swarm/benchmarks/swarm-organism-policy-training-v1.json` and
+`swarm/benchmarks/swarm-qwen-adapter-training-v1.json`. The independently attributable
 shared-world lane is pinned in
-`benchmarks/swarm-holographic-world-training-v1.json`.
+`swarm/benchmarks/swarm-holographic-world-training-v1.json`.
 
 The stage-zero substrate pipeline is now proven end to end on the disposable
 AWS verifier. Contract `qwen38-adapter-stage0-20260823-2034-r3` trained and
@@ -649,7 +649,7 @@ It has no remaining pipeline exit criteria, but still sets
 arena fact, not evidence that the adapter or organism is better.
 
 The organism search now has an executable multi-fidelity simulator in
-`src/research/swarmOrganismSimulator.js`. It fits role-transition distributions
+`swarm/src/swarmOrganismSimulator.js`. It fits role-transition distributions
 from immutable learning episodes and their ecology artifacts, then runs seeded
 model-free missions under candidate bidding, pheromone, energy, retry,
 compaction, artifact-horizon, and stopping policies. A constrained
@@ -667,7 +667,7 @@ bounded energy without becoming success; unverified file churn earns nothing;
 and failed, repeated, stalled, or regressive leases leave proportionately
 stronger decaying inhibitory trails that alter the next bid.
 
-`src/research/swarmOrganismLearningCycle.js` turns each simulation winner into
+`swarm/src/swarmOrganismLearningCycle.js` turns each simulation winner into
 a machine-readable qualification candidate. A candidate advances in order
 through simulation, immutable artifact replay, real-Qwen phase probes, a full
 real-Qwen mission replicated across three seeds, frozen holdout, and canary
@@ -980,7 +980,7 @@ The existing 35-point AMOS local qualification suite is a production contract
 floor. It tests protocol grammar, governance, tool selection, recovery, and
 small executable tasks; it is not difficult or broad enough to support a
 claim that Qwen beats Opus 5. The development portfolio is machine-readable in
-`benchmarks/frontier-quality-portfolio-v1.json` and must be frozen only after
+`swarm/benchmarks/frontier-quality-portfolio-v1.json` and must be frozen only after
 every required adapter, task snapshot, license review, and evaluator digest is
 pinned.
 

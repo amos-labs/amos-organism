@@ -89,7 +89,7 @@ training.
 Collect the immutable episode with:
 
 ```bash
-node scripts/collectPlatformMissionEpisode.js \
+node swarm/scripts/collectPlatformMissionEpisode.js \
   --mission /secure/get-mission.json \
   --traces /secure/swarm-gateway.jsonl \
   --data-policy /secure/data-policy.json \
