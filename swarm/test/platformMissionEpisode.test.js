@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {
   assessPlatformMissionVerification,
   createPlatformMissionLearningEpisode
-} from "../src/research/platformMissionEpisode.js";
-import { organismPolicyTrainingEligibility } from "../src/research/swarmLearningArena.js";
+} from "../src/platformMissionEpisode.js";
+import { organismPolicyTrainingEligibility } from "../src/swarmLearningArena.js";
 
 const DEFINITION = "a".repeat(64);
 const RESULT = "b".repeat(64);

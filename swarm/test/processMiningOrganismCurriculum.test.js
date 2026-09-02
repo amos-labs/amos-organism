@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { compileProcessMiningOrganismCurriculum } from "../src/research/processMiningOrganismCurriculum.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { compileProcessMiningOrganismCurriculum } from "../src/processMiningOrganismCurriculum.js";
 
 test("process variants are isolated across train, validation, and holdout scenarios", async () => {
   const root = await mkdtemp(join(tmpdir(), "amos-process-curriculum-"));

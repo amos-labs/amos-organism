@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   createVerifiedProcedureApproval,
   extractVerifiedSwarmProcedure
-} from "../src/research/swarmProcedureExtraction.js";
+} from "../src/swarmProcedureExtraction.js";
 
 function episode(overrides = {}) {
   return {

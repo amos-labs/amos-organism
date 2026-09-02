@@ -4,13 +4,16 @@ import { resolve } from "node:path";
 import {
   compileAmosNativeTrainingDataset,
   writeAmosNativeTrainingDataset
-} from "../src/research/amosNativeTrainingDataset.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+} from "../src/amosNativeTrainingDataset.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
+import { fileURLToPath } from "node:url";
+const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const args = process.argv.slice(2);
 const storePath = option("--store") || ".amos-agent/research/swarm-learning";
 const outputPath = option("--output") || ".amos-agent/research/amos-native-dataset";
-const planPath = option("--plan") || "benchmarks/swarm-qwen-adapter-training-v1.json";
+const planPath = option("--plan") ||
+  resolve(swarmRoot, "benchmarks/swarm-qwen-adapter-training-v1.json");
 const preflightOnly = args.includes("--preflight-only");
 const stageZero = args.includes("--stage0");
 

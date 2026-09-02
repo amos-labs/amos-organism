@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   frontierQualityPortfolioDigest,
   validateFrontierQualityPortfolio
-} from "../src/research/frontierQualityPortfolio.js";
+} from "../src/frontierQualityPortfolio.js";
 
 const path = process.argv[2] || new URL(
   "../benchmarks/frontier-quality-portfolio-v1.json",

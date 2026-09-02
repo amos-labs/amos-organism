@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { replayOrganismPolicyArtifacts } from "../src/research/swarmOrganismArtifactReplay.js";
-import { nextOrganismLearningAction } from "../src/research/swarmOrganismLearningCycle.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { replayOrganismPolicyArtifacts } from "../src/swarmOrganismArtifactReplay.js";
+import { nextOrganismLearningAction } from "../src/swarmOrganismLearningCycle.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const args = process.argv.slice(2);
 const queuePath = resolve(requiredOption("--queue"));

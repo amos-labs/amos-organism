@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 
 const args = process.argv.slice(2);
 const queuePath = resolve(requiredOption("--queue"));

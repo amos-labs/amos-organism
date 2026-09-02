@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { runDualChannelHolographicExperiment } from
-  "../src/research/dualChannelHolographicExperiment.js";
+  "../src/dualChannelHolographicExperiment.js";
+const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const DEFAULT_CONTRACT = resolve(
+  swarmRoot,
   "benchmarks/swarm-holographic-world-dual-channel-experiment-v1.json"
 );
 

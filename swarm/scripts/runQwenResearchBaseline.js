@@ -19,13 +19,18 @@ import {
   createQwen38AwsResearchEnvironment,
   createQwen38ResearchEnvironment,
   qwenResearchEnvironmentDigest
-} from "../src/research/qwenResearchEnvironment.js";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+} from "../src/qwenResearchEnvironment.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..");
-const benchmarkScript = join(scriptDirectory, "benchmarkLocalModels.js");
 const args = process.argv.slice(2);
+// The Phase-0 baseline measures Qwen against the AMOS Desktop production tool
+// surface. That qualification suite (scripts/benchmarkLocalModels.js) lives with
+// Desktop in amos-agent, so its location must be supplied explicitly here.
+const benchmarkScript = resolve(
+  option("--benchmark-script") || process.env.AMOS_LOCAL_BENCHMARK_SCRIPT || ""
+);
 const runtime = option("--runtime") || "mtplx";
 const outputPath = option("--output");
 const baseUrl = option("--url") || QWEN_RESEARCH_DEFAULT_ENDPOINTS[runtime];
@@ -58,6 +63,9 @@ if (!["ollama", "mtplx", "vllm"].includes(runtime)) {
 }
 if (!baseUrl) fail("No endpoint is known for the selected runtime");
 if (!outputPath) fail("--output REPORT.json is required");
+if (!option("--benchmark-script") && !process.env.AMOS_LOCAL_BENCHMARK_SCRIPT) {
+  fail("--benchmark-script PATH (amos-agent scripts/benchmarkLocalModels.js) or AMOS_LOCAL_BENCHMARK_SCRIPT is required");
+}
 if (!runtimeBinaryPath && !suppliedBinaryDigest) {
   fail("Provide --runtime-binary PATH or --runtime-binary-sha256 DIGEST");
 }

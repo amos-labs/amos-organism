@@ -7,7 +7,7 @@ import {
   SwarmTaskCoordinator,
   compileSwarmTaskMission,
   validateSwarmTaskPolicy
-} from "../src/research/swarmTaskCoordinator.js";
+} from "../src/swarmTaskCoordinator.js";
 
 const ARTIFACT_RECEIPT = "a".repeat(64);
 const REPAIRED_ARTIFACT_RECEIPT = "b".repeat(64);

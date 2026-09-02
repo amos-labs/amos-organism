@@ -2,9 +2,9 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
-import { createSwarmLearningEpisode } from "../src/research/swarmLearningArena.js";
-import { createSwarmFailureCapsule } from "../src/research/swarmFailureCapsule.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { createSwarmLearningEpisode } from "../src/swarmLearningArena.js";
+import { createSwarmFailureCapsule } from "../src/swarmFailureCapsule.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const argumentsList = process.argv.slice(2);
 const jobDirectoryArgument = argumentsList.find((value) => !value.startsWith("--"));

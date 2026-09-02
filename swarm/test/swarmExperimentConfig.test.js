@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   validateSwarmDevelopmentMissions,
   validateSwarmExperimentConfig
-} from "../src/research/swarmExperimentConfig.js";
+} from "../src/swarmExperimentConfig.js";
 
 test("the Swarm v0 config binds Direct Qwen, Swarm Qwen, and Fable to one comparison", async () => {
   const config = validateSwarmExperimentConfig(JSON.parse(await readFile(

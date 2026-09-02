@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { DualChannelHolographicWorld } from
-  "../src/research/dualChannelHolographicWorld.js";
+  "../src/dualChannelHolographicWorld.js";
 import {
   runDualChannelHolographicExperiment,
   validateDualChannelExperimentContract
-} from "../src/research/dualChannelHolographicExperiment.js";
-import { UnitaryHolographicMemory } from "../src/research/holographicWorldV2.js";
+} from "../src/dualChannelHolographicExperiment.js";
+import { UnitaryHolographicMemory } from "../src/holographicWorldV2.js";
 import {
   buildDualChannelActive,
   buildDualChannelShadow,

@@ -10,7 +10,7 @@ import {
   SwarmExperimentRunner,
   validateSwarmBudget,
   validateSwarmExperimentRun
-} from "../src/research/swarmExperiment.js";
+} from "../src/swarmExperiment.js";
 import { RESEARCH_TEST_DIGESTS } from "./fixtures/researchProtocolFixtures.js";
 
 test("Swarm Mode v0 runs explorer and builder concurrently through a typed evidence board", async () => {

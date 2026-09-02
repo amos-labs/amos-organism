@@ -7,8 +7,8 @@ import {
   unmaskBlindComparison,
   validateBlindComparisonBundle,
   validateBlindComparisonJudgment
-} from "../src/research/blindComparison.js";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+} from "../src/blindComparison.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 
 const CREATED_AT = "2026-08-22T12:00:00.000Z";
 

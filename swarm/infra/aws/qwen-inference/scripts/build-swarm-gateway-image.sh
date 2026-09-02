@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+SWARM_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+REPO_DIR="$(cd "$SWARM_DIR/.." && pwd)"
 MODE="${1:---load}"
 
 case "$MODE" in

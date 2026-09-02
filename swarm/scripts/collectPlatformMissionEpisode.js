@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { createPlatformMissionLearningEpisode } from "../src/research/platformMissionEpisode.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { createPlatformMissionLearningEpisode } from "../src/platformMissionEpisode.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const argumentsList = process.argv.slice(2);
 const missionPath = requiredPath("--mission");

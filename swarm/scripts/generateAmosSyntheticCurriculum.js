@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
-import { generateAmosSyntheticCurriculum } from "../src/research/amosSyntheticCurriculum.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { generateAmosSyntheticCurriculum } from "../src/amosSyntheticCurriculum.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const args = process.argv.slice(2);
 const storePath = option("--store") || ".amos-agent/research/swarm-learning";

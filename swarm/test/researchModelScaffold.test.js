@@ -8,7 +8,7 @@ import {
   requiresVisibleAnswerRecovery,
   runResearchInference,
   withSequentialToolPolicy
-} from "../src/research/modelScaffold.js";
+} from "../src/modelScaffold.js";
 import { RESEARCH_TEST_DIGESTS } from "./fixtures/researchProtocolFixtures.js";
 
 test("the research scaffold reserves visible-answer tokens and recovers without more reasoning", async () => {

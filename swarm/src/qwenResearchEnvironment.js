@@ -1,23 +1,23 @@
 import { cpus, totalmem } from "node:os";
 import { performance } from "node:perf_hooks";
-import { SYSTEM_PROMPT } from "../prompts.js";
-import { currentProductionToolSchemaVersion } from "../model/toolSurfaceQualification.js";
-import { OFFLINE_MODEL_MANIFEST } from "../desktop/offlineIntelligence.js";
-import { AMOS_LOCAL_HOST } from "../desktop/managedOllamaRuntime.js";
 import {
+  AMOS_LOCAL_HOST,
   AMOS_MTPLX_CONTEXT_LENGTH,
-  AMOS_MTPLX_HOST
-} from "../desktop/managedMtplxRuntime.js";
+  AMOS_MTPLX_HOST,
+  LOCAL_MODEL_CATALOG,
+  PRODUCTION_SYSTEM_PROMPT_DIGEST,
+  PRODUCTION_TOOL_SCHEMA_VERSION
+} from "./runtime/desktopBindings.js";
 import {
   MTPLX_QWEN38_MODEL_ID,
   MTPLX_RUNTIME_RELEASE,
   MTPLX_SERVED_MODEL_ID,
   mtplxModelProfile
-} from "../desktop/mtplxRuntimeManifest.js";
+} from "./runtime/mtplxRuntimeManifest.js";
 import {
   OLLAMA_RUNTIME_RELEASE,
   ollamaRuntimeAsset
-} from "../desktop/ollamaRuntimeManifest.js";
+} from "./runtime/ollamaRuntimeManifest.js";
 import { digestResearchValue } from "./experimentProtocol.js";
 
 export const QWEN_RESEARCH_ENVIRONMENT_SCHEMA = "amos.qwen-research-environment";
@@ -65,7 +65,7 @@ export function createQwen38ResearchEnvironment({
   totalMemoryBytes = totalmem(),
   accelerator = platform === "darwin" && arch === "arm64" ? "apple-metal" : "unknown",
   promptVersion = "qwen38-research-phase0-v1",
-  toolSchemaVersion = currentProductionToolSchemaVersion(),
+  toolSchemaVersion = PRODUCTION_TOOL_SCHEMA_VERSION,
   contextTokens = AMOS_MTPLX_CONTEXT_LENGTH,
   maxOutputTokens = 768,
   temperature = 0,
@@ -74,7 +74,7 @@ export function createQwen38ResearchEnvironment({
   sessionCache = true
 } = {}) {
   if (!RUNTIMES.has(runtime)) throw new Error(`Unsupported Qwen research runtime: ${runtime}`);
-  const catalogModel = OFFLINE_MODEL_MANIFEST.models.find(
+  const catalogModel = LOCAL_MODEL_CATALOG.models.find(
     (candidate) => candidate.id === MTPLX_QWEN38_MODEL_ID
   );
   if (!catalogModel?.capabilityContract) {
@@ -110,7 +110,7 @@ export function createQwen38ResearchEnvironment({
     },
     prompt: {
       version: requiredId(promptVersion, "environment.prompt.version"),
-      systemPromptDigest: digestResearchValue(SYSTEM_PROMPT),
+      systemPromptDigest: PRODUCTION_SYSTEM_PROMPT_DIGEST,
       toolSchemaVersion: shaVersion(toolSchemaVersion, "environment.prompt.toolSchemaVersion"),
       qualificationToolSchemaVersion: shaVersion(
         boundToolSchemaVersion,
@@ -141,7 +141,7 @@ export function createQwen38AwsResearchEnvironment({
   containerImageDigest,
   modelArtifactManifestDigest,
   promptVersion = "qwen38-aws-research-phase0-v1",
-  toolSchemaVersion = currentProductionToolSchemaVersion(),
+  toolSchemaVersion = PRODUCTION_TOOL_SCHEMA_VERSION,
   maxOutputTokens = 768,
   temperature = 0,
   reasoningEffort = "low",
@@ -187,7 +187,7 @@ export function createQwen38AwsResearchEnvironment({
     },
     prompt: {
       version: requiredId(promptVersion, "environment.prompt.version"),
-      systemPromptDigest: digestResearchValue(SYSTEM_PROMPT),
+      systemPromptDigest: PRODUCTION_SYSTEM_PROMPT_DIGEST,
       toolSchemaVersion: shaVersion(toolSchemaVersion, "environment.prompt.toolSchemaVersion"),
       qualificationToolSchemaVersion: shaVersion(
         toolSchemaVersion,
@@ -648,7 +648,7 @@ function validatePinnedRuntimeAndModel(environment) {
     validatePinnedBindings(environment, expected);
     return;
   }
-  const catalogModel = OFFLINE_MODEL_MANIFEST.models.find(
+  const catalogModel = LOCAL_MODEL_CATALOG.models.find(
     (candidate) => candidate.id === MTPLX_QWEN38_MODEL_ID
   );
   if (!catalogModel?.source || !catalogModel.capabilityContract) {

@@ -7,7 +7,7 @@ import {
   PheromoneField,
   SwarmTaskGraph,
   rankHolographicBids
-} from "../src/research/holographicSwarmKernel.js";
+} from "../src/holographicSwarmKernel.js";
 
 test("the shared HRR world model projects verified exact entries for every specialist", () => {
   const memory = new HolographicMemory({ dimension: 256, namespace: "shared-world" });

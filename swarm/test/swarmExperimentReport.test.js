@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 import {
   finalizeSwarmExperimentReport,
   swarmExperimentFailure
-} from "../src/research/swarmExperimentReport.js";
+} from "../src/swarmExperimentReport.js";
 
 const NOW = "2026-08-23T09:30:00.000Z";
 

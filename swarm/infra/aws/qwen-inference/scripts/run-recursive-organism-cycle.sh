@@ -8,11 +8,11 @@ ITERATIONS="${AMOS_RECURSIVE_ITERATIONS:-2}"
 [[ "$ITERATIONS" =~ ^[1-4]$ ]] || { echo "AMOS_RECURSIVE_ITERATIONS must be from 1 to 4" >&2; exit 1; }
 
 mkdir -p "$JOB_ROOT"
-node scripts/benchmarkDualChannelHolographicWorld.js \
+node swarm/scripts/benchmarkDualChannelHolographicWorld.js \
   --out "$JOB_ROOT/hrr-dual-channel.json" \
   > "$JOB_ROOT/hrr-dual-channel.stdout.json"
 
-POLICY_PATH="${AMOS_ORGANISM_POLICY_PATH:-$PWD/benchmarks/swarm-organism-ap-stage1-policy-v1.json}"
+POLICY_PATH="${AMOS_ORGANISM_POLICY_PATH:-$PWD/swarm/benchmarks/swarm-organism-ap-stage1-policy-v1.json}"
 POLICY_DIGEST="${AMOS_ORGANISM_POLICY_DIGEST:-4c1421c83dfc2562334c4944278f30543f2b38cfc40f0dd1c82f5948c1f24131}"
 
 for iteration in $(seq 1 "$ITERATIONS"); do
@@ -22,7 +22,7 @@ for iteration in $(seq 1 "$ITERATIONS"); do
   export AMOS_ORGANISM_POLICY_DIGEST="$POLICY_DIGEST"
 
   set +e
-  ./infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-swarm.sh \
+  ./swarm/infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-swarm.sh \
     "$ITERATION_ROOT/harbor" "$JOB_ID-iteration-$iteration"
   HARBOR_STATUS=$?
   set -e
@@ -31,7 +31,7 @@ for iteration in $(seq 1 "$ITERATIONS"); do
   # A failed real mission is valuable negative experience. Collection happens
   # inside the Harbor wrapper, so policy search continues if the immutable
   # learning store contains enough rights-cleared records.
-  node scripts/simulateSwarmOrganismTraining.js \
+  node swarm/scripts/simulateSwarmOrganismTraining.js \
     --store "$AMOS_SWARM_REPLAY_DIR" \
     --output "$ITERATION_ROOT/organism-simulation.json" \
     --scenarios "$AP_CURRICULUM" \
@@ -42,16 +42,16 @@ for iteration in $(seq 1 "$ITERATIONS"); do
     --elites 12 \
     --generations 5 \
     > "$ITERATION_ROOT/organism-simulation.stdout.json"
-  node scripts/createSwarmOrganismPromotionQueue.js \
+  node swarm/scripts/createSwarmOrganismPromotionQueue.js \
     --simulation "$ITERATION_ROOT/organism-simulation.json" \
     --output "$ITERATION_ROOT/organism-promotion-queue.json"
-  node scripts/replaySwarmOrganismArtifacts.js \
+  node swarm/scripts/replaySwarmOrganismArtifacts.js \
     --queue "$ITERATION_ROOT/organism-promotion-queue.json" \
     --store "$AMOS_SWARM_REPLAY_DIR" \
     --limit 16 \
     --output "$ITERATION_ROOT/organism-artifact-replay-queue.json" \
     > "$ITERATION_ROOT/organism-artifact-replay.stdout.json"
-  node scripts/selectRecursiveOrganismPolicy.js \
+  node swarm/scripts/selectRecursiveOrganismPolicy.js \
     --queue "$ITERATION_ROOT/organism-artifact-replay-queue.json" \
     --cycle-id "$JOB_ID-iteration-$iteration" \
     --output "$ITERATION_ROOT/research-policy.json" \
@@ -66,7 +66,7 @@ NODE
 )"
 done
 
-node scripts/summarizeRecursiveOrganismCycle.js \
+node swarm/scripts/summarizeRecursiveOrganismCycle.js \
   --root "$JOB_ROOT" \
   --store "$AMOS_SWARM_REPLAY_DIR" \
   --output "$JOB_ROOT/recursive-cycle-report.json" \

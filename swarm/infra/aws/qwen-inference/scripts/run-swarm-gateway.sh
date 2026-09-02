@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+SWARM_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+REPO_DIR="$(cd "$SWARM_DIR/.." && pwd)"
 REGION="$(terraform -chdir="$TF_DIR" output -raw aws_region)"
 SECRET_ID="$(terraform -chdir="$TF_DIR" output -raw api_key_secret_id)"
 

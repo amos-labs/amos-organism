@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { compileProcessMiningOrganismCurriculum } from "../src/research/processMiningOrganismCurriculum.js";
+import { compileProcessMiningOrganismCurriculum } from "../src/processMiningOrganismCurriculum.js";
 
 const args = process.argv.slice(2);
 const output = resolve(requiredOption("--output"));

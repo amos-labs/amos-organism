@@ -4,9 +4,9 @@ import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createResearchEvaluationAttestation } from "../src/research/evaluationAttestation.js";
-import { openResearchExperimentStore } from "../src/research/experimentStore.js";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+import { createResearchEvaluationAttestation } from "../src/evaluationAttestation.js";
+import { openResearchExperimentStore } from "../src/experimentStore.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 import {
   RESEARCH_TEST_DIGESTS,
   researchEvaluationManifest,

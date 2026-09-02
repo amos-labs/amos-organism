@@ -13,7 +13,7 @@ import {
   validateResearchExperimentLedger,
   validateResearchExperimentOutcome,
   validateResearchExperimentProposal
-} from "../src/research/experimentProtocol.js";
+} from "../src/experimentProtocol.js";
 
 const DIGEST_A = "a".repeat(64);
 const DIGEST_B = "b".repeat(64);

@@ -39,7 +39,6 @@ COPY --from=node-runtime /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 COPY --from=tmux-builder /tmp/tmux-source/tmux /opt/amos/bin/tmux-static
-COPY --from=amos-organism . /opt/amos-organism
 
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
   && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
@@ -54,23 +53,28 @@ ENV PATH="/opt/harbor/bin:${PATH}"
 ENV NODE_ENV=production
 ENV AMOS_SOURCE_REVISION="${AMOS_SOURCE_REVISION}"
 ENV AMOS_SOURCE_DIGEST="${AMOS_SOURCE_DIGEST}"
-ENV AMOS_ORGANISM_ROOT="/opt/amos-organism"
+# The organism kernel and the swarm now ship in one repository: this image.
+ENV AMOS_ORGANISM_ROOT="/app"
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
-COPY benchmarks ./benchmarks
-COPY infra/aws/qwen-inference/scripts ./infra/aws/qwen-inference/scripts
-COPY infra/aws/qwen-research-plane/runner/entrypoint.sh ./infra/aws/qwen-research-plane/runner/entrypoint.sh
-COPY scripts ./scripts
 COPY src ./src
+COPY scripts ./scripts
+COPY contracts ./contracts
+COPY research/imports ./research/imports
+COPY swarm/src ./swarm/src
+COPY swarm/scripts ./swarm/scripts
+COPY swarm/benchmarks ./swarm/benchmarks
+COPY swarm/infra/aws/qwen-inference/scripts ./swarm/infra/aws/qwen-inference/scripts
+COPY swarm/infra/aws/qwen-research-plane/runner/entrypoint.sh ./swarm/infra/aws/qwen-research-plane/runner/entrypoint.sh
 
 RUN chmod 0755 \
-  ./infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-swarm.sh \
-  ./infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-training.sh \
-  ./infra/aws/qwen-inference/scripts/run-recursive-organism-cycle.sh \
-  ./infra/aws/qwen-inference/scripts/run-terminal-bench-task-swarm.sh \
-  ./infra/aws/qwen-research-plane/runner/entrypoint.sh
+  ./swarm/infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-swarm.sh \
+  ./swarm/infra/aws/qwen-inference/scripts/run-terminal-bench-holographic-training.sh \
+  ./swarm/infra/aws/qwen-inference/scripts/run-recursive-organism-cycle.sh \
+  ./swarm/infra/aws/qwen-inference/scripts/run-terminal-bench-task-swarm.sh \
+  ./swarm/infra/aws/qwen-research-plane/runner/entrypoint.sh
 
-ENTRYPOINT ["./infra/aws/qwen-research-plane/runner/entrypoint.sh"]
+ENTRYPOINT ["./swarm/infra/aws/qwen-research-plane/runner/entrypoint.sh"]

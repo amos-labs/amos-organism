@@ -8,7 +8,7 @@ import {
   evaluateOrganismPolicy,
   searchOrganismPolicies,
   simulateOrganismMission
-} from "../src/research/swarmOrganismSimulator.js";
+} from "../src/swarmOrganismSimulator.js";
 
 function episode({ id, status = "errored", sourceClass = "public-benchmark", eligible = false }) {
   return {

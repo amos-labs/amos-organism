@@ -9,7 +9,7 @@ import {
   qwenResearchEnvironmentDigest,
   validateQwenResearchEnvironment,
   validateQwenResearchObservation
-} from "../src/research/qwenResearchEnvironment.js";
+} from "../src/qwenResearchEnvironment.js";
 import { RESEARCH_TEST_DIGESTS } from "./fixtures/researchProtocolFixtures.js";
 
 const HARDWARE = Object.freeze({

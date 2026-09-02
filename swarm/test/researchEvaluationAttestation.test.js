@@ -5,7 +5,7 @@ import {
   createResearchEvaluationAttestation,
   validateResearchEvaluationAttestation,
   verifyResearchEvaluationAttestation
-} from "../src/research/evaluationAttestation.js";
+} from "../src/evaluationAttestation.js";
 import {
   RESEARCH_TEST_DIGESTS,
   researchEvaluationManifest,

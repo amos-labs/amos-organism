@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { normalizeOrganismPolicy } from "../src/research/swarmOrganismSimulator.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { normalizeOrganismPolicy } from "../src/swarmOrganismSimulator.js";
 
 const input = JSON.parse(await readStandardInput());
 const candidateIndex = Number(input.candidateIndex ?? 0);

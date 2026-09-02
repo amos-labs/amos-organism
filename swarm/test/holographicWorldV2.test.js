@@ -4,11 +4,11 @@ import test from "node:test";
 import {
   HolographicWorldV2,
   UnitaryHolographicMemory
-} from "../src/research/holographicWorldV2.js";
+} from "../src/holographicWorldV2.js";
 import {
   runHolographicWorldV2Experiment,
   validateExperimentContract
-} from "../src/research/holographicWorldV2Experiment.js";
+} from "../src/holographicWorldV2Experiment.js";
 
 const contractUrl = new URL(
   "../benchmarks/swarm-holographic-world-v2-experiment-v1.json",

@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { replayOrganismPolicyArtifacts } from "../src/research/swarmOrganismArtifactReplay.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { replayOrganismPolicyArtifacts } from "../src/swarmOrganismArtifactReplay.js";
 import {
   createOrganismLearningCandidate,
   recordOrganismLearningGate
-} from "../src/research/swarmOrganismLearningCycle.js";
-import { DEFAULT_ORGANISM_POLICY } from "../src/research/swarmOrganismSimulator.js";
+} from "../src/swarmOrganismLearningCycle.js";
+import { DEFAULT_ORGANISM_POLICY } from "../src/swarmOrganismSimulator.js";
 
 function simulationPassedCandidate(policy = DEFAULT_ORGANISM_POLICY) {
   const created = createOrganismLearningCandidate({

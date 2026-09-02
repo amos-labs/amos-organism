@@ -7,9 +7,9 @@ import {
   compileAmosNativeTrainingDataset,
   createAmosSystemTrainingExample,
   writeAmosNativeTrainingDataset
-} from "../src/research/amosNativeTrainingDataset.js";
-import { createSwarmLearningEpisode } from "../src/research/swarmLearningArena.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+} from "../src/amosNativeTrainingDataset.js";
+import { createSwarmLearningEpisode } from "../src/swarmLearningArena.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const plan = {
   schema: "amos.swarm-substrate-adapter-training",

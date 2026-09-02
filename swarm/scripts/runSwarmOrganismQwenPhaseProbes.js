@@ -2,14 +2,16 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { validateAmosOwnedMissionVerifierManifest } from "../src/research/amosOwnedMissionArena.js";
-import { OpenAiResearchWorker } from "../src/research/openAiResearchWorker.js";
-import { runOrganismQwenPhaseProbe } from "../src/research/swarmOrganismQwenPhaseProbe.js";
+import { validateAmosOwnedMissionVerifierManifest } from "../src/amosOwnedMissionArena.js";
+import { OpenAiResearchWorker } from "../src/openAiResearchWorker.js";
+import { runOrganismQwenPhaseProbe } from "../src/swarmOrganismQwenPhaseProbe.js";
+import { fileURLToPath } from "node:url";
+const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const args = process.argv.slice(2);
-const missionsPath = resolve(option("--missions") || "benchmarks/swarm-organism-owned-missions-v1.json");
-const verifiersPath = resolve(option("--verifiers") || "benchmarks/swarm-organism-owned-verifiers-v1.json");
-const policyPath = resolve(option("--policy") || "benchmarks/swarm-organism-ap-stage1-policy-v1.json");
+const missionsPath = resolve(option("--missions") || resolve(swarmRoot, "benchmarks/swarm-organism-owned-missions-v1.json"));
+const verifiersPath = resolve(option("--verifiers") || resolve(swarmRoot, "benchmarks/swarm-organism-owned-verifiers-v1.json"));
+const policyPath = resolve(option("--policy") || resolve(swarmRoot, "benchmarks/swarm-organism-ap-stage1-policy-v1.json"));
 const outputPath = resolve(requiredOption("--output"));
 const [missionManifest, verifierInput, policyCandidate] = await Promise.all([
   readJson(missionsPath),

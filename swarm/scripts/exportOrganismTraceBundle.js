@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 import {
   createVerifiedProcedureApproval,
   extractVerifiedSwarmProcedure
-} from "../src/research/swarmProcedureExtraction.js";
+} from "../src/swarmProcedureExtraction.js";
 import {
   ORGANISM_CONTRACT_VERSION,
   ORGANISM_TRACE_BUNDLE_SCHEMA,
-} from "../src/research/organismContracts.js";
+} from "../src/organismContracts.js";
 
 const args = process.argv.slice(2);
 const collectionPath = resolve(requiredOption("--collection"));

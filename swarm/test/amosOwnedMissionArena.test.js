@@ -4,8 +4,8 @@ import { readFile } from "node:fs/promises";
 import {
   validateAmosOwnedMissionVerifierManifest,
   verifyAmosOwnedMissionAnswer
-} from "../src/research/amosOwnedMissionArena.js";
-import { validateSwarmDevelopmentMissions } from "../src/research/swarmExperimentConfig.js";
+} from "../src/amosOwnedMissionArena.js";
+import { validateSwarmDevelopmentMissions } from "../src/swarmExperimentConfig.js";
 
 const mission = { id: "authority-001" };
 const verifier = {

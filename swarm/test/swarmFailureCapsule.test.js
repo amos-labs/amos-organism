@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   createSwarmFailureCapsule,
   validateSwarmFailureCapsule
-} from "../src/research/swarmFailureCapsule.js";
+} from "../src/swarmFailureCapsule.js";
 
 test("failure capsules preserve objective repair evidence and HRR safety telemetry", () => {
   const digest = "a".repeat(64);

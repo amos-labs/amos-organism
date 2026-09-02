@@ -4,17 +4,17 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { OpenAiResearchWorker } from "../src/research/openAiResearchWorker.js";
-import { SwarmExperimentRunner } from "../src/research/swarmExperiment.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { OpenAiResearchWorker } from "../src/openAiResearchWorker.js";
+import { SwarmExperimentRunner } from "../src/swarmExperiment.js";
 import {
   validateSwarmDevelopmentMissions,
   validateSwarmExperimentConfig
-} from "../src/research/swarmExperimentConfig.js";
+} from "../src/swarmExperimentConfig.js";
 import {
   finalizeSwarmExperimentReport,
   swarmExperimentFailure
-} from "../src/research/swarmExperimentReport.js";
+} from "../src/swarmExperimentReport.js";
 
 const execFileAsync = promisify(execFile);
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));

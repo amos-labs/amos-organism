@@ -75,7 +75,7 @@ permanently excluded from evaluation and cannot support a frontier claim.
 Pass a mission ID as the third argument to `scripts/submit-job.sh` to resume one
 unfinished mission without replaying completed mission actions. AMOS-owned
 rollouts use the quality-first budget profile in
-`benchmarks/swarm-organism-owned-experiment-v1.json`; budget ceilings remain
+`swarm/benchmarks/swarm-organism-owned-experiment-v1.json`; budget ceilings remain
 recorded in every run receipt and are not evidence of correctness.
 
 `organism-simulation` runs 100,000 seeded ecology rollouts and an eight-

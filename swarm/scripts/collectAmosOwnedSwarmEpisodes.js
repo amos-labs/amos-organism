@@ -4,19 +4,21 @@ import { resolve } from "node:path";
 import {
   validateAmosOwnedMissionVerifierManifest,
   verifyAmosOwnedMissionAnswer
-} from "../src/research/amosOwnedMissionArena.js";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { validateSwarmDevelopmentMissions } from "../src/research/swarmExperimentConfig.js";
-import { createSwarmLearningEpisode } from "../src/research/swarmLearningArena.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+} from "../src/amosOwnedMissionArena.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { validateSwarmDevelopmentMissions } from "../src/swarmExperimentConfig.js";
+import { createSwarmLearningEpisode } from "../src/swarmLearningArena.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
+import { fileURLToPath } from "node:url";
+const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const args = process.argv.slice(2);
 const reportPath = resolve(requiredOption("--report"));
 const storePath = resolve(option("--store") || ".amos-agent/research/swarm-learning");
 const missionsPath = resolve(option("--missions") ||
-  "benchmarks/swarm-organism-owned-missions-v1.json");
+  resolve(swarmRoot, "benchmarks/swarm-organism-owned-missions-v1.json"));
 const verifiersPath = resolve(option("--verifiers") ||
-  "benchmarks/swarm-organism-owned-verifiers-v1.json");
+  resolve(swarmRoot, "benchmarks/swarm-organism-owned-verifiers-v1.json"));
 
 const [report, missionManifest, verifierManifest] = await Promise.all([
   readJson(reportPath),

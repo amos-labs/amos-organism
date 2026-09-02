@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OpenAiResearchWorker } from "../src/research/openAiResearchWorker.js";
+import { OpenAiResearchWorker } from "../src/openAiResearchWorker.js";
 import { RESEARCH_TEST_DIGESTS } from "./fixtures/researchProtocolFixtures.js";
 
 test("the canonical research worker supports pinned Qwen and Fable-shaped loopback controls", async () => {

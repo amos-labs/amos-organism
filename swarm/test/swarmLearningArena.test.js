@@ -8,9 +8,9 @@ import {
   organismPolicyTrainingEligibility,
   SwarmLearningArena,
   validateSwarmLearningEpisode
-} from "../src/research/swarmLearningArena.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
-import { createSwarmFailureCapsule } from "../src/research/swarmFailureCapsule.js";
+} from "../src/swarmLearningArena.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
+import { createSwarmFailureCapsule } from "../src/swarmFailureCapsule.js";
 
 function episodeInput(overrides = {}) {
   return {

@@ -1,6 +1,7 @@
 **
-!infra/aws/qwen-inference/gateway/package.json
-!scripts/runSwarmTurnGateway.js
-!src/research/experimentProtocol.js
-!src/research/missionWorkerProtocol.js
-!src/research/swarmTurnGateway.js
+!swarm/infra/aws/qwen-inference/gateway/package.json
+!swarm/scripts/runSwarmTurnGateway.js
+!swarm/src/experimentProtocol.js
+!src/digest.ts
+!swarm/src/missionWorkerProtocol.js
+!swarm/src/swarmTurnGateway.js

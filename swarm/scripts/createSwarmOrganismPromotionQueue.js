@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import {
   candidatesFromOrganismPolicySearch,
   nextOrganismLearningAction
-} from "../src/research/swarmOrganismLearningCycle.js";
+} from "../src/swarmOrganismLearningCycle.js";
 
 const args = process.argv.slice(2);
 const simulationPath = requiredOption("--simulation");

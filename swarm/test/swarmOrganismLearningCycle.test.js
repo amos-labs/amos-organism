@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 import {
   candidatesFromOrganismPolicySearch,
   createOrganismLearningCandidate,
   nextOrganismLearningAction,
   recordOrganismLearningGate
-} from "../src/research/swarmOrganismLearningCycle.js";
-import { DEFAULT_ORGANISM_POLICY } from "../src/research/swarmOrganismSimulator.js";
+} from "../src/swarmOrganismLearningCycle.js";
+import { DEFAULT_ORGANISM_POLICY } from "../src/swarmOrganismSimulator.js";
 
 const digest = (value) => digestResearchValue(value);
 

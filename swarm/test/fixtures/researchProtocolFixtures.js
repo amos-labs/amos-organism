@@ -4,7 +4,7 @@ import {
   RESEARCH_OUTCOME_SCHEMA,
   RESEARCH_PROTOCOL_VERSION,
   digestResearchValue
-} from "../../src/research/experimentProtocol.js";
+} from "../../src/experimentProtocol.js";
 
 export const RESEARCH_TEST_DIGESTS = Object.freeze({
   a: "a".repeat(64),

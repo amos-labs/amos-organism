@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_ROOT="$(cd "$TF_DIR/../../.." && pwd)"
+SWARM_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SWARM_DIR/.." && pwd)"
 REGION="$(terraform -chdir="$TF_DIR" output -raw aws_region 2>/dev/null || printf 'us-east-1')"
 REPOSITORY_URL="$(terraform -chdir="$TF_DIR" output -raw trainer_repository_url)"
 REGISTRY="${REPOSITORY_URL%%/*}"

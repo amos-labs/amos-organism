@@ -7,9 +7,9 @@ import { readFile } from "node:fs/promises";
 import {
   AMOS_SYSTEM_CURRICULUM_FAMILIES,
   generateAmosSyntheticCurriculum
-} from "../src/research/amosSyntheticCurriculum.js";
-import { compileAmosNativeTrainingDataset } from "../src/research/amosNativeTrainingDataset.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+} from "../src/amosSyntheticCurriculum.js";
+import { compileAmosNativeTrainingDataset } from "../src/amosNativeTrainingDataset.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const planUrl = new URL("../benchmarks/swarm-qwen-adapter-training-v1.json", import.meta.url);
 

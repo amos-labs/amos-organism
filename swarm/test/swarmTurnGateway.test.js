@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SwarmTurnOrchestrator } from "../src/research/swarmTurnGateway.js";
+import { SwarmTurnOrchestrator } from "../src/swarmTurnGateway.js";
 
 test("the swarm turn gateway fans out proposals, critiques them, and returns one integrated action", async () => {
   const calls = [];

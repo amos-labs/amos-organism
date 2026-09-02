@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+SWARM_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+REPO_DIR="$(cd "$SWARM_DIR/.." && pwd)"
 REGION="${AMOS_AWS_REGION:-$(terraform -chdir="$TF_DIR" output -raw aws_region)}"
 SECRET_ID="${AMOS_QWEN_SECRET_ID:-$(terraform -chdir="$TF_DIR" output -raw api_key_secret_id)}"
 SERVED_MODEL="${AMOS_QWEN_SERVED_MODEL:-$(terraform -chdir="$TF_DIR" output -raw served_model_name)}"
@@ -13,8 +14,8 @@ JOB_NAME="${2:-production-planning-qwen-holographic-swarm}"
 TASK_NAME="${AMOS_HARBOR_TASK_NAME:-terminal-bench/production-planning}"
 RESEARCH_SEED="${AMOS_SWARM_RESEARCH_SEED:-}"
 REPLAY_DIR="${AMOS_SWARM_REPLAY_DIR:-$REPO_DIR/.amos-agent/research/swarm-learning}"
-ORGANISM_ROOT="${AMOS_ORGANISM_ROOT:-}"
-ORGANISM_POLICY_PATH="${AMOS_ORGANISM_POLICY_PATH:-$REPO_DIR/benchmarks/swarm-organism-ap-stage1-policy-v1.json}"
+ORGANISM_ROOT="${AMOS_ORGANISM_ROOT:-$REPO_DIR}"
+ORGANISM_POLICY_PATH="${AMOS_ORGANISM_POLICY_PATH:-$REPO_DIR/swarm/benchmarks/swarm-organism-ap-stage1-policy-v1.json}"
 ORGANISM_POLICY_DIGEST="${AMOS_ORGANISM_POLICY_DIGEST:-4c1421c83dfc2562334c4944278f30543f2b38cfc40f0dd1c82f5948c1f24131}"
 HOLOGRAPHIC_WORLD_MODE="${AMOS_HOLOGRAPHIC_WORLD_MODE:-active}"
 STRATEGY_GENE_TASK_NAME="${AMOS_STRATEGY_GENE_TASK_NAME:-}"
@@ -29,7 +30,7 @@ export OPENAI_API_KEY
 OPENAI_API_KEY="$(python3 -c \
   'import boto3,json,sys; print(json.loads(boto3.client("secretsmanager", region_name=sys.argv[1]).get_secret_value(SecretId=sys.argv[2])["SecretString"])["api_key"])' \
   "$REGION" "$SECRET_ID")"
-export PYTHONPATH="$REPO_DIR${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$SWARM_DIR${PYTHONPATH:+:$PYTHONPATH}"
 
 prewarm_harbor_task_images() {
   local task_slug="${TASK_NAME##*/}"
@@ -179,7 +180,7 @@ fi
 COLLECTOR_STATUS=0
 COLLECTION_PATH="$OUTPUT_DIR/$JOB_NAME/organism-collection.json"
 if [[ "$COLLECT_EPISODE" == "1" ]]; then
-  node scripts/collectHarborSwarmEpisodes.js \
+  node swarm/scripts/collectHarborSwarmEpisodes.js \
     "$OUTPUT_DIR/$JOB_NAME" \
     --store "$REPLAY_DIR" \
     --run-id "$JOB_NAME" \
@@ -190,7 +191,7 @@ ORGANISM_STATUS=0
 if [[ "$COLLECT_EPISODE" == "1" && "$COLLECTOR_STATUS" -eq 0 && -n "$ORGANISM_ROOT" ]]; then
   TRACE_BUNDLE_PATH="$OUTPUT_DIR/$JOB_NAME/organism-trace-bundle.json"
   ORGANISM_EVENT_PATH="$REPLAY_DIR/organism/events.jsonl"
-  node scripts/exportOrganismTraceBundle.js \
+  node swarm/scripts/exportOrganismTraceBundle.js \
     --collection "$COLLECTION_PATH" \
     --store "$REPLAY_DIR" \
     --run-id "$JOB_NAME" \

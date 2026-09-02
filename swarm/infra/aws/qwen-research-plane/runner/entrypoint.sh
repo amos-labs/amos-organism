@@ -156,8 +156,8 @@ NODE
         "$AMOS_AWS_REGION" "$AMOS_QWEN_SECRET_ID")"
       export AMOS_QWEN_RESEARCH_URL="${AMOS_QWEN_API_BASE%/v1}"
       EXPERIMENT_ARGS=(
-        --config benchmarks/swarm-organism-owned-experiment-v1.json
-        --missions benchmarks/swarm-organism-owned-missions-v1.json
+        --config swarm/benchmarks/swarm-organism-owned-experiment-v1.json
+        --missions swarm/benchmarks/swarm-organism-owned-missions-v1.json
         --control qwen-swarm
         --repetitions 1
         --allow-remote
@@ -166,13 +166,13 @@ NODE
       if [[ -n "$JOB_MISSION_ID" ]]; then
         EXPERIMENT_ARGS+=(--mission-id "$JOB_MISSION_ID")
       fi
-      node scripts/runSwarmExperiment.js "${EXPERIMENT_ARGS[@]}" || STATUS=$?
+      node swarm/scripts/runSwarmExperiment.js "${EXPERIMENT_ARGS[@]}" || STATUS=$?
       COLLECTOR_STATUS=0
       if [[ -f "$JOB_ROOT/amos-owned-organism-report.json" ]]; then
-        node scripts/collectAmosOwnedSwarmEpisodes.js \
+        node swarm/scripts/collectAmosOwnedSwarmEpisodes.js \
           --report "$JOB_ROOT/amos-owned-organism-report.json" \
-          --missions benchmarks/swarm-organism-owned-missions-v1.json \
-          --verifiers benchmarks/swarm-organism-owned-verifiers-v1.json \
+          --missions swarm/benchmarks/swarm-organism-owned-missions-v1.json \
+          --verifiers swarm/benchmarks/swarm-organism-owned-verifiers-v1.json \
           --store "$AMOS_SWARM_REPLAY_DIR" \
           > "$JOB_ROOT/amos-owned-organism-collection.json" || COLLECTOR_STATUS=$?
       else
@@ -189,27 +189,27 @@ NODE
         'import boto3,json,sys; print(json.loads(boto3.client("secretsmanager", region_name=sys.argv[1]).get_secret_value(SecretId=sys.argv[2])["SecretString"])["api_key"])' \
         "$AMOS_AWS_REGION" "$AMOS_QWEN_SECRET_ID")"
       export AMOS_QWEN_RESEARCH_URL="${AMOS_QWEN_API_BASE%/v1}"
-      node scripts/runSwarmOrganismQwenPhaseProbes.js \
-        --missions benchmarks/swarm-organism-owned-missions-v1.json \
-        --verifiers benchmarks/swarm-organism-owned-verifiers-v1.json \
-        --policy benchmarks/swarm-organism-ap-stage1-policy-v1.json \
+      node swarm/scripts/runSwarmOrganismQwenPhaseProbes.js \
+        --missions swarm/benchmarks/swarm-organism-owned-missions-v1.json \
+        --verifiers swarm/benchmarks/swarm-organism-owned-verifiers-v1.json \
+        --policy swarm/benchmarks/swarm-organism-ap-stage1-policy-v1.json \
         --output "$JOB_ROOT/organism-qwen-phase-probes.json" \
         > "$JOB_ROOT/organism-qwen-phase-probes.stdout.json" \
         2> "$JOB_ROOT/organism-qwen-phase-probes.stderr.log" || STATUS=$?
       unset AMOS_LOCAL_BENCHMARK_API_KEY
       ;;
     adapter-data-preflight)
-      node scripts/exportAmosNativeTrainingDataset.js \
+      node swarm/scripts/exportAmosNativeTrainingDataset.js \
         --store "$AMOS_SWARM_REPLAY_DIR" \
         --output "$JOB_ROOT/dataset" \
         --preflight-only > "$JOB_ROOT/preflight.json" || STATUS=$?
       ;;
     adapter-stage0-curriculum)
-      node scripts/generateAmosSyntheticCurriculum.js \
+      node swarm/scripts/generateAmosSyntheticCurriculum.js \
         --store "$AMOS_SWARM_REPLAY_DIR" \
         --examples-per-family 16 > "$JOB_ROOT/curriculum.json" || STATUS=$?
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/exportAmosNativeTrainingDataset.js \
+        node swarm/scripts/exportAmosNativeTrainingDataset.js \
           --store "$AMOS_SWARM_REPLAY_DIR" \
           --output "$JOB_ROOT/dataset" \
           --stage0 > "$JOB_ROOT/dataset.json" || STATUS=$?
@@ -223,7 +223,7 @@ NODE
         --region "$AMOS_AWS_REGION" \
         --only-show-errors || STATUS=$?
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/simulateSwarmOrganismTraining.js \
+        node swarm/scripts/simulateSwarmOrganismTraining.js \
           --store "$AMOS_SWARM_REPLAY_DIR" \
           --output "$JOB_ROOT/organism-simulation.json" \
           --scenarios "$AP_CURRICULUM" \
@@ -235,12 +235,12 @@ NODE
           --generations 8 > "$JOB_ROOT/organism-simulation.stdout.json" || STATUS=$?
       fi
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/createSwarmOrganismPromotionQueue.js \
+        node swarm/scripts/createSwarmOrganismPromotionQueue.js \
           --simulation "$JOB_ROOT/organism-simulation.json" \
           --output "$JOB_ROOT/organism-promotion-queue.json" || STATUS=$?
       fi
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/evaluateSwarmOrganismCandidates.js \
+        node swarm/scripts/evaluateSwarmOrganismCandidates.js \
           --simulation "$JOB_ROOT/organism-simulation.json" \
           --scenarios "$AP_CURRICULUM" \
           --store "$AMOS_SWARM_REPLAY_DIR" \
@@ -251,7 +251,7 @@ NODE
           > "$JOB_ROOT/organism-paired-policy-training.stdout.json" || STATUS=$?
       fi
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/evaluateSwarmOrganismCandidates.js \
+        node swarm/scripts/evaluateSwarmOrganismCandidates.js \
           --simulation "$JOB_ROOT/organism-simulation.json" \
           --scenarios "$AP_CURRICULUM" \
           --store "$AMOS_SWARM_REPLAY_DIR" \
@@ -262,7 +262,7 @@ NODE
           > "$JOB_ROOT/organism-paired-policy-validation.stdout.json" || STATUS=$?
       fi
       if [[ "$STATUS" -eq 0 ]]; then
-        node scripts/replaySwarmOrganismArtifacts.js \
+        node swarm/scripts/replaySwarmOrganismArtifacts.js \
           --queue "$JOB_ROOT/organism-promotion-queue.json" \
           --store "$AMOS_SWARM_REPLAY_DIR" \
           --limit 8 \

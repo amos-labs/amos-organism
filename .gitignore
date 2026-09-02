@@ -3,3 +3,11 @@ coverage/
 dist/
 *.log
 .DS_Store
+.amos-agent/
+.amos-organism/
+output/
+**/__pycache__/
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars

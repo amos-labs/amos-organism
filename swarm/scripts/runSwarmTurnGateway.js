@@ -2,8 +2,8 @@
 import { createServer } from "node:http";
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { SwarmTurnOrchestrator } from "../src/research/swarmTurnGateway.js";
-import { AMOS_MISSION_WORKER_CONTRACT } from "../src/research/missionWorkerProtocol.js";
+import { SwarmTurnOrchestrator } from "../src/swarmTurnGateway.js";
+import { AMOS_MISSION_WORKER_CONTRACT } from "../src/missionWorkerProtocol.js";
 
 const args = process.argv.slice(2);
 const host = option("--host") || "127.0.0.1";

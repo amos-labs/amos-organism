@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+SWARM_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+REPO_DIR="$(cd "$SWARM_DIR/.." && pwd)"
 EXPERIMENT_VERSION="${AMOS_SWARM_EXPERIMENT_VERSION:-v12}"
 OUTPUT_ROOT="${1:-/tmp/amos-terminal-bench-holographic-$EXPERIMENT_VERSION}"
 RUN_PREFIX="${2:-holographic-$EXPERIMENT_VERSION}"
@@ -79,8 +80,8 @@ PY
 done
 
 cd "$REPO_DIR"
-if python3 scripts/qualifySwarmCandidateEvolution.py \
-    --fixture benchmarks/swarm-candidate-counterfactual-v8-v9.json \
+if python3 swarm/scripts/qualifySwarmCandidateEvolution.py \
+    --fixture swarm/benchmarks/swarm-candidate-counterfactual-v8-v9.json \
     "${TRAINING_EVOLUTIONS[@]}" \
     --partition training \
     --minimum-seeds 3 \
@@ -96,7 +97,7 @@ printf 'qualification\ttraining\ttraining-qualification\t%s\t%s\n' \
   "$TRAINING_QUALIFICATION_STATUS" "$(( ${#TRAINING_EVOLUTIONS[@]} / 2 ))" \
   >> "$OUTPUT_ROOT/run-status.tsv"
 
-if python3 scripts/qualifyHarborOfficialQuality.py \
+if python3 swarm/scripts/qualifyHarborOfficialQuality.py \
     "${TRAINING_TRIAL_RESULTS[@]}" \
     --baseline-passed-tests "$QUALITY_BASELINE_PASSED_TESTS" \
     --minimum-seeds 3 \
@@ -143,7 +144,7 @@ if [[ -n "$HELD_OUT_TASKS" ]]; then
       "$task" "$RUN_ID" "$RUN_STATUS" "$EVOLUTION_STATUS" \
       >> "$OUTPUT_ROOT/run-status.tsv"
   done < <(printf '%s' "$HELD_OUT_TASKS" | tr ',' '\n')
-  if python3 scripts/qualifySwarmCandidateEvolution.py \
+  if python3 swarm/scripts/qualifySwarmCandidateEvolution.py \
       "${HELD_OUT_EVOLUTIONS[@]}" \
       --partition held-out \
       --minimum-seeds "$index" \

@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { compileAmosNativeTrainingDataset } from "../src/research/amosNativeTrainingDataset.js";
-import { generateAmosSyntheticCurriculum } from "../src/research/amosSyntheticCurriculum.js";
+import { compileAmosNativeTrainingDataset } from "../src/amosNativeTrainingDataset.js";
+import { generateAmosSyntheticCurriculum } from "../src/amosSyntheticCurriculum.js";
 import {
   createQwenAdapterStageZeroContract,
   validateCheckpoint,
   validateQwenAdapterStageZeroContract
-} from "../src/research/qwenAdapterTrainingContract.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+} from "../src/qwenAdapterTrainingContract.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const planUrl = new URL("../benchmarks/swarm-qwen-adapter-training-v1.json", import.meta.url);
 const checkpointUrl = new URL(

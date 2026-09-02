@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { prepareBlindComparison } from "../src/research/blindComparison.js";
+import { prepareBlindComparison } from "../src/blindComparison.js";
 
 const args = process.argv.slice(2);
 const reportPaths = options("--report");

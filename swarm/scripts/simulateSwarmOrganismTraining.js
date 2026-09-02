@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
-import { organismPolicyTrainingEligibility } from "../src/research/swarmLearningArena.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
+import { organismPolicyTrainingEligibility } from "../src/swarmLearningArena.js";
 import {
   calibrateOrganismTransitionModel,
   crossValidateOrganismTransitionModel,
@@ -11,7 +12,7 @@ import {
   defaultOrganismScenario,
   searchOrganismPolicies,
   simulateOrganismMission
-} from "../src/research/swarmOrganismSimulator.js";
+} from "../src/swarmOrganismSimulator.js";
 
 const options = parseArguments(process.argv.slice(2));
 const policyStage = await readPolicyStage(options.contract, options.stage);
@@ -123,7 +124,10 @@ console.log(JSON.stringify(report, null, 2));
 function parseArguments(argumentsList) {
   const values = {
     store: ".amos-agent/research/swarm-learning",
-    contract: "benchmarks/swarm-organism-policy-training-v1.json",
+    contract: resolve(
+      fileURLToPath(new URL("..", import.meta.url)),
+      "benchmarks/swarm-organism-policy-training-v1.json"
+    ),
     stage: "credit-assignment",
     scenarios: null,
     scenarioPartition: "training",

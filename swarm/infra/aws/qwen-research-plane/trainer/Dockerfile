@@ -48,7 +48,7 @@ RUN apt-get update \
 
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /opt/amos
-COPY infra/aws/qwen-research-plane/trainer/train_stage0.py /opt/amos/train_stage0.py
+COPY swarm/infra/aws/qwen-research-plane/trainer/train_stage0.py /opt/amos/train_stage0.py
 RUN python -m py_compile /opt/amos/train_stage0.py \
     && useradd --create-home --uid 10001 trainer \
     && mkdir -p /work/stage0 \

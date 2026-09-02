@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+SWARM_DIR="$(cd "$TF_DIR/../../.." && pwd)"
+REPO_DIR="$(cd "$SWARM_DIR/.." && pwd)"
 REGION="${AMOS_AWS_REGION:-$(terraform -chdir="$TF_DIR" output -raw aws_region)}"
 SECRET_ID="${AMOS_QWEN_SECRET_ID:-$(terraform -chdir="$TF_DIR" output -raw api_key_secret_id)}"
 SERVED_MODEL="${AMOS_QWEN_SERVED_MODEL:-$(terraform -chdir="$TF_DIR" output -raw served_model_name)}"
@@ -15,7 +16,7 @@ export OPENAI_API_KEY
 OPENAI_API_KEY="$(python3 -c \
   'import boto3,json,sys; print(json.loads(boto3.client("secretsmanager", region_name=sys.argv[1]).get_secret_value(SecretId=sys.argv[2])["SecretString"])["api_key"])' \
   "$REGION" "$SECRET_ID")"
-export PYTHONPATH="$REPO_DIR${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$SWARM_DIR${PYTHONPATH:+:$PYTHONPATH}"
 
 python3 -c '
 import json

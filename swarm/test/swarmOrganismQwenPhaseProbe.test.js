@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_ORGANISM_POLICY } from "../src/research/swarmOrganismSimulator.js";
-import { runOrganismQwenPhaseProbe } from "../src/research/swarmOrganismQwenPhaseProbe.js";
+import { DEFAULT_ORGANISM_POLICY } from "../src/swarmOrganismSimulator.js";
+import { runOrganismQwenPhaseProbe } from "../src/swarmOrganismQwenPhaseProbe.js";
 
 test("real-Qwen phase probes compare matched policies and gate partial reward on verifier receipts", async () => {
   const worker = {

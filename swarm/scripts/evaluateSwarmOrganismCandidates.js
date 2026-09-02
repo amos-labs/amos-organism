@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { organismPolicyTrainingEligibility } from "../src/research/swarmLearningArena.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { organismPolicyTrainingEligibility } from "../src/swarmLearningArena.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 import {
   calibrateOrganismTransitionModel,
   DEFAULT_ORGANISM_POLICY,
   evaluateOrganismPolicy
-} from "../src/research/swarmOrganismSimulator.js";
+} from "../src/swarmOrganismSimulator.js";
 
 const args = process.argv.slice(2);
 const simulationPath = resolve(requiredOption("--simulation"));

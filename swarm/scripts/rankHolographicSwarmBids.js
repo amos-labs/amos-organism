@@ -2,12 +2,12 @@
 
 import { pathToFileURL } from "node:url";
 import { DualChannelHolographicWorld } from
-  "../src/research/dualChannelHolographicWorld.js";
+  "../src/dualChannelHolographicWorld.js";
 import {
   HolographicMemory,
   rankHolographicBids
-} from "../src/research/holographicSwarmKernel.js";
-import { UnitaryHolographicMemory } from "../src/research/holographicWorldV2.js";
+} from "../src/holographicSwarmKernel.js";
+import { UnitaryHolographicMemory } from "../src/holographicWorldV2.js";
 
 const SHADOW_DIMENSION = 4_096;
 const SHADOW_SAMPLE_LIMIT = 32;

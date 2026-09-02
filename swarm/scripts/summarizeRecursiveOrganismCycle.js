@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { digestResearchValue } from "../src/research/experimentProtocol.js";
-import { openSwarmLearningStore } from "../src/research/swarmLearningStore.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
+import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
 
 const args = process.argv.slice(2);
 const root = resolve(requiredOption("--root"));

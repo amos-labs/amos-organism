@@ -4,14 +4,17 @@ import { dirname, resolve } from "node:path";
 import {
   createQwenAdapterStageZeroContract,
   validateQwenAdapterStageZeroContract
-} from "../src/research/qwenAdapterTrainingContract.js";
+} from "../src/qwenAdapterTrainingContract.js";
+import { fileURLToPath } from "node:url";
+const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const args = process.argv.slice(2);
 const datasetManifestPath = requiredOption("--dataset-manifest");
 const outputPath = resolve(requiredOption("--output"));
-const planPath = option("--plan") || "benchmarks/swarm-qwen-adapter-training-v1.json";
+const planPath = option("--plan") ||
+  resolve(swarmRoot, "benchmarks/swarm-qwen-adapter-training-v1.json");
 const checkpointPath = option("--checkpoint") ||
-  "benchmarks/qwen38-27b-training-checkpoint-v1.json";
+  resolve(swarmRoot, "benchmarks/qwen38-27b-training-checkpoint-v1.json");
 
 const [plan, datasetManifest, checkpoint] = await Promise.all([
   readJson(resolve(planPath)),

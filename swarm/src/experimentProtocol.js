@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { digest as kernelDigest } from "../../src/digest.ts";
 
 export const RESEARCH_EVALUATION_SCHEMA = "amos.research-evaluation-manifest";
 export const RESEARCH_EXPERIMENT_SCHEMA = "amos.research-experiment-proposal";
@@ -733,8 +733,16 @@ export function validateResearchExperimentLedger(input) {
   return ledger;
 }
 
+/**
+ * Research digests are the kernel's canonical-JSON SHA-256 (src/digest.ts), so
+ * a digest computed by the swarm is byte-identical to one the organism kernel
+ * computes over the same value. The research protocol is stricter about input:
+ * it refuses undefined, functions, and other non-JSON values instead of
+ * silently dropping them.
+ */
 export function digestResearchValue(value) {
-  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+  assertResearchDigestable(value);
+  return kernelDigest(value);
 }
 
 function assertManifestReference(proposal, manifest) {
@@ -967,17 +975,19 @@ function cloneJson(value, label) {
   }
 }
 
-function canonicalJson(value) {
-  if (value === null) return "null";
-  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+function assertResearchDigestable(value) {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Error("Research digest values must contain finite numbers");
-    return JSON.stringify(value);
+    return;
   }
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (Array.isArray(value)) {
+    for (const item of value) assertResearchDigestable(item);
+    return;
+  }
   if (plainObject(value)) {
-    return `{${Object.keys(value).sort().map((key) =>
-      `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+    for (const key of Object.keys(value)) assertResearchDigestable(value[key]);
+    return;
   }
   throw new Error("Research digest values must be JSON-compatible");
 }
