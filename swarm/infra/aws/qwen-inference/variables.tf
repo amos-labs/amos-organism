@@ -225,3 +225,21 @@ variable "budget_email" {
     error_message = "budget_email must be empty or a valid email address."
   }
 }
+
+variable "enable_lora" {
+  description = "Serve LoRA adapters beside the base model and allow runtime adapter loading through /v1/load_lora_adapter. Restarts vLLM when toggled."
+  type        = bool
+  default     = false
+}
+
+variable "max_lora_rank" {
+  description = "Largest adapter rank vLLM will accept; must cover every stage-one rank candidate."
+  type        = number
+  default     = 64
+}
+
+variable "max_loras" {
+  description = "Maximum adapters resident per batch."
+  type        = number
+  default     = 4
+}

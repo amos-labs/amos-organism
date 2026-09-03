@@ -144,6 +144,212 @@ export function createQwenAdapterStageZeroContract({
   return { ...contractBase, digest: digestResearchValue(contractBase) };
 }
 
+export const QWEN_ADAPTER_STAGE_ONE_PURPOSE = "amos-system-competence-sft";
+
+/**
+ * Stage one: real QLoRA supervised fine-tuning on the qualified AMOS-native
+ * dataset. The trainer still makes no quality claim; whether an adapter is
+ * better is decided later by the executable verifier on the holdout pool, the
+ * sealed holdout, and the blind frontier comparison.
+ */
+export function createQwenAdapterStageOneContract({
+  id,
+  plan,
+  datasetManifest,
+  checkpoint,
+  trainerImageUri,
+  datasetUri,
+  outputUri,
+  sourceRevision,
+  seed,
+  rank = 32,
+  epochs = 3,
+  learningRate = 0.0001,
+  maximumSequenceTokens = 4096
+}) {
+  const normalizedPlan = validatePlan(plan);
+  const stageOne = normalizedPlan.trainingLadder.find(({ stage }) => stage === 1);
+  if (!stageOne || stageOne.method !== "qlora-sft") {
+    throw new Error("adapter plan stage one must be QLoRA supervised fine-tuning");
+  }
+  if (!stageOne.rankCandidates.includes(rank)) {
+    throw new Error(`rank ${rank} is not one of the plan's stage-one candidates ${stageOne.rankCandidates.join(", ")}`);
+  }
+  const normalizedDataset = validateStageOneDataset(datasetManifest, normalizedPlan);
+  const normalizedCheckpoint = validateCheckpoint(checkpoint, normalizedPlan);
+  const trainingSeed = integer(seed, "seed", 0, 2 ** 31 - 1);
+  const contractBase = {
+    schema: QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA,
+    version: QWEN_ADAPTER_TRAINING_CONTRACT_VERSION,
+    id: requiredId(id, "contract.id"),
+    purpose: QWEN_ADAPTER_STAGE_ONE_PURPOSE,
+    qualityClaimAllowed: false,
+    promotionAllowed: false,
+    source: {
+      revision: gitSha(sourceRevision, "sourceRevision"),
+      trainerImageUri: immutableImage(trainerImageUri, "trainerImageUri")
+    },
+    dataset: {
+      uri: s3Uri(datasetUri, "datasetUri"),
+      manifestDigest: normalizedDataset.digest,
+      trainingFile: fileReference(normalizedDataset.files.trainingSft),
+      validationFile: fileReference(normalizedDataset.files.validationSft),
+      holdoutFile: fileReference(normalizedDataset.files.holdoutSft),
+      safeguards: structuredClone(normalizedDataset.safeguards),
+      counts: structuredClone(normalizedDataset.counts)
+    },
+    base: baseReference(normalizedCheckpoint),
+    recipe: {
+      stage: 1,
+      method: "qlora-sft",
+      seed: trainingSeed,
+      modelClass: "Qwen3_5ForConditionalGeneration",
+      textOnlyExamples: true,
+      includeVisionTowerInAdapter: false,
+      quantization: { loadInBits: 4, type: "nf4", doubleQuantization: true, computeDtype: "bfloat16" },
+      adapter: {
+        type: "lora",
+        rank,
+        alpha: rank * 2,
+        dropout: 0.05,
+        bias: "none",
+        targetModules: [
+          "q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj",
+          "in_proj_qkv", "in_proj_z", "in_proj_b", "in_proj_a", "out_proj"
+        ]
+      },
+      optimization: {
+        epochs: integer(epochs, "epochs", 1, 20),
+        microBatchSize: 1,
+        gradientAccumulationSteps: 8,
+        learningRate: positiveNumber(learningRate, "learningRate", 1e-6, 1e-3),
+        weightDecay: 0,
+        maximumSequenceTokens: integer(maximumSequenceTokens, "maximumSequenceTokens", 512, 32_768),
+        gradientCheckpointing: true,
+        loss: "assistant-tokens-only",
+        evaluateValidationEveryEpoch: true
+      }
+    },
+    selection: {
+      by: "validation-independent-verifier-pass-rate",
+      decidedBy: "curriculum-grading-on-holdout-pool",
+      trainerMayNotSelect: true
+    },
+    execution: {
+      outputUri: s3Uri(outputUri, "outputUri"),
+      disposableTrainer: true,
+      liveInferenceEndpointMutable: false,
+      networkPublicIngressAllowed: false,
+      torchNativeJitDisabled: true,
+      requireSingleNvidiaGpuWithMinimumMemoryGib: 90
+    },
+    exitCriteria: {
+      tokenizerAndChatTemplatePinned: true,
+      allPromptTokensMasked: true,
+      minimumSupervisedTokenAccuracy: 0.6,
+      validationLossMustBeFinite: true,
+      adapterReloadRequired: true,
+      adapterMustChangeProbe: true,
+      baseProbeMustBeBitwiseUnchangedWhenAdapterDisabled: true,
+      completeMultimodalBaseMustRemainLoadable: true,
+      visionTowerAdapterParametersMustEqual: 0,
+      vllmAdapterLoadProofRequired: true
+    }
+  };
+  return { ...contractBase, digest: digestResearchValue(contractBase) };
+}
+
+export function validateQwenAdapterStageOneContract(input) {
+  const contract = jsonObject(input, "training contract");
+  if (contract.schema !== QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA || contract.version !== QWEN_ADAPTER_TRAINING_CONTRACT_VERSION) {
+    throw new Error("Unsupported training contract");
+  }
+  const digest = contract.digest;
+  delete contract.digest;
+  if (!SHA256.test(String(digest || "")) || digestResearchValue(contract) !== digest) {
+    throw new Error("training contract digest does not match its contents");
+  }
+  if (contract.purpose !== QWEN_ADAPTER_STAGE_ONE_PURPOSE || contract.qualityClaimAllowed !== false || contract.promotionAllowed !== false) {
+    throw new Error("stage-one contract cannot make a quality or promotion claim");
+  }
+  if (contract.recipe?.stage !== 1 || contract.recipe?.method !== "qlora-sft") {
+    throw new Error("training contract must be stage-one QLoRA supervised fine-tuning");
+  }
+  if (contract.recipe?.optimization?.loss !== "assistant-tokens-only") {
+    throw new Error("stage-one training must mask every non-assistant target token");
+  }
+  if (contract.selection?.trainerMayNotSelect !== true) {
+    throw new Error("the trainer may not select its own checkpoint");
+  }
+  if (contract.execution?.liveInferenceEndpointMutable !== false || contract.execution?.disposableTrainer !== true) {
+    throw new Error("stage-one training must be isolated from the live inference endpoint");
+  }
+  immutableImage(contract.source?.trainerImageUri, "training contract source image");
+  gitSha(contract.source?.revision, "training contract source revision");
+  return { ...contract, digest };
+}
+
+function fileReference(file) {
+  return { path: file.path, sha256: file.sha256, rows: file.rows };
+}
+
+function baseReference(checkpoint) {
+  return {
+    repository: checkpoint.repository,
+    revision: checkpoint.revision,
+    checkpointDigest: digestResearchValue(checkpoint),
+    checkpointBytes: checkpoint.checkpointBytes,
+    parameterCount: checkpoint.parameterCount,
+    architecture: checkpoint.architecture,
+    expectedShardDigests: checkpoint.shards.map(({ path, sha256, bytes }) => ({ path, sha256, bytes }))
+  };
+}
+
+function validateStageOneDataset(input, plan) {
+  const manifest = jsonObject(input, "dataset manifest");
+  if (manifest.schema !== "amos.native-qwen-dataset" || manifest.version !== 1 || manifest.status !== "qualified") {
+    throw new Error("stage-one dataset manifest must be qualified AMOS-native data");
+  }
+  if (manifest.planId !== plan.id || manifest.baseModel !== plan.base.model) {
+    throw new Error("stage-one dataset does not match the adapter training plan");
+  }
+  const claimedDigest = manifest.digest;
+  delete manifest.digest;
+  if (!SHA256.test(String(claimedDigest || "")) || digestResearchValue(manifest) !== claimedDigest) {
+    throw new Error("stage-one dataset manifest digest does not match its contents");
+  }
+  if (manifest.blockers?.length !== 0) throw new Error("stage-one dataset cannot contain qualification blockers");
+  const minimums = {
+    trainingExamples: plan.data.minimumTrainingEpisodes,
+    validationExamples: plan.data.minimumValidationEpisodes,
+    holdoutExamples: plan.data.minimumHoldoutEpisodes,
+    taskFamilies: plan.data.minimumTaskFamilies
+  };
+  for (const [key, minimum] of Object.entries(minimums)) {
+    if (!Number.isInteger(manifest.counts?.[key]) || manifest.counts[key] < minimum) {
+      throw new Error(`stage-one dataset ${key} must be at least ${minimum}`);
+    }
+  }
+  for (const key of REQUIRED_SAFEGUARDS) {
+    if (manifest.safeguards?.[key] !== true) throw new Error(`stage-one dataset safeguard ${key} must be true`);
+  }
+  for (const [name, countKey] of [["trainingSft", "trainingExamples"], ["validationSft", "validationExamples"], ["holdoutSft", "holdoutExamples"]]) {
+    const file = manifest.files?.[name];
+    if (!file || file.rows !== manifest.counts[countKey] || !SHA256.test(String(file.sha256 || ""))) {
+      throw new Error(`stage-one dataset file ${name} is invalid`);
+    }
+  }
+  return { ...manifest, digest: claimedDigest };
+}
+
+function positiveNumber(value, label, minimum, maximum) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < minimum || number > maximum) {
+    throw new Error(`${label} must be a number from ${minimum} to ${maximum}`);
+  }
+  return number;
+}
+
 export function validateQwenAdapterStageZeroContract(input) {
   const contract = jsonObject(input, "training contract");
   if (contract.schema !== QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA) {

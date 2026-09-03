@@ -53,7 +53,11 @@ umask 077
   printf 'VLLM_API_KEY=%s\n' "$VLLM_API_KEY"
   printf 'VLLM_NO_USAGE_STATS=1\n'
   printf 'VLLM_DO_NOT_TRACK=1\n'
+%{ if enable_lora ~}
+  printf 'VLLM_ALLOW_RUNTIME_LORA_UPDATING=True\n'
+%{ endif ~}
 } > "$ENVIRONMENT_PATH"
+install -d -m 0755 /opt/amos/adapters
 unset API_KEY_JSON VLLM_API_KEY
 
 cat > "$SERVICE_PATH" <<'UNIT'
@@ -68,7 +72,7 @@ Restart=on-failure
 RestartSec=10
 TimeoutStartSec=3600
 ExecStartPre=-/usr/bin/docker rm -f amos-qwen
-ExecStart=/bin/bash -lc 'exec /usr/bin/docker run --name amos-qwen --rm --gpus all --ipc=host --network=host --env-file /etc/amos/qwen.env --read-only --tmpfs /tmp:rw,noexec,nosuid,size=8g -v /opt/amos/qwen-model:/model:ro -v /var/cache/amos-vllm:/root/.cache:rw -v /var/cache/amos-vllm/triton:/root/.triton:rw ${vllm_image_uri} --model /model --served-model-name ${served_model_name} --host 127.0.0.1 --port 8000 --trust-remote-code --max-model-len ${max_model_len} --max-num-seqs ${max_num_seqs} --max-num-batched-tokens ${max_num_batched_tokens} --gpu-memory-utilization ${gpu_memory_utilization} --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching --speculative-config '\''{"method":"mtp","num_speculative_tokens":${mtp_speculative_tokens}}'\'''
+ExecStart=/bin/bash -lc 'exec /usr/bin/docker run --name amos-qwen --rm --gpus all --ipc=host --network=host --env-file /etc/amos/qwen.env --read-only --tmpfs /tmp:rw,noexec,nosuid,size=8g -v /opt/amos/qwen-model:/model:ro -v /opt/amos/adapters:/adapters:ro -v /var/cache/amos-vllm:/root/.cache:rw -v /var/cache/amos-vllm/triton:/root/.triton:rw ${vllm_image_uri} --model /model --served-model-name ${served_model_name} --host 127.0.0.1 --port 8000 --trust-remote-code --max-model-len ${max_model_len} --max-num-seqs ${max_num_seqs} --max-num-batched-tokens ${max_num_batched_tokens} --gpu-memory-utilization ${gpu_memory_utilization} --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching ${enable_lora ? "--enable-lora --max-lora-rank ${max_lora_rank} --max-loras ${max_loras}" : ""} --speculative-config '\''{"method":"mtp","num_speculative_tokens":${mtp_speculative_tokens}}'\'''
 ExecStop=/usr/bin/docker stop --time 30 amos-qwen
 
 [Install]

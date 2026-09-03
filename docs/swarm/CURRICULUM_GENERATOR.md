@@ -63,10 +63,10 @@ contract discipline, not business judgment. Real Platform Mission episodes stay
 the highest-value data and should displace synthetic examples as they arrive.
 Frozen-holdout and blind frontier comparison remain the promotion gates.
 
-## Next
+## Grading and harvesting
 
-- Sleep-cycle work kind that runs Qwen on holdout-pool scenarios and grades the
-  answers with `gradeCurriculumAnswerText`, so verified evaluations per day
-  climbs.
-- Preference pairs harvested from phase probes and curriculum runs where a
-  first attempt fails and a repair passes.
+`swarm/src/curriculumGrading.js` runs a served model on scenarios with one
+bounded repair attempt (feedback is the verifier's failure list, never the
+target) and compares model IDs pairwise on identical scenarios.
+`swarm/src/preferencePairHarvest.js` turns training-pool results into verified
+answers and recovered preference pairs. See [TRAINING_RUNS.md](TRAINING_RUNS.md).

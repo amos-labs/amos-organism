@@ -360,6 +360,9 @@ resource "aws_instance" "inference" {
     gpu_memory_utilization = var.gpu_memory_utilization
     served_model_name      = var.served_model_name
     vllm_image_uri         = var.vllm_image_uri
+    enable_lora            = var.enable_lora
+    max_lora_rank          = var.max_lora_rank
+    max_loras              = var.max_loras
   })
 
   depends_on = [

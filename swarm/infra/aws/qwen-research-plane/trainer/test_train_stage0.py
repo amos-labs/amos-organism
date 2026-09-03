@@ -45,6 +45,40 @@ ROW = {
 
 
 class StageZeroTrainerTests(unittest.TestCase):
+    def _contract(self, purpose, stage, **overrides):
+        contract = {
+            "schema": "amos.qwen-adapter-training-contract",
+            "version": 1,
+            "id": "contract-under-test",
+            "purpose": purpose,
+            "qualityClaimAllowed": False,
+            "promotionAllowed": False,
+            "recipe": {
+                "stage": stage,
+                "optimization": {"loss": "assistant-tokens-only"},
+                "includeVisionTowerInAdapter": False,
+            },
+            "selection": {"trainerMayNotSelect": True},
+            "execution": {"liveInferenceEndpointMutable": False, "torchNativeJitDisabled": True},
+        }
+        contract.update(overrides)
+        contract["digest"] = TRAINER.digest_value({k: v for k, v in contract.items() if k != "digest"})
+        return contract
+
+    def test_validate_contract_accepts_stage_zero_proof_and_stage_one_sft(self):
+        TRAINER.validate_contract(self._contract("pipeline-and-lineage-proof", 0))
+        TRAINER.validate_contract(self._contract("amos-system-competence-sft", 1))
+
+    def test_validate_contract_rejects_unknown_stage_quality_claims_and_self_selection(self):
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(self._contract("amos-system-competence-sft", 2))
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(self._contract("pipeline-and-lineage-proof", 1))
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(self._contract("amos-system-competence-sft", 1, qualityClaimAllowed=True))
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(self._contract("amos-system-competence-sft", 1, selection={"trainerMayNotSelect": False}))
+
     def test_digest_matches_javascript_canonical_research_digest(self):
         value = {"b": [True, 0.0002, "AMOS"], "a": {"z": None, "n": 64}}
         self.assertEqual(

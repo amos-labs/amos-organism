@@ -29,9 +29,12 @@ import {
   SleepCandidateRegistry,
   candidatesFromSourceQueue,
   createArtifactReplayExecutor,
+  createCurriculumGradingExecutor,
   createQwenPhaseProbeExecutor,
   createSleepQueue,
-  sleepWorkFromCandidates
+  lastStandingOrderRuns,
+  sleepWorkFromCandidates,
+  sleepWorkFromStandingOrders
 } from "../src/sleepCycleExecutors.js";
 
 const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -45,6 +48,12 @@ const metricsUrl = option("--metrics-url");
 const assumeIdle = flag("--assume-idle");
 const daemon = flag("--daemon");
 const enablePhaseProbes = flag("--enable-phase-probes");
+const enableGrading = flag("--enable-grading");
+const standingOrdersPath = option("--standing-orders") ? resolve(option("--standing-orders")) : null;
+const gradingModelIds = (option("--grading-model-ids") || process.env.AMOS_QWEN_SERVED_MODEL || "qwen3.5-27b-amos").split(",").map((value) => value.trim()).filter(Boolean);
+const catalogPath = resolve(option("--catalog") || resolve(swarmRoot, "benchmarks/amos-tool-catalog-v1.json"));
+const reportsDir = resolve(option("--reports-dir") || resolve(dirname(ledgerPath), "sleep-reports"));
+const harvest = !flag("--no-harvest");
 const episodeLimit = integerOption("--episode-limit", 8, 1, 1_000);
 const policy = normalizeSleepPolicy({
   quietMilliseconds: integerOption("--quiet-seconds", DEFAULT_SLEEP_POLICY.quietMilliseconds / 1_000, 1, 86_400) * 1_000,
@@ -86,11 +95,36 @@ const episodes = (await store.listEpisodes())
 if (episodes.length === 0) throw new Error(`No development episodes in ${storePath}`);
 
 let phaseProbeInputs = null;
+let gradingWorkers = null;
+let catalog = null;
+if (enablePhaseProbes || enableGrading) {
+  const apiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY;
+  const baseUrl = process.env.AMOS_QWEN_RESEARCH_URL;
+  if (!apiKey || !baseUrl) throw new Error("Model-backed sleep work needs AMOS_QWEN_RESEARCH_URL and AMOS_LOCAL_BENCHMARK_API_KEY");
+  if (enableGrading) {
+    catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+    gradingWorkers = new Map();
+    for (const modelId of gradingModelIds) {
+      const worker = new OpenAiResearchWorker({
+        controlId: `sleep-grading-${modelId}`,
+        model: modelId,
+        baseUrl,
+        apiKey,
+        dialect: "qwen",
+        reasoningEffort: "medium",
+        temperature: 0.2,
+        seed: 7,
+        allowRemote: true
+      });
+      await worker.probe();
+      gradingWorkers.set(modelId, worker);
+    }
+  }
+}
 if (enablePhaseProbes) {
   const apiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY;
   const baseUrl = process.env.AMOS_QWEN_RESEARCH_URL;
   const model = process.env.AMOS_QWEN_SERVED_MODEL || "qwen3.5-27b-amos";
-  if (!apiKey || !baseUrl) throw new Error("Phase probes need AMOS_QWEN_RESEARCH_URL and AMOS_LOCAL_BENCHMARK_API_KEY");
   const [missionManifest, verifierInput] = await Promise.all([
     readJson(resolve(option("--missions") || resolve(swarmRoot, "benchmarks/swarm-organism-owned-missions-v1.json"))),
     readJson(resolve(option("--verifiers") || resolve(swarmRoot, "benchmarks/swarm-organism-owned-verifiers-v1.json")))
@@ -122,7 +156,17 @@ do {
   const kinds = enablePhaseProbes
     ? ["organism-artifact-replay", "organism-qwen-phase-probes"]
     : ["organism-artifact-replay"];
-  const { items, deferred } = sleepWorkFromCandidates(registry.list(), { kinds });
+  const candidateWork = sleepWorkFromCandidates(registry.list(), { kinds });
+  let standingWork = { items: [], deferred: [] };
+  if (standingOrdersPath) {
+    const ledgerRecords = await readLedger(ledgerPath);
+    standingWork = sleepWorkFromStandingOrders(JSON.parse(await readFile(standingOrdersPath, "utf8")), {
+      lastRunAt: lastStandingOrderRuns(ledgerRecords),
+      kinds: enableGrading ? ["curriculum-grading"] : []
+    });
+  }
+  const items = [...candidateWork.items, ...standingWork.items];
+  const deferred = [...candidateWork.deferred, ...standingWork.deferred];
   if (items.length === 0) {
     log({ event: "no-runnable-work", deferred });
     if (!daemon) break;
@@ -135,7 +179,21 @@ do {
 
   const executors = { "organism-artifact-replay": createArtifactReplayExecutor({ registry, episodes }) };
   if (phaseProbeInputs) {
-    executors["organism-qwen-phase-probes"] = createQwenPhaseProbeExecutor({ registry, ...phaseProbeInputs });
+    executors["organism-qwen-phase-probes"] = createQwenPhaseProbeExecutor({ registry, ...phaseProbeInputs, harvestStore: harvest ? store : null });
+  }
+  if (gradingWorkers) {
+    await mkdir(reportsDir, { recursive: true });
+    executors["curriculum-grading"] = createCurriculumGradingExecutor({
+      workers: gradingWorkers,
+      catalog,
+      harvestStore: harvest ? store : null,
+      onReport: async (report, item) => {
+        const path = resolve(reportsDir, `${item.orderId}-${item.occurrence}-${report.modelId.replace(/[^A-Za-z0-9._-]/g, "_")}.json`);
+        await writeFile(path, `${JSON.stringify(report, null, 2)}
+`, "utf8");
+        log({ event: "grading-report", orderId: item.orderId, modelId: report.modelId, passRate: report.passRate, firstAttemptPassRate: report.firstAttemptPassRate, path });
+      }
+    });
   }
   cycleIndex += 1;
   const cycleId = `sleep-${new Date().toISOString().replace(/[:.]/g, "-")}-${String(cycleIndex).padStart(3, "0")}`;
@@ -159,7 +217,7 @@ do {
   await mkdir(dirname(outputQueuePath), { recursive: true });
   await writeFile(outputQueuePath, `${JSON.stringify(sleepQueue, null, 2)}\n`, "utf8");
 
-  const ledger = (await readFile(ledgerPath, "utf8")).split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const ledger = await readLedger(ledgerPath);
   const summary = summarizeSleepLedger(ledger);
   log({
     event: "cycle-complete",
@@ -203,6 +261,15 @@ function delay(milliseconds, signal) {
     function onAbort() { clearTimeout(timer); resolveDelay(); }
     signal?.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+async function readLedger(path) {
+  try {
+    return (await readFile(path, "utf8")).split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 async function firstExisting(paths) {

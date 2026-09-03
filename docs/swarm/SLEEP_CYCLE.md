@@ -82,10 +82,19 @@ Set `AMOS_VLLM_METRICS_TOKEN` if the metrics endpoint is behind a bearer token.
 - The phase-probe verifier is concept matching. It is candidate-independent
   but shallow; slice 2 replaces it with executable checks.
 
-## Next slices
+## Standing orders
 
-1. Executable verifiers and combinatorial scenarios exist in
-   [the curriculum generator](CURRICULUM_GENERATOR.md); wire its holdout pool
-   in as a sleep work kind so Qwen is graded on it during idle time.
-2. Synthetic curriculum as sleep work, with Qwen as the mutation operator.
-3. Adapter consolidation: stage-one LoRA jobs, sealed-holdout gate, vLLM hot swap.
+Beyond candidate gates, the daemon runs standing orders from a JSON file the
+operator owns (`--standing-orders`). Each order names a kind, a payload, and a
+minimum interval; the ledger, not the file, decides when an order last ran.
+
+| Kind | What it does |
+|---|---|
+| `curriculum-grading` | grades every configured served model ID on the same generated scenarios, compares them pairwise, and harvests verified pairs from training-pool runs |
+| `adapter-consolidation` | reserved for the consolidation runner; execution stays behind an explicit flag because it starts cloud instances |
+
+Phase probes now harvest preference pairs automatically: a failed first
+attempt followed by a verifier-accepted repair is recorded as a pair.
+
+See [TRAINING_RUNS.md](TRAINING_RUNS.md) for the full loop from experience to
+adapter to grade.
