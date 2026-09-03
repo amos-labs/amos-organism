@@ -25,6 +25,8 @@
     "research:swarm:collect-platform": "node swarm/scripts/collectPlatformMissionEpisode.js",
     "research:swarm:export-adapter-data": "node swarm/scripts/exportAmosNativeTrainingDataset.js",
     "research:swarm:generate-stage0-data": "node swarm/scripts/generateAmosSyntheticCurriculum.js",
+    "research:swarm:generate-stage1-data": "node swarm/scripts/generateAmosCurriculum.js",
+    "research:swarm:extract-tool-catalog": "node swarm/scripts/extractAmosToolCatalog.mjs",
     "research:swarm:prepare-stage0-trainer": "node swarm/scripts/prepareQwenAdapterStage0.js",
     "research:swarm:simulate": "node swarm/scripts/simulateSwarmOrganismTraining.js",
     "research:swarm:prepare-process": "node swarm/scripts/prepareProcessMiningOrganismCurriculum.js",

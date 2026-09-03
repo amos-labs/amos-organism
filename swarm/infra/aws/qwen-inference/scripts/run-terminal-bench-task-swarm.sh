@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Harbor agent timeout as a multiple of the task's own budget. The default of 0.5
+# caps a one-hour task at thirty minutes: the August 2026 runs spent two GPU-hours
+# per trial timing out with zero reward. Raise it deliberately, per run, never as
+# a standing default.
+AMOS_HARBOR_AGENT_TIMEOUT_MULTIPLIER="${AMOS_HARBOR_AGENT_TIMEOUT_MULTIPLIER:-0.5}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -51,5 +56,5 @@ exec harbor run \
   --n-concurrent 1 \
   --jobs-dir "$OUTPUT_DIR" \
   --job-name "$JOB_NAME" \
-  --agent-timeout-multiplier 2 \
+  --agent-timeout-multiplier "${AMOS_HARBOR_AGENT_TIMEOUT_MULTIPLIER:-0.5}" \
   --yes

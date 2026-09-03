@@ -84,6 +84,8 @@ Set `AMOS_VLLM_METRICS_TOKEN` if the metrics endpoint is behind a bearer token.
 
 ## Next slices
 
-1. Executable verifiers for the AMOS-owned families.
+1. Executable verifiers and combinatorial scenarios exist in
+   [the curriculum generator](CURRICULUM_GENERATOR.md); wire its holdout pool
+   in as a sleep work kind so Qwen is graded on it during idle time.
 2. Synthetic curriculum as sleep work, with Qwen as the mutation operator.
-3. Adapter consolidation: stage-zero LoRA jobs, sealed-holdout gate, vLLM hot swap.
+3. Adapter consolidation: stage-one LoRA jobs, sealed-holdout gate, vLLM hot swap.

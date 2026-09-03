@@ -1,0 +1,2199 @@
+{
+  "schema": "amos.tool-catalog",
+  "version": 1,
+  "id": "amos-tool-catalog-v1",
+  "source": {
+    "repository": "amos-managed-platform",
+    "path": "src/mcp",
+    "files": 50,
+    "skippedUnparsableBlocks": 13
+  },
+  "rights": {
+    "owner": "amos-labs",
+    "sourceClass": "amos-owned",
+    "tenantFactsIncluded": false,
+    "credentialsIncluded": false,
+    "trainingApproved": true
+  },
+  "reservedFraction": 0.2,
+  "counts": {
+    "tools": 57,
+    "reserved": 17,
+    "byAuthority": {
+      "read": 24,
+      "write": 30,
+      "consequential": 3
+    },
+    "domains": 11
+  },
+  "tools": [
+    {
+      "name": "archive_briefing",
+      "domain": "briefings",
+      "description": "Archive one saved Briefing definition and pause its schedules. Existing immutable runs remain available for accountability.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "briefing_id"
+        ],
+        "properties": {
+          "briefing_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "assign_task_to_project",
+      "domain": "projects",
+      "description": "Assign this user's task to this user's Project, or omit project_id to remove the assignment. The association is private coordination metadata and carries no approval or execution authority.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "cancel_mission",
+      "domain": "missions",
+      "description": "Cancel a Mission and revoke its active Run Contract immediately. Authority reduction only — takes effect at once, receipted.",
+      "authority": "consequential",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mission_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "mission_id"
+        ]
+      },
+      "reserved": true
+    },
+    {
+      "name": "connect_nuvola_learning",
+      "domain": "nuvola_learning",
+      "description": "OWNER-ONLY. Connect the company's Nuvola Learning corporation with a corporation-bound Nuvola MCP key. Before storing anything, AMOS challenges the fixed Nuvola origin and verifies the server identity, immutable corporation id, learning-onl",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "corporation_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Expected Nuvola corporation id. The credential must prove this exact immutable binding."
+          },
+          "credential": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Nuvola MCP key already assigned to that corporation. Encrypted immediately; never returned or receipted."
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Optional connection label; defaults to Nuvola Learning."
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "corporation_id",
+          "credential"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "create_goal_action_adapter",
+      "domain": "goals",
+      "description": "Create an immutable tenant-scoped goal adapter. Either clone an adapter_starter with starter_key + configuration, or provide key/name/verb/args_template directly. Templates may use only the documented goal-cycle placeholders and can never c",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "starter_key": {
+            "type": "string",
+            "description": "Optional starter key from list_goal_capabilities.adapter_starters."
+          },
+          "configuration": {
+            "type": "object",
+            "description": "Values required by the selected starter, such as collection/email_field or connection/method/path."
+          },
+          "key": {
+            "type": "string",
+            "description": "Stable lowercase adapter slug. Optional for a starter; required for a custom manifest."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name. Optional for a starter."
+          },
+          "description": {
+            "type": "string"
+          },
+          "verb": {
+            "type": "string",
+            "description": "Canonical consequence-classified MCP write for a custom manifest."
+          },
+          "args_template": {
+            "type": "object",
+            "description": "Arguments for the target verb. Runtime placeholders: {{goal.id}}, {{goal.short_id}}, {{goal.objective}}, {{goal.metric}}, {{goal.direction}}, {{cycle}}, {{proposal}}, {{rationale}}, {{projected_impact}}. Never include secrets; use connection_call with a tenant connection."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "create_prospecting_campaign",
+      "domain": "apollo_prospecting",
+      "description": "HUMAN-GATED. Create a bounded Apollo prospecting campaign with an explicit ICP, target, batch size, and maximum enrichment-credit ceiling. Research only: never requests personal email/phone and grants no outreach authority.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "name",
+          "criteria",
+          "target_count",
+          "max_credits"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "criteria": {
+            "type": "object",
+            "required": [
+              "person_titles"
+            ],
+            "properties": {
+              "person_titles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "person_seniorities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "person_locations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "q_organization_keyword_tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "organization_num_employees_ranges": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "organization_locations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "q_organization_domains_list": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min_fit_score": {
+                "type": "integer",
+                "minimum": 50,
+                "maximum": 100
+              },
+              "max_pages": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              }
+            },
+            "additionalProperties": false
+          },
+          "target_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50000
+          },
+          "max_credits": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "batch_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "fork_task",
+      "domain": "tasks",
+      "description": "Create a governed child task from an exact task milestone. The child receives bounded references and an immutable provenance manifest—not copied transcript, credentials, pending approvals, queued writes, or execution authority. A resumed ch",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "source_event_id",
+          "name",
+          "objective",
+          "context_scope",
+          "workspace_mode",
+          "source_client"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Parent task id."
+          },
+          "source_event_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "context_scope": {
+            "type": "string",
+            "enum": [
+              "everything",
+              "from_here",
+              "selected_artifacts"
+            ]
+          },
+          "workspace_mode": {
+            "type": "string",
+            "enum": [
+              "same_directory",
+              "new_worktree",
+              "context_only"
+            ]
+          },
+          "source_client": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "selected_artifacts": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          },
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "repository": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "branch": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "commit": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "dirty": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_briefing_run",
+      "domain": "briefings",
+      "description": "Read one immutable Briefing run, including its exact definition snapshot and bounded governed source results. Useful for scheduled in-app delivery and cross-client review.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "get_goal",
+      "domain": "goals",
+      "description": "Read one goal in full before changing it: contract, current signal, budget use, next run, approval state, proposals, measurements, and keep/discard decisions.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "goal_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "goal_id"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_mission",
+      "domain": "missions",
+      "description": "One Mission in full: contract (every ceiling, counter, and pinned checker), typed step feed, immutable verification evidence, status history, and completion condition.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mission_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "mission_id"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_performance_snapshot",
+      "domain": "performance",
+      "description": "Read a bounded, provenance-carrying company performance snapshot. Returns each selected operating unit's latest and immediately previous observation, observational trend, cited benchmark gaps, data classification (sample/synthetic/customer_",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "unit_key": {
+            "type": "string",
+            "description": "Optional stable operating-unit key."
+          },
+          "include_children": {
+            "type": "boolean",
+            "description": "Include descendants of unit_key (default false)."
+          },
+          "metric_keys": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional metric-key filter."
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "description": "Latest allowed period end (default today)."
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_project",
+      "domain": "projects",
+      "description": "Read one private Project with its assigned tasks and recent supervised runs. Returned run state is coordination metadata, not proof that business effects occurred.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_prospecting_campaign",
+      "domain": "apollo_prospecting",
+      "description": "Read one bounded prospecting campaign, including progress toward its target and Apollo credit ceiling.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "campaign_id"
+        ],
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "get_task",
+      "domain": "tasks",
+      "description": "Read one authenticated user's task, bounded private provenance events, and child lineage. This never returns credentials, absolute local paths, pending-operation payloads, or execution authority.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "install_automation_template",
+      "domain": "automation_templates",
+      "description": "Compile one installable platform template into a tenant-owned DRAFT automation using existing governed primitives. Active connection-operation contracts are pinned at installation; credentials are never copied. The result includes the exact",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "template_key",
+          "name"
+        ],
+        "properties": {
+          "template_key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Template-specific values. Single-target templates require connection and operation. Cross-system templates require source_connection, destination_connection, operation, and webhook. Arguments may use exact {$ref:\"trigger...\"} references resolved deterministically at run time."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "learning_approve_course_build",
+      "domain": "nuvola_learning",
+      "description": "HUMAN-GATED. Approve one reviewed Nuvola AI draft for the asynchronous SCORM build. Approval binds the exact draft id. Idempotent and receipted.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "draft_id"
+        ]
+      },
+      "reserved": true
+    },
+    {
+      "name": "learning_assign_course",
+      "domain": "nuvola_learning",
+      "description": "HUMAN-GATED. Assign one Nuvola course to an explicit list of up to 100 existing learner emails, optionally within one course schedule. Approval binds the exact course, recipients, and schedule. Idempotent and receipted.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "course_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "emails": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            }
+          },
+          "course_schedule_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "course_id",
+          "emails"
+        ]
+      },
+      "reserved": true
+    },
+    {
+      "name": "learning_catalog",
+      "domain": "nuvola_learning",
+      "description": "List a bounded, normalized catalog of Nuvola courses or AI course drafts through the verified tenant-bound adapter. Every call re-challenges the corporation binding and pinned course schema, then emits an AMOS receipt.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "courses",
+              "drafts"
+            ],
+            "default": "courses"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "learning_course",
+      "domain": "nuvola_learning",
+      "description": "Read one normalized Nuvola course or AI course draft through the verified tenant-bound adapter. Read-only and receipted.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "enum": [
+              "course",
+              "draft"
+            ],
+            "default": "course"
+          },
+          "course_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Required when resource=course."
+          },
+          "draft_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Required when resource=draft."
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "learning_draft_course",
+      "domain": "nuvola_learning",
+      "description": "Create a Nuvola AI course draft from a scoped topic and optional uploaded evidence, or re-author an existing source course. This creates a reviewable draft only; approval/build, publish, and learner assignment remain separate governed actio",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "Required unless source_course_id is supplied."
+          },
+          "source_course_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Re-author an existing course and ground the draft in its materials."
+          },
+          "reference_document_ids": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "audience": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "state_or_jurisdiction": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "additional_context": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "learning_publish_course",
+      "domain": "nuvola_learning",
+      "description": "HUMAN-GATED. Publish one completed Nuvola course. Nuvola refuses publication while its AI draft is unapproved or still building. Approval binds the exact course id. Idempotent and receipted.",
+      "authority": "consequential",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "course_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "course_id"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "learning_upload_material",
+      "domain": "nuvola_learning",
+      "description": "Upload one source document to Nuvola for grounded AI course authoring. Decoded content is capped at 10 MiB. The action is idempotent; the AMOS ledger and receipt contain only filename, byte count, and SHA-256—not the document bytes.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "content_base64": {
+            "type": "string",
+            "description": "Base64 document bytes; maximum 10 MiB decoded."
+          },
+          "content_type": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "filename",
+          "content_base64"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_automation_failures",
+      "domain": "automation_operations",
+      "description": "List the tenant's Automation dead letters. Every item states whether redispatch is intrinsically safe or requires explicit human attestation about the external effect.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "automation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "include_resolved": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_automation_runs",
+      "domain": "automation_operations",
+      "description": "Inspect bounded deterministic Automation run history with trigger evidence, current step, status, duration, attempts, and dead-letter state. This is operational state, not proof that an external effect occurred.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "automation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "exited",
+              "failed"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_automation_templates",
+      "domain": "automation_templates",
+      "description": "List platform-owned automation templates and coordinated operating Blueprints. Templates declare their trigger modes, required connections/data, deterministic-vs-judgment boundary, installability, and current primitive readiness. This is th",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "blueprint": {
+            "type": "string",
+            "description": "Optional Blueprint key: multi_location_performance or connected_operations."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_briefing_templates",
+      "domain": "briefings",
+      "description": "List the platform-owned language-neutral Briefing templates available to AMOS Desktop, Claude, Codex, and every MCP client.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_briefings",
+      "domain": "briefings",
+      "description": "List this company's saved Briefing definitions, schedules, and latest immutable run. Definitions are shared through AMOS; result data is refreshed only when a run executes.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "include_archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_campaign_prospects",
+      "domain": "apollo_prospecting",
+      "description": "List normalized work-contact candidates saved by a prospecting campaign. Presence is research evidence, not consent to email.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "campaign_id"
+        ],
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "qualified",
+              "rejected",
+              "suppressed",
+              "all"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_goal_capabilities",
+      "domain": "goals",
+      "description": "Discover connected signals, observation sources, consequence-classified action verbs, understandable starter adapters, and this tenant's immutable custom adapters. The catalog grows with AMOS; reading it never widens an existing goal's auth",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_goals",
+      "domain": "goals",
+      "description": "Read the company goal scheduler plus every goal's operating contract, progress, action budget, pending approvals, next run, and recent learnings.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_mission_capabilities",
+      "domain": "missions",
+      "description": "Search the live, caller-available AMOS capability catalog before creating ANY Mission. Pass concise business keywords from the user's plain-English outcome. Returns exact consequence-classified operation keys, descriptions, and input schema",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 300,
+            "description": "Concise business or capability keywords from the requested outcome, such as 'Apollo prospecting enrichment', 'QuickBooks invoices', or 'research company records'."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          },
+          "include_input_schema": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include each matched operation's exact input schema so constraints can be compiled without guessing."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_mission_templates",
+      "domain": "missions",
+      "description": "List Platform-owned, outcome-first Mission starters shared by Desktop and every MCP client. Templates grant no authority; create_mission or create_goal still compiles and parks the exact governed contract.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_missions",
+      "domain": "missions",
+      "description": "List this tenant's Missions with each one's current Run Contract, budget counters, status, and expiry.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_performance_units",
+      "domain": "performance",
+      "description": "List the authenticated tenant's generic Company Performance Loop hierarchy and coverage. A unit may be a company, portfolio, brand, region, franchise, location, department, team, individual, or other. Returns no credential material and does",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_projects",
+      "domain": "projects",
+      "description": "List this signed-in user's private Projects inside THIS tenant. Projects group task coordination, portable resource references, and bounded run defaults; they are not transcripts, company memory, or execution authority.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "include_archived": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_prospecting_campaigns",
+      "domain": "apollo_prospecting",
+      "description": "List Apollo prospecting campaigns with target, qualified count, status, cursor, and settled/reserved credit use.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "completed",
+              "exhausted",
+              "all"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "list_task_inbox",
+      "domain": "projects",
+      "description": "List this user's supervised work across Projects, ordered for attention. A stalled flag is derived from overdue running heartbeats. This is private coordination state, not execution proof.",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "include_terminal": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "list_tasks",
+      "domain": "tasks",
+      "description": "List the authenticated user's durable tasks inside THIS tenant. Results are user-private coordination metadata tied to bounded continuity lanes, not transcripts, company memory, current authority, or replay permission. Use this to power tas",
+      "authority": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Optional title/objective search text."
+          },
+          "include_archived": {
+            "type": "boolean",
+            "description": "Include archived tasks; default false."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum tasks; default 50."
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "outlook_create_calendar_event",
+      "domain": "connections",
+      "description": "Create one Outlook calendar event through the connected Microsoft 365 account. ALWAYS parks for human approval before Graph is contacted. The decision binds the exact subject, RFC3339 start/end, optional location/body/attendees/Teams meetin",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "start": {
+            "type": "string",
+            "description": "RFC3339 timestamp with explicit offset."
+          },
+          "end": {
+            "type": "string",
+            "description": "RFC3339 timestamp with explicit offset; must be later than start and within 7 days."
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000,
+            "description": "Optional plain-text event body."
+          },
+          "attendees": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional"
+                  ],
+                  "default": "required"
+                }
+              },
+              "required": [
+                "email"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "online_meeting": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create a Microsoft Teams meeting."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional caller key. Approved pending operations receive a stable platform key automatically."
+          },
+          "connection": {
+            "type": "string",
+            "description": "Optional Microsoft 365 connection UUID or provider tag. Defaults to microsoft_graph."
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "subject",
+          "start",
+          "end"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "outlook_list_calendar_events",
+      "domain": "connections",
+      "description": "Read a bounded Outlook calendar window through a connected Microsoft 365 account. This typed read fixes the Microsoft Graph endpoint, caps the window at 31 days and the result at 50 events, normalizes the response, and never exposes the OAu",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "description": "Window start as RFC3339 with an explicit offset, e.g. 2026-08-01T09:00:00-05:00."
+          },
+          "end": {
+            "type": "string",
+            "description": "Window end as RFC3339 with an explicit offset; must be later than start and no more than 31 days later."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 25
+          },
+          "connection": {
+            "type": "string",
+            "description": "Optional Microsoft 365 connection UUID or provider tag. Defaults to microsoft_graph."
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "pause_briefing_schedule",
+      "domain": "briefings",
+      "description": "Pause a Briefing schedule immediately. This only removes standing work and never needs approval.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schedule_id"
+        ],
+        "properties": {
+          "schedule_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "pause_mission",
+      "domain": "missions",
+      "description": "Pause a Mission immediately and clear its worker lease. This only reduces authority; the Run Contract remains available for a later verified-human resume.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mission_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "mission_id"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "record_performance_snapshot",
+      "domain": "performance",
+      "description": "Import a governed Company Performance Loop snapshot from a customer report, Power BI, another AMOS connection, or clearly labeled sample/synthetic data. The write is tenant-scoped, idempotent, proof-carrying, and rejects credentials/bearer ",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "data_classification": {
+            "type": "string",
+            "enum": [
+              "sample",
+              "synthetic",
+              "customer_provided",
+              "connected_system"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "customer_report",
+                  "power_bi",
+                  "manual",
+                  "connection",
+                  "sample",
+                  "synthetic",
+                  "other"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 500,
+                "description": "Immutable document, Power BI query, dataset, or connection evidence reference."
+              },
+              "captured_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ]
+          },
+          "operating_units": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit_type": {
+                  "type": "string",
+                  "enum": [
+                    "company",
+                    "portfolio",
+                    "brand",
+                    "region",
+                    "franchise",
+                    "location",
+                    "department",
+                    "team",
+                    "individual",
+                    "other"
+                  ]
+                },
+                "parent_key": {
+                  "type": "string"
+                },
+                "external_ref": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "key",
+                "name",
+                "unit_type"
+              ]
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value_kind": {
+                  "type": "string",
+                  "enum": [
+                    "number",
+                    "count",
+                    "percent",
+                    "ratio",
+                    "currency",
+                    "duration",
+                    "score",
+                    "index"
+                  ],
+                  "description": "Semantic value type. Percent values use decimal fractions (0.11 means 11%; -0.188 means -18.8%)."
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "increase",
+                    "decrease"
+                  ]
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "key",
+                "name",
+                "unit"
+              ]
+            }
+          },
+          "observations": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "unit_key": {
+                  "type": "string"
+                },
+                "metric_key": {
+                  "type": "string"
+                },
+                "period_start": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "period_end": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Observed value in the metric definition's canonical units. For value_kind=percent, use a decimal fraction."
+                },
+                "sample_size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "source_ref": {
+                  "type": "string"
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "dimensions": {
+                  "type": "object"
+                },
+                "observed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "unit_key",
+                "metric_key",
+                "period_start",
+                "period_end",
+                "value"
+              ]
+            }
+          },
+          "benchmarks": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "unit_key": {
+                  "type": "string",
+                  "description": "Optional; omit for a company-wide benchmark."
+                },
+                "metric_key": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "target",
+                    "peer_percentile",
+                    "top_quartile",
+                    "company_average",
+                    "historical",
+                    "external"
+                  ]
+                },
+                "period_start": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "period_end": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Benchmark value in the metric definition's canonical units. For value_kind=percent, use a decimal fraction."
+                },
+                "percentile": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "sample_size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "peer_group": {
+                  "type": "object"
+                },
+                "source_ref": {
+                  "type": "string"
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "metric_key",
+                "key",
+                "label",
+                "kind",
+                "period_start",
+                "period_end",
+                "value"
+              ]
+            }
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Tenant UUID (admins only)."
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "data_classification",
+          "source"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "register_task",
+      "domain": "tasks",
+      "description": "Create or refresh user-private task metadata for one continuity lane. Store coordination state, not transcript: a bounded title/objective, client identity, portable workspace/Git hints, and safe resource references. Never include credential",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context_key",
+          "title",
+          "objective",
+          "source_client"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-generated id for a new task."
+          },
+          "context_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "general",
+              "automation_builder",
+              "goal_pursuit",
+              "fork"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "waiting",
+              "completed",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "source_client": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          },
+          "workspace_mode": {
+            "type": "string",
+            "enum": [
+              "same_directory",
+              "new_worktree",
+              "context_only"
+            ]
+          },
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "repository": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "branch": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "commit": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "dirty": {
+                "type": "boolean"
+              }
+            }
+          },
+          "resource_refs": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "repair_automation_failure",
+      "domain": "automation_operations",
+      "description": "Resolve one Automation dead letter. retry reactivates the exact failed step and requires external_effect_state=not_applied when dispatch was ambiguous; settle_applied advances without redispatch and requires external_effect_state=applied pl",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "incident_id",
+          "action",
+          "note"
+        ],
+        "properties": {
+          "incident_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "retry",
+              "settle_applied",
+              "dismiss"
+            ]
+          },
+          "external_effect_state": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "not_applied",
+              "applied"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "description": "Bounded operator-supplied settlement result. It is evidence by attestation, never provider proof."
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "report_task_run",
+      "domain": "projects",
+      "description": "Report one monotonic heartbeat and cumulative usage for a supervised run. The response's continue flag is authoritative coordination: false means the client must stop cooperatively. It does not prove or authorize business effects.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "sequence",
+          "status",
+          "tokens_used",
+          "cost_used_microusd",
+          "tool_calls_used"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "waiting",
+              "blocked",
+              "completed",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "progress_summary": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "result_summary": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "tokens_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cost_used_microusd": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tool_calls_used": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "reserved": true
+    },
+    {
+      "name": "request_task_run_cancel",
+      "domain": "projects",
+      "description": "Request cooperative cancellation of one private supervised run. Platform records the stop signal; a local or external client must observe it through a report or inbox read and terminate its worker.",
+      "authority": "consequential",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "resume_briefing_schedule",
+      "domain": "briefings",
+      "description": "Resume a paused Briefing schedule. Re-activating standing inference is human-gated and computes a fresh next run time.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schedule_id"
+        ],
+        "properties": {
+          "schedule_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "resume_task",
+      "domain": "tasks",
+      "description": "Load one user-private task plus its exact bounded continuity lane. This is orientation only: it never restarts a model request, tool call, approval, queued write, or side effect. Revalidate current identity, evidence, policy, approvals, and",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "run_briefing",
+      "domain": "briefings",
+      "description": "Run a saved Briefing or a platform template now. Every source re-enters its normal tenant/scope/policy gate. Returns a typed presentation hint plus immutable source results and provenance.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "briefing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "template_key": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "source_plan": {
+            "type": "array",
+            "maxItems": 8
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "presentation": {
+            "type": "object"
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "run_prospecting_batch",
+      "domain": "apollo_prospecting",
+      "description": "Run one Apollo search/enrichment batch inside an already human-approved campaign target and atomic credit ceiling. Work email only; no phone, personal email, sequence enrollment, or send.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "campaign_id"
+        ],
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "schedule_briefing",
+      "domain": "briefings",
+      "description": "Create an in-app recurring schedule for a saved Briefing. Activating standing inference is human-gated. Cadence may be interval, daily UTC, or weekly UTC; current user authority is revalidated every run.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "briefing_id",
+          "cadence"
+        ],
+        "properties": {
+          "briefing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cadence": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "every_minutes"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "interval"
+                  },
+                  "every_minutes": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 10080
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "hour_utc"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "daily"
+                  },
+                  "hour_utc": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 23
+                  },
+                  "minute_utc": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 59
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "weekday",
+                  "hour_utc"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "weekly"
+                  },
+                  "weekday": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 6,
+                    "description": "Monday=0 through Sunday=6."
+                  },
+                  "hour_utc": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 23
+                  },
+                  "minute_utc": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 59
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "reserved": false
+    },
+    {
+      "name": "set_goal_pursuit",
+      "domain": "goals",
+      "description": "Enable or disable the company goal scheduler. Enabling is human-gated and never overrides each goal's cadence, allowed outputs, budget, or approval requirements.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "set_goal_status",
+      "domain": "goals",
+      "description": "Pause, resume, or archive one goal. Pause/archive restrict immediately; resume is human-gated.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "goal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "abandoned"
+            ]
+          }
+        },
+        "required": [
+          "goal_id",
+          "status"
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "set_prospecting_campaign_status",
+      "domain": "apollo_prospecting",
+      "description": "Pause or resume a prospecting campaign. This cannot widen its saved target, criteria, or credit ceiling.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "campaign_id",
+          "status"
+        ],
+        "properties": {
+          "campaign_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "reserved": false
+    },
+    {
+      "name": "simulate_automation",
+      "domain": "automation_operations",
+      "description": "Compile and simulate an Automation definition without executing a tool, contacting a provider, consuming standing authority, or changing run state. Supply sample_trigger or omit it to backtest against bounded recent run contexts.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "automation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "sample_trigger": {
+            "type": "object"
+          },
+          "historical_runs": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "automation_id"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          }
+        ]
+      },
+      "reserved": false
+    },
+    {
+      "name": "update_task",
+      "domain": "tasks",
+      "description": "Rename, revise the objective, pin, archive/restore, or change the status of one user-private task. This updates coordination metadata only and cannot resume or replay model/tool work.",
+      "authority": "write",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "waiting",
+              "completed",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "reserved": true
+    }
+  ],
+  "digest": "3d70305bf82a0b09aa368a23d62801560a5d5b3acbd27e0b717a8baabd35b74f"
+}
