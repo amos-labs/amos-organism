@@ -37,3 +37,8 @@ output "trainer_instance_id" {
 output "trainer_contract_uri" {
   value = var.trainer_contract_uri
 }
+
+output "trainer_contract_parameter" {
+  description = "SSM parameter the trainer reads at boot for its training contract URI"
+  value       = aws_ssm_parameter.trainer_contract.name
+}

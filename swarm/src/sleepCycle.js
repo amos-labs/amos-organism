@@ -23,7 +23,21 @@ export const SLEEP_STATES = Object.freeze(["awake", "drowsy", "asleep"]);
 
 export const SLEEP_WORK_KINDS = Object.freeze([
   "organism-artifact-replay",
+  "organism-qwen-phase-probes",
+  "curriculum-grading",
+  "adapter-consolidation"
+]);
+
+/** Work kinds bound to a learning candidate's next gate. */
+export const CANDIDATE_WORK_KINDS = Object.freeze([
+  "organism-artifact-replay",
   "organism-qwen-phase-probes"
+]);
+
+/** Work kinds that run from a standing order rather than a candidate gate. */
+export const STANDING_WORK_KINDS = Object.freeze([
+  "curriculum-grading",
+  "adapter-consolidation"
 ]);
 
 export const SLEEP_CYCLE_END_REASONS = Object.freeze([
@@ -172,7 +186,7 @@ function sleepDecision(state, reason, policy, latestSample, quietMilliseconds = 
 }
 
 export function createSleepWorkItem({ kind, candidateId, candidateDigest, policyDigest, gate }) {
-  if (!SLEEP_WORK_KINDS.includes(kind)) throw new Error(`Unsupported sleep work kind ${kind}`);
+  if (!CANDIDATE_WORK_KINDS.includes(kind)) throw new Error(`Unsupported sleep work kind ${kind}`);
   const item = {
     schema: SLEEP_WORK_ITEM_SCHEMA,
     version: SLEEP_CYCLE_VERSION,
@@ -186,13 +200,37 @@ export function createSleepWorkItem({ kind, candidateId, candidateDigest, policy
   return Object.freeze({ ...item, digest: digestResearchValue(item) });
 }
 
+/**
+ * A standing order is research work that recurs without a candidate: grading
+ * served models on curriculum scenarios, or consolidating verified data into an
+ * adapter training job. The payload is opaque to the cycle and owned by the
+ * executor; the cycle only guarantees it runs during sleep and is recorded.
+ */
+export function createStandingSleepWorkItem({ kind, orderId, payload, occurrence = 1 }) {
+  if (!STANDING_WORK_KINDS.includes(kind)) throw new Error(`Unsupported standing sleep work kind ${kind}`);
+  const normalizedPayload = structuredClone(objectValue(payload, "standing order payload"));
+  const item = {
+    schema: SLEEP_WORK_ITEM_SCHEMA,
+    version: SLEEP_CYCLE_VERSION,
+    id: `${kind}:${requiredId(orderId, "standing order id")}:${nonNegativeInteger(occurrence, "occurrence")}`,
+    kind,
+    orderId: requiredId(orderId, "standing order id"),
+    occurrence: nonNegativeInteger(occurrence, "occurrence"),
+    payload: normalizedPayload,
+    payloadDigest: digestResearchValue(normalizedPayload)
+  };
+  return Object.freeze({ ...item, digest: digestResearchValue(item) });
+}
+
 export function validateSleepWorkItem(input) {
   const source = structuredClone(objectValue(input, "work item"));
   if (source.schema !== SLEEP_WORK_ITEM_SCHEMA || source.version !== SLEEP_CYCLE_VERSION) {
     throw new Error("Unsupported sleep work item");
   }
   const { digest, ...rest } = source;
-  const rebuilt = createSleepWorkItem(rest);
+  const rebuilt = CANDIDATE_WORK_KINDS.includes(rest.kind)
+    ? createSleepWorkItem(rest)
+    : createStandingSleepWorkItem(rest);
   if (rebuilt.digest !== digest) throw new Error(`Sleep work item ${rest.id} digest does not match`);
   return rebuilt;
 }

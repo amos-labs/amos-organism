@@ -354,6 +354,12 @@ resource "aws_iam_role_policy" "runner" {
         Resource = [data.aws_kms_alias.inference.target_key_arn]
       },
       {
+        Sid      = "ReadTrainingContractPointer"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = [aws_ssm_parameter.trainer_contract.arn]
+      },
+      {
         Sid      = "EcrAuthorization"
         Effect   = "Allow"
         Action   = ["ecr:GetAuthorizationToken"]
@@ -542,6 +548,19 @@ resource "aws_iam_role_policy" "trainer" {
   })
 }
 
+# Pointer the disposable trainer reads at boot. The consolidation runner
+# overwrites the value per job; Terraform owns the parameter, not the value.
+resource "aws_ssm_parameter" "trainer_contract" {
+  name        = "/amos/${var.inference_name}-plane/trainer/contract-uri"
+  description = "s3:// URI of the immutable training contract the next trainer boot should run"
+  type        = "String"
+  value       = var.trainer_contract_uri != "" ? var.trainer_contract_uri : "unset"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 resource "aws_iam_instance_profile" "trainer" {
   name = "${local.name}-trainer"
   role = aws_iam_role.trainer.name
@@ -577,10 +596,11 @@ resource "aws_instance" "trainer" {
 
   user_data_replace_on_change = true
   user_data = templatefile("${path.module}/templates/trainer-user-data.sh.tftpl", {
-    aws_region           = var.aws_region
-    ecr_registry         = split("/", aws_ecr_repository.trainer.repository_url)[0]
-    trainer_contract_uri = var.trainer_contract_uri
-    trainer_image_uri    = var.trainer_image_uri
+    aws_region                 = var.aws_region
+    ecr_registry               = split("/", aws_ecr_repository.trainer.repository_url)[0]
+    trainer_contract_uri       = var.trainer_contract_uri
+    trainer_image_uri          = var.trainer_image_uri
+    trainer_contract_parameter = aws_ssm_parameter.trainer_contract.name
   })
 
   depends_on = [

@@ -16,6 +16,18 @@ install -d -m 0750 -o 10001 -g 10001 \
   /opt/amos-huggingface \
   /opt/amos-triton \
   /opt/amos-nvidia-cache
+# The contract to train comes from an SSM parameter the consolidation runner
+# rewrites before each start, so a stopped trainer can be re-aimed without a
+# Terraform apply. The baked value is the fallback when the parameter is unset.
+CONTRACT_URI="$(aws ssm get-parameter \
+  --region "${aws_region}" \
+  --name "${trainer_contract_parameter}" \
+  --query Parameter.Value \
+  --output text 2>/dev/null || true)"
+if [[ -z "$CONTRACT_URI" || "$CONTRACT_URI" == "None" || "$CONTRACT_URI" == "unset" ]]; then
+  CONTRACT_URI="${trainer_contract_uri}"
+fi
+echo "AMOS Qwen trainer contract: $CONTRACT_URI"
 aws ecr get-login-password --region "${aws_region}" | \
   docker login --username AWS --password-stdin "${ecr_registry}"
 docker pull "${trainer_image_uri}"
@@ -28,7 +40,7 @@ docker run \
   --network=bridge \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,size=16g \
-  --env "AMOS_TRAINING_CONTRACT_URI=${trainer_contract_uri}" \
+  --env "AMOS_TRAINING_CONTRACT_URI=$CONTRACT_URI" \
   --env HF_HOME=/home/trainer/.cache/huggingface \
   --env TRITON_CACHE_DIR=/home/trainer/.triton/cache \
   --env CUDA_CACHE_PATH=/home/trainer/.nv/ComputeCache \
@@ -43,8 +55,8 @@ set -e
 printf '%s\n' "$STATUS" > /opt/amos-stage0/container-exit-status
 sync
 if [[ "$STATUS" -eq 0 ]]; then
-  echo "AMOS Qwen stage-zero trainer completed; stopping the disposable instance"
+  echo "AMOS Qwen trainer completed; stopping the disposable instance"
 else
-  echo "AMOS Qwen stage-zero trainer failed with status $STATUS; preserving disk and stopping for inspection"
+  echo "AMOS Qwen trainer failed with status $STATUS; preserving disk and stopping for inspection"
 fi
 shutdown -h now

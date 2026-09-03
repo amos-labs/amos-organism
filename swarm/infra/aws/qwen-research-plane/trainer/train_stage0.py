@@ -13,6 +13,7 @@ import argparse
 import contextlib
 import hashlib
 import json
+import math
 import os
 import random
 import sys
@@ -26,6 +27,10 @@ from typing import Any, Iterable
 
 
 CONTRACT_SCHEMA = "amos.qwen-adapter-training-contract"
+ACCEPTED_PURPOSES = {
+    ("pipeline-and-lineage-proof", 0),
+    ("amos-system-competence-sft", 1),
+}
 DATASET_SCHEMA = "amos.native-qwen-dataset"
 IGNORE_INDEX = -100
 
@@ -233,10 +238,17 @@ def train(
             if batch_index % accumulation == 0 or batch_index == len(loader):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
-        training_history.append({
+        history_entry: dict[str, Any] = {
             "epoch": epoch + 1,
             "meanLoss": total_loss / max(1, batches),
-        })
+        }
+        if optimization.get("evaluateValidationEveryEpoch"):
+            validation = evaluate(model, encoded["validation"], tokenizer.pad_token_id, torch)
+            if not math.isfinite(validation["meanLoss"]):
+                raise RuntimeError(f"validation loss became non-finite after epoch {epoch + 1}")
+            history_entry["validation"] = validation
+            model.train()
+        training_history.append(history_entry)
 
     metrics = {
         split: evaluate(model, values, tokenizer.pad_token_id, torch)
@@ -245,9 +257,11 @@ def train(
     minimum_accuracy = contract["exitCriteria"]["minimumSupervisedTokenAccuracy"]
     if metrics["training"]["supervisedTokenAccuracy"] < minimum_accuracy:
         raise RuntimeError(
-            "stage-zero micro-overfit did not meet supervised token accuracy: "
+            f"stage-{contract['recipe']['stage']} training did not meet supervised token accuracy: "
             f"{metrics['training']['supervisedTokenAccuracy']:.6f} < {minimum_accuracy:.6f}"
         )
+    if contract["exitCriteria"].get("validationLossMustBeFinite") and not math.isfinite(metrics["validation"]["meanLoss"]):
+        raise RuntimeError("validation loss is not finite")
 
     adapter_probe_before_save = logits_digest(model, probe)
     if adapter_probe_before_save == base_probe_before:
@@ -271,6 +285,8 @@ def train(
         "version": 1,
         "contractId": contract["id"],
         "contractDigest": contract["digest"],
+        "stage": contract["recipe"]["stage"],
+        "purpose": contract["purpose"],
         "status": "adapter-built-awaiting-vllm-load-proof",
         "qualityClaimAllowed": False,
         "promotionAllowed": False,
@@ -538,12 +554,14 @@ def validate_contract(contract: dict[str, Any]) -> None:
     if contract.get("schema") != CONTRACT_SCHEMA or contract.get("version") != 1:
         raise ValueError("unsupported AMOS Qwen training contract")
     verify_embedded_digest(contract, "training contract")
-    if contract.get("purpose") != "pipeline-and-lineage-proof":
-        raise ValueError("trainer accepts only the stage-zero pipeline proof")
+    purpose = contract.get("purpose")
+    stage = contract.get("recipe", {}).get("stage")
+    if (purpose, stage) not in ACCEPTED_PURPOSES:
+        raise ValueError("trainer accepts only the stage-zero pipeline proof or stage-one system-competence SFT")
     if contract.get("qualityClaimAllowed") is not False or contract.get("promotionAllowed") is not False:
-        raise ValueError("stage-zero contract cannot authorize quality or promotion claims")
-    if contract.get("recipe", {}).get("stage") != 0:
-        raise ValueError("trainer accepts only stage zero")
+        raise ValueError("training contract cannot authorize quality or promotion claims")
+    if stage == 1 and contract.get("selection", {}).get("trainerMayNotSelect") is not True:
+        raise ValueError("stage-one contract must forbid trainer-side checkpoint selection")
     if contract.get("recipe", {}).get("optimization", {}).get("loss") != "assistant-tokens-only":
         raise ValueError("trainer requires assistant-token-only loss")
     if contract.get("recipe", {}).get("includeVisionTowerInAdapter") is not False:
