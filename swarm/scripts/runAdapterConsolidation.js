@@ -111,7 +111,7 @@ if (!readiness.ready) {
       if (driver === "boot") {
         aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
       }
-      aws(["ec2", "start-instances", "--instance-ids", instanceId]);
+      await startInstanceWithRetry(instanceId);
       if (driver === "ssm") {
         await waitForSsmOnline(instanceId);
         const commandId = sendTrainerCommand(instanceId, job.contractUri);
@@ -191,6 +191,20 @@ aws s3 cp /opt/amos-stage0/container.log ${runsRoot}/__last__/container.log --re
 sync
 shutdown -h now
 `;
+}
+
+/** EC2 rejects a start for a short window after an instance reports stopped. */
+async function startInstanceWithRetry(id, attempts = 6) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      aws(["ec2", "start-instances", "--instance-ids", id]);
+      return;
+    } catch (error) {
+      log({ event: "start-instances-retry", instanceId: id, attempt, error: error?.message?.split("\n")[0] ?? String(error) });
+      if (attempt === attempts) throw error;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 20_000));
+    }
+  }
 }
 
 async function waitForSsmOnline(id) {
