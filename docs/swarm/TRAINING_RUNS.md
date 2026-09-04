@@ -135,6 +135,37 @@ post-stop window and during GPU capacity shortages, so the runner waits them
 out; adapter weights stay in S3 rather than syncing to the operator's machine;
 a finished job is recognized from its S3 result and never retrained.
 
+**2026-09-04, run `stage1-20260904-r3-implicit`.** Rank 32, three seeds, 256
+training examples from the implicit-rulebook curriculum, graded against the
+bf16 base served on the idle trainer, 48 implicit-rulebook holdout scenarios
+drawn from reserved tools and unseen families, identical across models.
+
+| model | pass | first-attempt pass | paired wins / losses vs base |
+|---|---|---|---|
+| base bf16 | 34/48 | 19/48 | – |
+| implicit adapter, seed 1 | 42/48 | 35/48 | 11 / 3 |
+| implicit adapter, seed 2 | 39/48 | 24/48 | 8 / 3 |
+| implicit adapter, seed 3 | 47/48 | 29/48 | 13 / 0 |
+| explicit adapter, seed 1 | 32/48 | 11/48 | 9 / 11 |
+
+Every implicit seed beats the base; the explicit-trained adapter regresses on
+implicit prompts. The approval-boundary family moves from 0 of 6 first-attempt
+passes to 4 or 5 of 6 for every implicit seed: the adapters learned the
+authority scopes the prompt no longer states. The recovery family stays at 0 of
+6 for every model, including the base with a repair attempt; the repair mapping
+did not transfer and needs a closer look. Seed variance is real (pass 39 to 47),
+which is what three seeds are for.
+
+Caveat: the grading server ran without Qwen's reasoning parser, so thinking
+text landed in answers for every model. Absolute numbers understate all five
+models equally; the pairing is fair. The serve script now enables the parser.
+
+This is the organism's first verified learning result: a procedure learned
+from generated, verifier-checked data generalized to tools and families it
+never trained on, measured by the same verifier with the base model as control.
+It is not promotion evidence. The sealed holdout and the blind frontier
+comparison remain ahead of it.
+
 ## What a result means
 
 - **Lift on the holdout pool** means the adapter generalizes to reserved tools
