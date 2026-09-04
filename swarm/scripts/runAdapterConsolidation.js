@@ -107,6 +107,14 @@ if (!readiness.ready) {
     let job = nextConsolidationJob(consolidation, ledger);
     while (job) {
       const startedAt = new Date();
+      if (resultAlreadyInS3(job)) {
+        // A previous runner dispatched this job and the trainer finished it; do not train twice.
+        log({ event: "job-already-finished", contractId: job.contractId, outputUri: job.outputUri });
+        const finalized = await finalizeJob(job, consolidation, startedAt);
+        await appendFile(ledgerPath, `${JSON.stringify(finalized)}\n`);
+        job = nextConsolidationJob(consolidation, await readLedger(ledgerPath));
+        continue;
+      }
       log({ event: "job-start", contractId: job.contractId, rank: job.rank, seed: job.seed, contractUri: job.contractUri, driver });
       if (driver === "boot") {
         aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
@@ -120,23 +128,9 @@ if (!readiness.ready) {
       await appendFile(ledgerPath, `${JSON.stringify(createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status: "submitted", startedAt, instanceId }))}\n`);
       if (!wait) break;
       await waitForStop(instanceId);
-      let status = "failed";
-      let resultDigest = null;
-      let error = null;
-      try {
-        const resultsDir = resolve(outputDir, runId, "results", job.contractId);
-        await mkdir(resultsDir, { recursive: true });
-        // Receipts and metrics only; adapter weights stay in S3 and are served from there.
-        aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors", "--exclude", "adapter/*.safetensors", "--exclude", "dataset/*"]);
-        const result = JSON.parse(await readFile(resolve(resultsDir, "stage0-result.json"), "utf8"));
-        resultDigest = result.digest ?? null;
-        status = result.status?.startsWith("adapter-built") ? "completed" : "failed";
-      } catch (caught) {
-        error = caught?.message ?? String(caught);
-      }
-      const entry = createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status, startedAt, finishedAt: new Date(), instanceId, resultDigest, error });
+      const entry = await finalizeJob(job, consolidation, startedAt);
       await appendFile(ledgerPath, `${JSON.stringify(entry)}\n`);
-      log({ event: "job-finished", contractId: job.contractId, status, resultDigest, error });
+      log({ event: "job-finished", contractId: job.contractId, status: entry.status, resultDigest: entry.resultDigest, error: entry.error });
       job = nextConsolidationJob(consolidation, await readLedger(ledgerPath));
     }
   }
@@ -220,6 +214,33 @@ async function waitForSsmOnline(id) {
 
 function shellQuote(text) {
   return `'${String(text).replace(/'/g, `'\\''`)}'`;
+}
+
+function resultAlreadyInS3(job) {
+  try {
+    const listing = aws(["s3", "ls", `${job.outputUri}/stage0-result.json`]);
+    return listing.includes("stage0-result.json");
+  } catch {
+    return false;
+  }
+}
+
+async function finalizeJob(job, consolidation, startedAt) {
+  let status = "failed";
+  let resultDigest = null;
+  let error = null;
+  try {
+    const resultsDir = resolve(outputDir, runId, "results", job.contractId);
+    await mkdir(resultsDir, { recursive: true });
+    // Receipts and metrics only; adapter weights stay in S3 and are served from there.
+    aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors", "--exclude", "adapter/*.safetensors", "--exclude", "dataset/*"]);
+    const result = JSON.parse(await readFile(resolve(resultsDir, "stage0-result.json"), "utf8"));
+    resultDigest = result.digest ?? null;
+    status = result.status?.startsWith("adapter-built") ? "completed" : "failed";
+  } catch (caught) {
+    error = caught?.message ?? String(caught);
+  }
+  return createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status, startedAt, finishedAt: new Date(), instanceId, resultDigest, error });
 }
 
 async function waitForStop(id) {
