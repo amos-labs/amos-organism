@@ -41,6 +41,7 @@ const parameterName = option("--parameter-name") || process.env.AMOS_TRAINER_CON
 const execute = flag("--execute");
 const wait = !flag("--no-wait");
 const pollSeconds = integerOption("--poll-seconds", 60, 10, 900);
+const startRetryMinutes = integerOption("--start-retry-minutes", 120, 1, 24 * 60);
 const driver = option("--driver") || "ssm";
 if (!["ssm", "boot"].includes(driver)) throw new Error("--driver must be ssm or boot");
 const excludeTreatmentIds = (option("--exclude-treatments") || "amos-native-stage0-curriculum-v1").split(",").map((value) => value.trim()).filter(Boolean);
@@ -188,16 +189,22 @@ shutdown -h now
 `;
 }
 
-/** EC2 rejects a start for a short window after an instance reports stopped. */
-async function startInstanceWithRetry(id, attempts = 6) {
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+/**
+ * EC2 rejects a start for a short window after an instance reports stopped, and
+ * GPU capacity in a single zone comes and goes. Keep asking, politely, for up to
+ * --start-retry-minutes (default two hours) before giving up on the run.
+ */
+async function startInstanceWithRetry(id) {
+  const deadline = Date.now() + startRetryMinutes * 60_000;
+  for (let attempt = 1; ; attempt += 1) {
     try {
       aws(["ec2", "start-instances", "--instance-ids", id]);
       return;
     } catch (error) {
-      log({ event: "start-instances-retry", instanceId: id, attempt, error: error?.message?.split("\n")[0] ?? String(error) });
-      if (attempt === attempts) throw error;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 20_000));
+      const capacity = /InsufficientInstanceCapacity/.test(String(error?.stderr ?? error?.message ?? ""));
+      log({ event: "start-instances-retry", instanceId: id, attempt, capacity, minutesLeft: Math.round((deadline - Date.now()) / 60_000) });
+      if (Date.now() >= deadline) throw error;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt < 4 ? 20_000 : 120_000));
     }
   }
 }
@@ -253,7 +260,12 @@ async function waitForStop(id) {
 }
 
 function aws(argv) {
-  return execFileSync("aws", ["--region", region, ...argv], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  try {
+    return execFileSync("aws", ["--region", region, ...argv], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    if (error?.stderr) process.stderr.write(String(error.stderr));
+    throw error;
+  }
 }
 
 async function readLedger(path) {
