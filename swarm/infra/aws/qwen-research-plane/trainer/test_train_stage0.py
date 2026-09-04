@@ -79,6 +79,52 @@ class StageZeroTrainerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             TRAINER.validate_contract(self._contract("amos-system-competence-sft", 1, selection={"trainerMayNotSelect": False}))
 
+    def test_upstream_tree_retries_rate_limits_then_succeeds(self):
+        import io
+        import urllib.error
+        calls = {"n": 0}
+
+        class Response(io.StringIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def opener(request, timeout):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {"Retry-After": "0"}, None)
+            return Response('[{"type":"file","path":"x"}]')
+
+        base = {"repository": "Qwen/Qwen3.8-27B", "revision": "a" * 40}
+        tree = TRAINER.fetch_upstream_tree(base, attempts=4, opener=opener)
+        self.assertEqual(tree, [{"type": "file", "path": "x"}])
+        self.assertEqual(calls["n"], 3)
+
+    def test_upstream_lineage_reuses_matching_cached_receipt(self):
+        base = {"repository": "Qwen/Qwen3.8-27B", "revision": "a" * 40, "checkpointDigest": "b" * 64, "expectedShardDigests": [{}] * 18}
+        receipt = {
+            "schema": "amos.qwen-upstream-lineage-receipt", "version": 1,
+            "repository": base["repository"], "revision": base["revision"],
+            "checkpointDigest": base["checkpointDigest"], "verifiedShards": 18, "status": "passed",
+        }
+        receipt["digest"] = TRAINER.digest_value(receipt)
+        with tempfile.TemporaryDirectory() as root:
+            cached = Path(root) / "upstream-lineage-receipt.json"
+            cached.write_text(__import__("json").dumps(receipt), encoding="utf-8")
+            self.assertEqual(TRAINER.verify_upstream_lineage(base, cached=cached), receipt)
+            drifted = dict(receipt, revision="c" * 40)
+            drifted["digest"] = TRAINER.digest_value({k: v for k, v in drifted.items() if k != "digest"})
+            cached.write_text(__import__("json").dumps(drifted), encoding="utf-8")
+            original = TRAINER.fetch_upstream_tree
+            TRAINER.fetch_upstream_tree = lambda base_arg, **kwargs: (_ for _ in ()).throw(RuntimeError("network disabled in test"))
+            try:
+                with self.assertRaisesRegex(RuntimeError, "network disabled"):
+                    TRAINER.verify_upstream_lineage(base, cached=cached)
+            finally:
+                TRAINER.fetch_upstream_tree = original
+
     def test_digest_matches_javascript_canonical_research_digest(self):
         value = {"b": [True, 0.0002, "AMOS"], "a": {"z": None, "n": 64}}
         self.assertEqual(

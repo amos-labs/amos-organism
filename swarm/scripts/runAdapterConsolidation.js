@@ -152,7 +152,7 @@ function sendTrainerCommand(id, contractUri) {
     "export HOME=/root",
     "install -d -m 0750 -o 10001 -g 10001 /opt/amos-stage0 /opt/amos-huggingface /opt/amos-triton /opt/amos-nvidia-cache",
     // Keep the cached base checkpoint; clear receipts, datasets, and adapters from earlier contracts.
-    "find /opt/amos-stage0 -maxdepth 1 -type f -delete",
+    "find /opt/amos-stage0 -maxdepth 1 -type f ! -name upstream-lineage-receipt.json -delete",
     "rm -rf /opt/amos-stage0/dataset /opt/amos-stage0/adapter /opt/amos-stage0/vllm-proof*",
     `aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}`,
     `docker pull ${shellQuote(trainerImageUri)}`,
