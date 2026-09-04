@@ -156,6 +156,21 @@ authority scopes the prompt no longer states. The recovery family stays at 0 of
 did not transfer and needs a closer look. Seed variance is real (pass 39 to 47),
 which is what three seeds are for.
 
+The same five models on the 48 explicit-rulebook holdout scenarios, as a
+regression check:
+
+| model | pass | first-attempt pass | paired wins / losses vs base |
+|---|---|---|---|
+| base bf16 | 43/48 | 27/48 | – |
+| implicit adapter, seed 1 | 44/48 | 42/48 | 3 / 2 |
+| implicit adapter, seed 2 | 36/48 | 28/48 | 1 / 8 |
+| implicit adapter, seed 3 | 47/48 | 38/48 | 4 / 0 |
+| explicit adapter, seed 1 | 40/48 | 19/48 | 5 / 8 |
+
+Seeds one and three hold or improve on explicit prompts while lifting
+first-attempt pass sharply; seed two regresses there. Seed three is the best
+adapter on both holdouts and never loses a paired scenario to the base.
+
 Caveat: the grading server ran without Qwen's reasoning parser, so thinking
 text landed in answers for every model. Absolute numbers understate all five
 models equally; the pairing is fair. The serve script now enables the parser.
