@@ -176,6 +176,7 @@ set +e
 docker run --name amos-qwen-stage1-trainer --gpus all --ipc=host --network=bridge --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,size=16g \
   --env AMOS_TRAINING_CONTRACT_URI=${contractUri} \
+  --env TORCH_DISABLE_NATIVE_JIT=1 \
   --env HF_HOME=/home/trainer/.cache/huggingface \
   --env TRITON_CACHE_DIR=/home/trainer/.triton/cache \
   --env CUDA_CACHE_PATH=/home/trainer/.nv/ComputeCache \

@@ -41,6 +41,7 @@ docker run \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,size=16g \
   --env "AMOS_TRAINING_CONTRACT_URI=$CONTRACT_URI" \
+  --env TORCH_DISABLE_NATIVE_JIT=1 \
   --env HF_HOME=/home/trainer/.cache/huggingface \
   --env TRITON_CACHE_DIR=/home/trainer/.triton/cache \
   --env CUDA_CACHE_PATH=/home/trainer/.nv/ComputeCache \
