@@ -267,7 +267,8 @@ export function createCurriculumGradingExecutor({
       pool,
       scenariosPerFamily: payload.scenariosPerFamily ?? 4,
       seed: payload.seed ?? `${item.orderId}:${item.occurrence}`,
-      families: payload.families
+      families: payload.families,
+      rulebook: payload.rulebook ?? "explicit"
     });
     const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
     const reports = [];

@@ -27,12 +27,13 @@ const catalogPath = resolve(option("--catalog") || resolve(swarmRoot, "benchmark
 const harvestStorePath = option("--harvest-store") ? resolve(option("--harvest-store")) : null;
 const maxOutputTokens = integerOption("--max-output-tokens", 1_200, 128, 8_192);
 const repairAttempts = integerOption("--repair-attempts", 1, 0, 2);
+const rulebook = option("--rulebook") || "explicit";
 
 const apiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY;
 const baseUrl = process.env.AMOS_QWEN_RESEARCH_URL;
 if (!apiKey || !baseUrl) throw new Error("Grading needs AMOS_QWEN_RESEARCH_URL and AMOS_LOCAL_BENCHMARK_API_KEY");
 const catalog = validateToolCatalog(JSON.parse(await readFile(catalogPath, "utf8")));
-const scenarios = scenariosForGrading({ catalog, pool, scenariosPerFamily, seed });
+const scenarios = scenariosForGrading({ catalog, pool, scenariosPerFamily, seed, rulebook });
 const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
 if (harvestStorePath && pool !== "training") {
   throw new Error("Harvesting is only permitted from the training pool; holdout results are evaluation evidence");
@@ -74,6 +75,7 @@ const output = {
   generatedAt: new Date().toISOString(),
   catalogDigest: catalog.digest,
   pool,
+  rulebook,
   seed,
   scenarioCount: scenarios.length,
   reports,
@@ -85,6 +87,7 @@ await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
 console.log(JSON.stringify({
   output: outputPath,
   pool,
+  rulebook,
   scenarios: scenarios.length,
   models: reports.map(({ modelId, passRate, firstAttemptPassRate, recoveryRate }) => ({ modelId, passRate, firstAttemptPassRate, recoveryRate })),
   comparison: comparison?.candidates.map(({ modelId, passRateLift, pairedWins, pairedLosses }) => ({ modelId, passRateLift, pairedWins, pairedLosses })) ?? null,

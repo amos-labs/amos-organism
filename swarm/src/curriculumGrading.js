@@ -202,8 +202,8 @@ export function validateGradingReport(input) {
   return report;
 }
 
-export function scenariosForGrading({ catalog, pool = "holdout", scenariosPerFamily = 8, seed = "amos-curriculum-grading-v1", families }) {
-  return generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool, ...(families ? { families } : {}) });
+export function scenariosForGrading({ catalog, pool = "holdout", scenariosPerFamily = 8, seed = "amos-curriculum-grading-v1", families, rulebook = "explicit" }) {
+  return generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool, rulebook, ...(families ? { families } : {}) });
 }
 
 export function gradingMessages(scenario, previous = null) {

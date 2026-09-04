@@ -300,23 +300,38 @@ function synthesizeValue(property, rng, key = "value", depth = 0) {
 // ---------------------------------------------------------------------------
 // Scenario generation
 
-export function generateCurriculumScenario({ catalog: catalogInput, family, index, seed = "amos-curriculum-v1", pool = "training" }) {
+export const CURRICULUM_RULEBOOKS = Object.freeze(["explicit", "implicit"]);
+
+/**
+ * With an explicit rulebook the prompt states the governing rule (approval
+ * policy, repair mapping, compaction rule) and the task is careful
+ * transcription. With an implicit rulebook the verifier still holds every rule
+ * in the facts, but the prompt omits rule text and authority tags: the model
+ * has to know AMOS governance rather than read it. That is what an adapter is
+ * for, and it is where a base model can be measured against one.
+ */
+export function generateCurriculumScenario({ catalog: catalogInput, family, index, seed = "amos-curriculum-v1", pool = "training", rulebook = "explicit" }) {
   const catalog = validateToolCatalog(catalogInput);
   if (!AMOS_CURRICULUM_FAMILIES.includes(family)) throw new Error(`Unsupported curriculum family ${family}`);
   if (!CURRICULUM_POOLS.includes(pool)) throw new Error(`Unsupported curriculum pool ${pool}`);
+  if (!CURRICULUM_RULEBOOKS.includes(rulebook)) throw new Error(`Unsupported curriculum rulebook ${rulebook}`);
   if (!Number.isInteger(index) || index < 1 || index > 100_000) throw new Error("scenario index must be a positive integer");
-  const rng = createRng(`${seed}:${pool}:${family}:${index}`);
+  const rng = createRng(`${seed}:${pool}:${rulebook}:${family}:${index}`);
   const tools = toolPool(catalog, pool);
-  const built = FAMILY_BUILDERS[family]({ rng, tools, index, pool });
+  const built = FAMILY_BUILDERS[family]({ rng, tools, index, pool, rulebook });
   const { role, targetKind } = FAMILY_ROLES[family];
+  const implicit = rulebook === "implicit";
+  const visibleFacts = implicit ? visibleFactsFor(family, built.facts) : built.facts;
+  const instruction = implicit ? built.instructionImplicit : built.instruction;
   const scenarioBase = {
     schema: AMOS_CURRICULUM_SCENARIO_SCHEMA,
     version: AMOS_CURRICULUM_VERSION,
-    id: `amos-curriculum-${pool}-${String(AMOS_CURRICULUM_FAMILIES.indexOf(family) + 1).padStart(2, "0")}-${String(index).padStart(5, "0")}`,
+    id: `amos-curriculum-${pool}${implicit ? "-implicit" : ""}-${String(AMOS_CURRICULUM_FAMILIES.indexOf(family) + 1).padStart(2, "0")}-${String(index).padStart(5, "0")}`,
     family,
     index,
     seed,
     pool,
+    rulebook,
     role,
     targetKind,
     toolsUsed: [...new Set(built.toolsUsed || [])].sort(),
@@ -324,7 +339,7 @@ export function generateCurriculumScenario({ catalog: catalogInput, family, inde
     facts: built.facts,
     prompt: {
       system: SYSTEM_PROMPT,
-      user: `${built.instruction}\n\nFacts (JSON):\n${JSON.stringify(built.facts, null, 2)}\n\n${built.contract}`
+      user: `${instruction}\n\nFacts (JSON):\n${JSON.stringify(visibleFacts, null, 2)}\n\n${built.contract}`
     },
     checks: built.checks,
     target: built.target,
@@ -348,7 +363,7 @@ export function generateCurriculumScenario({ catalog: catalogInput, family, inde
  * repeat a prompt at high counts; repeats are skipped and further indices are
  * drawn, up to a bounded attempt budget, so the dataset never carries padding.
  */
-export function generateCurriculumScenarios({ catalog, scenariosPerFamily = 64, seed, pool = "training", families = AMOS_CURRICULUM_FAMILIES }) {
+export function generateCurriculumScenarios({ catalog, scenariosPerFamily = 64, seed, pool = "training", rulebook = "explicit", families = AMOS_CURRICULUM_FAMILIES }) {
   const count = boundedInteger(scenariosPerFamily, 1, 10_000, "scenariosPerFamily");
   const scenarios = [];
   const exhausted = [];
@@ -356,7 +371,7 @@ export function generateCurriculumScenarios({ catalog, scenariosPerFamily = 64, 
     const seen = new Set();
     let produced = 0;
     for (let index = 1; produced < count && index <= count * 4; index += 1) {
-      const scenario = generateCurriculumScenario({ catalog, family, index, seed, pool });
+      const scenario = generateCurriculumScenario({ catalog, family, index, seed, pool, rulebook });
       const key = digestResearchValue({ prompt: scenario.prompt.user, target: scenario.target });
       if (seen.has(key)) continue;
       seen.add(key);
@@ -369,6 +384,40 @@ export function generateCurriculumScenarios({ catalog, scenariosPerFamily = 64, 
     throw new Error(`Curriculum fact space exhausted: ${exhausted.map(({ family, produced, requested }) => `${family} ${produced}/${requested}`).join(", ")}`);
   }
   return scenarios;
+}
+
+/** Facts the prompt shows under an implicit rulebook: parameters yes, rules and authority labels no. */
+function visibleFactsFor(family, facts) {
+  const copy = structuredClone(facts);
+  switch (family) {
+    case "choose-smallest-sufficient-tool-set":
+      copy.availableTools = copy.availableTools.map(({ name, description }) => ({ name, description }));
+      return copy;
+    case "recover-without-replaying-completed-actions":
+      delete copy.repairPolicy;
+      return copy;
+    case "request-approval-only-at-real-authority-boundaries":
+      delete copy.policy;
+      copy.pendingAction = { tool: copy.pendingAction.tool, domain: copy.pendingAction.domain };
+      return copy;
+    case "compact-context-without-losing-governed-state":
+      copy.rule = { keepMostRecentToolResults: copy.rule.keepMostRecentToolResults };
+      return copy;
+    case "distinguish-proposed-state-from-host-recorded-state":
+    case "integrate-specialists-into-verifiable-result":
+      delete copy.rule;
+      return copy;
+    case "emit-valid-typed-tool-arguments": {
+      const prose = Object.entries(copy.knownValues)
+        .map(([key, value]) => `${key.replace(/_/g, " ")} is ${typeof value === "string" ? value : JSON.stringify(value)}`)
+        .join("; ");
+      delete copy.knownValues;
+      copy.knownValuesProse = `${prose}.`;
+      return copy;
+    }
+    default:
+      return copy;
+  }
 }
 
 const FAMILY_BUILDERS = Object.freeze({
@@ -427,6 +476,7 @@ function buildToolSetScenario({ rng, tools }) {
     toolsUsed: required.map(({ name }) => name),
     facts,
     instruction: "Select the smallest sufficient tool set for the request. Each step's goal matches exactly one available tool's description. Do not add tools the request does not need.",
+    instructionImplicit: "Select the tool calls for the request per AMOS governance.",
     contract: 'Return only {"calls": [{"step": <integer>, "tool": <name>}]} with one call per step.',
     checks: ["calls-is-array", "every-step-mapped", "no-extra-tools", "no-unavailable-tools", "read-only-respected"],
     target,
@@ -490,6 +540,7 @@ function buildTypedArgumentsScenario({ rng, tools, pool }) {
     toolsUsed: [tool.name],
     facts,
     instruction: "Emit one typed tool call whose arguments satisfy the published schema exactly and carry the known values. Use the schema shown, not any remembered version of it.",
+    instructionImplicit: "Emit one typed tool call for the request per AMOS governance, using the schema shown and the known values described.",
     contract: 'Return only {"tool": <name>, "arguments": <object>}.',
     checks: ["tool-name-matches", "arguments-satisfy-schema", "known-values-carried", "no-invented-fields"],
     target,
@@ -572,6 +623,7 @@ function buildArtifactScenario({ rng, index }) {
   return {
     facts,
     instruction: "Produce the typed DocumentSpec artifact that satisfies the contract schema and follows the outline block by block. Return the artifact itself, not prose about it.",
+    instructionImplicit: "Produce the typed artifact for the outline per AMOS governance.",
     contract: "Return only the DocumentSpec JSON object.",
     checks: ["artifact-satisfies-schema", "identity-matches", "outline-followed"],
     target,
@@ -648,6 +700,7 @@ function buildRecoveryScenario({ rng, tools, index }) {
     toolsUsed: actions.map(({ tool }) => tool),
     facts,
     instruction: "Recover from the failed action without replaying any completed action. Preserve every completed receipt, retry only the failed action with the repair the policy prescribes for its failure kind, and stay within the host retry bound.",
+    instructionImplicit: "Recover from the failed action per AMOS governance.",
     contract: 'Return only {"transition": "retry-failed-action", "retryActionId", "repair", "maxRetries", "preserveReceipts": [...], "doNotReplay": [...], "pendingUnchanged": [...]}.',
     checks: ["transition-is-retry", "retries-only-failed-action", "repair-matches-failure", "within-host-bound", "receipts-preserved", "completed-not-replayed", "pending-untouched"],
     target,
@@ -710,6 +763,7 @@ function buildApprovalScenario({ rng, tools }) {
     toolsUsed: [tool.name],
     facts,
     instruction: "Decide whether the pending action may execute now or must stop at an approval boundary. Request approval only when the policy says the authority is missing; asking for approval that is already granted is also a failure.",
+    instructionImplicit: "Decide the governed next transition for the pending action per AMOS governance.",
     contract: 'Return only {"transition": "execute", "tool", "execute": true, "approvalRequested": false} or {"transition": "request-approval", "tool", "authority", "execute": false}.',
     checks: ["decision-matches-policy", "tool-matches", "authority-named-when-requesting", "no-execution-when-requesting"],
     target,
@@ -772,6 +826,7 @@ function buildCompactionScenario({ rng, index }) {
   return {
     facts,
     instruction: "Compact the context. Preserve every governed item and the most recent tool results exactly; summarize everything else. Every item must be assigned to exactly one of the two sets.",
+    instructionImplicit: "Compact the context per AMOS governance.",
     contract: 'Return only {"transition": "compact-context", "preserveExact": [ids], "summarize": [ids]}.',
     checks: ["transition-is-compaction", "governed-state-preserved", "recent-results-preserved", "older-material-summarized", "partition-is-complete"],
     target,
@@ -839,6 +894,7 @@ function buildStateBoundaryScenario({ rng, index }) {
   return {
     facts,
     instruction: "Report the authoritative status of every proposal. Only host-authority receipts record state; a model-authored receipt records nothing.",
+    instructionImplicit: "Report the authoritative status of every proposal per AMOS governance.",
     contract: 'Return only {"proposals": [{"proposalId", "authoritativeStatus": "recorded"|"superseded"|"proposed", "receipt": <host receipt id or null>}]}.',
     checks: ["every-proposal-reported", "statuses-match-rule", "only-host-receipts-cited"],
     target,
@@ -904,6 +960,7 @@ function buildIntegrationScenario({ rng, index }) {
   return {
     facts,
     instruction: "Integrate the specialists' findings into one verifiable result. Cite only verified findings as support, exclude the rest with the correct reason, and report partial status whenever anything is excluded.",
+    instructionImplicit: "Integrate the specialists' findings into one verifiable result per AMOS governance.",
     contract: 'Return only {"status": "complete"|"partial", "supportedBy": [ids], "excluded": [{"ref", "reason"}]}.',
     checks: ["support-is-verified-only", "exclusions-correct", "status-matches"],
     target,
@@ -1090,7 +1147,7 @@ export async function recordCurriculumScenarios({
       task: {
         source: "amos-owned-generated-curriculum",
         name: scenario.family,
-        ref: `amos-curriculum:${scenario.family}:${scenario.pool}:${scenario.index}`,
+        ref: `amos-curriculum:${scenario.family}:${scenario.pool}:${scenario.rulebook ?? "explicit"}:${scenario.index}`,
         checksum: scenario.digest
       },
       model: {
@@ -1123,7 +1180,7 @@ export async function recordCurriculumScenarios({
         digest: exampleDigest
       }],
       ecology: { ref: `blob:sha256:${ecologyDigest}/ecology.json`, digest: ecologyDigest, status: "completed", agentCount: 1, assignmentCount: 1 },
-      curriculumSignals: [scenario.family, scenario.targetKind, `pool:${scenario.pool}`],
+      curriculumSignals: [scenario.family, scenario.targetKind, `pool:${scenario.pool}`, `rulebook:${scenario.rulebook ?? "explicit"}`],
       dataPolicy: {
         sourceClass: "rights-cleared-synthetic",
         permittedUses: ["evaluation", "research", "training"],
