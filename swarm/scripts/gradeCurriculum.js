@@ -28,6 +28,7 @@ const harvestStorePath = option("--harvest-store") ? resolve(option("--harvest-s
 const maxOutputTokens = integerOption("--max-output-tokens", 1_200, 128, 8_192);
 const repairAttempts = integerOption("--repair-attempts", 1, 0, 2);
 const rulebook = option("--rulebook") || "explicit";
+const concurrency = integerOption("--concurrency", 1, 1, 16);
 
 const apiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY;
 const baseUrl = process.env.AMOS_QWEN_RESEARCH_URL;
@@ -59,6 +60,7 @@ for (const modelId of modelIds) {
     scenarios,
     maxOutputTokens,
     repairAttempts,
+    concurrency,
     onScenario: (run) => process.stderr.write(`${JSON.stringify({ modelId, scenario: run.scenarioId, passed: run.passed, calls: run.calls })}\n`)
   });
   reports.push(report);

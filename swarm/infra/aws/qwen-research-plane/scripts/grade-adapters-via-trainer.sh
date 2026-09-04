@@ -52,7 +52,7 @@ echo "grading $MODEL_IDS"
 export AMOS_QWEN_RESEARCH_URL="http://127.0.0.1:$LOCAL_PORT" AMOS_LOCAL_BENCHMARK_API_KEY="$API_KEY"
 for rulebook in implicit explicit; do
   node "$REPO_ROOT/swarm/scripts/gradeCurriculum.js" --model-ids "$MODEL_IDS" --pool holdout --rulebook "$rulebook" \
-    --per-family "$PER_FAMILY" --seed "$SEED" --output "$OUT/grading-$rulebook-holdout.json" \
+    --per-family "$PER_FAMILY" --seed "$SEED" --concurrency "${AMOS_GRADE_CONCURRENCY:-4}" --output "$OUT/grading-$rulebook-holdout.json" \
     2> "$OUT/grading-$rulebook-holdout.log" | tee "$OUT/grading-$rulebook-holdout.summary.json"
 done
 aws ssm send-command --region "$REGION" --instance-ids "$INSTANCE" --document-name AWS-RunShellScript \
