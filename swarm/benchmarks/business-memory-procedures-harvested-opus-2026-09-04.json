@@ -1,0 +1,167 @@
+{
+  "schema": "amos.business-memory-procedure-store",
+  "version": 1,
+  "origin": "harvested-v1",
+  "modelId": "us.anthropic.claude-opus-5",
+  "controlId": "business-memory-harvest-opus",
+  "manifestDigest": "f395bca9db867708d63959b5751646361b41c4db3476aa12b90b53e194edfe27",
+  "pool": "development",
+  "startedAt": "2026-09-04T09:24:48.851Z",
+  "completedAt": "2026-09-04T09:25:55.862Z",
+  "repairs": [
+    {
+      "caseId": "bm-development-w0-scope-boundary-1",
+      "family": "scope-boundary",
+      "originalFailures": [
+        "status-scope-denied: the collection is outside the asker's scopes"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w0-invoice-due-date-1",
+      "family": "invoice-due-date",
+      "originalFailures": [
+        "due-date-matches-terms-as-of: issue date 2026-06-02 plus 60 days in effect that day is 2026-08-01"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w2-approval-required-decision-1",
+      "family": "approval-required-decision",
+      "originalFailures": [
+        "label-matches-policy-as-of: value 15500 against threshold 10000 in effect at 2026-06-07 resolves to approval_required"
+      ],
+      "repaired": false,
+      "remainingFailures": [
+        "answer-is-json: no JSON object found in answer"
+      ]
+    }
+  ],
+  "candidateCount": 2,
+  "procedures": [
+    {
+      "id": "proc-h-676f548d9e",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "When a question targets a collection listed as outside the authenticated user's scopes, return scope_denied with a null answer, rather than unknown; reserve unknown for records inside scope that simply are not present in the available material.",
+      "tags": [
+        "vendors"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-scope-boundary-1",
+        "family": "scope-boundary",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-scope-boundary-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w0-scope-boundary-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-scope-boundary-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-scope-boundary-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-scope-boundary-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-scope-boundary-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-scope-boundary-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-scope-boundary-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 1,
+        "pairedLosses": 0
+      },
+      "digest": "99ba6d7c156601d4a0c5228071ebc280d05c16c46a5bd1dec79909dac2c130a3"
+    },
+    {
+      "id": "proc-h-3e6a8528e1",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "When computing a due date, select the payment-terms value from the record revision that was in effect on the invoice's issue date, then add exactly that many days to the issue date rather than using any earlier, later, or current terms.",
+      "tags": [
+        "customers",
+        "invoices"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-invoice-due-date-1",
+        "family": "invoice-due-date",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-invoice-due-date-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w0-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-invoice-due-date-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 1,
+        "pairedLosses": 0
+      },
+      "digest": "b565e457f321825b115445d02891b62276c32600375454ed0dc033532ba73e3d"
+    }
+  ],
+  "rejected": [],
+  "claimBoundary": "Procedures were harvested from development-pool repairs and vested on development cases. Their value is measured only by the procedures arm on the holdout pool.",
+  "digest": "028089df02354a6e46abb26015d5afd0f0e0455089a14c941cbb58e66e23cfc0"
+}

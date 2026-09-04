@@ -1,0 +1,439 @@
+{
+  "schema": "amos.business-memory-procedure-store",
+  "version": 1,
+  "origin": "harvested-v1",
+  "modelId": "amos-qwen38-27b-fp8",
+  "controlId": "business-memory-harvest-qwen",
+  "manifestDigest": "f395bca9db867708d63959b5751646361b41c4db3476aa12b90b53e194edfe27",
+  "pool": "development",
+  "startedAt": "2026-09-04T09:22:21.067Z",
+  "completedAt": "2026-09-04T09:23:10.581Z",
+  "repairs": [
+    {
+      "caseId": "bm-development-w0-value-as-of-date-2",
+      "family": "value-as-of-date",
+      "originalFailures": [
+        "answer-matches-record: host-recorded value is 60"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w0-approval-required-decision-1",
+      "family": "approval-required-decision",
+      "originalFailures": [
+        "label-matches-policy-as-of: value 24000 against threshold 5000 in effect at 2026-07-10 resolves to approval_required"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w0-approval-required-decision-2",
+      "family": "approval-required-decision",
+      "originalFailures": [
+        "label-matches-policy-as-of: value 16000 against threshold 5000 in effect at 2026-06-15 resolves to approval_required"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w0-invoice-due-date-1",
+      "family": "invoice-due-date",
+      "originalFailures": [
+        "due-date-matches-terms-as-of: issue date 2026-06-02 plus 60 days in effect that day is 2026-08-01"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w1-approval-required-decision-1",
+      "family": "approval-required-decision",
+      "originalFailures": [
+        "label-matches-policy-as-of: value 16500 against threshold 10000 in effect at 2026-06-12 resolves to approval_required"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w2-value-as-of-date-2",
+      "family": "value-as-of-date",
+      "originalFailures": [
+        "answer-matches-record: host-recorded value is 45"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    },
+    {
+      "caseId": "bm-development-w2-approval-required-decision-1",
+      "family": "approval-required-decision",
+      "originalFailures": [
+        "label-matches-policy-as-of: value 15500 against threshold 10000 in effect at 2026-06-07 resolves to approval_required"
+      ],
+      "repaired": true,
+      "remainingFailures": []
+    }
+  ],
+  "candidateCount": 6,
+  "procedures": [
+    {
+      "id": "proc-h-8bbefbf678",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "Determine the value by identifying the latest revision recorded on or before the specified date, not the current state.",
+      "tags": [
+        "vendors"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-value-as-of-date-2",
+        "family": "value-as-of-date",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w0-value-as-of-date-2",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-value-as-of-date-2",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-value-as-of-date-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 2,
+        "pairedLosses": 0
+      },
+      "digest": "aaf1662f91f836404a232afc8e8a907ecd74877d874f6c0c9962c10068379e1a"
+    },
+    {
+      "id": "proc-h-feffacf72a",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "A change requires owner approval if the new monetary value exceeds the approval threshold in effect at the time the operation was proposed.",
+      "tags": [
+        "campaigns",
+        "policies"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-approval-required-decision-2",
+        "family": "approval-required-decision",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-approval-required-decision-1",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w0-approval-required-decision-2",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 2,
+        "pairedLosses": 0
+      },
+      "digest": "6403de289cb192aa8119ca82a00c6bf8ac2afbeab65a005fd7d0af7a4031aa32"
+    },
+    {
+      "id": "proc-h-b6d123a2e1",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "Always check the revision history to find the specific record state that was active on the exact date requested, rather than assuming the current value applies.",
+      "tags": [
+        "vendors"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w2-value-as-of-date-2",
+        "family": "value-as-of-date",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w0-value-as-of-date-2",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-value-as-of-date-2",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w3-value-as-of-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-value-as-of-date-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 1,
+        "pairedLosses": 0
+      },
+      "digest": "247815f5dc2434c8731b02aa372678c7fc6674f265bed13a32e13217a7c7d91d"
+    },
+    {
+      "id": "proc-h-3a867802b7",
+      "schema": "amos.business-memory-procedure",
+      "version": 1,
+      "origin": "harvested",
+      "statement": "A proposed change requires owner approval if the new monetary value exceeds the approval threshold in effect at the time the change was proposed.",
+      "tags": [
+        "campaigns",
+        "policies"
+      ],
+      "lineage": {
+        "sourceCaseId": "bm-development-w2-approval-required-decision-1",
+        "family": "approval-required-decision",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-approval-required-decision-1",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w0-approval-required-decision-2",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 2,
+        "pairedLosses": 0
+      },
+      "digest": "65fee3fea1136e9f127204647b94a8e11ce5c22de40ba1d76f6e7c1a287a21c6"
+    }
+  ],
+  "rejected": [
+    {
+      "statement": "Check the policy threshold in effect at the time the operation was proposed to determine if owner approval is required.",
+      "sourceCaseId": "bm-development-w0-approval-required-decision-1",
+      "family": "approval-required-decision",
+      "tags": [
+        "customers",
+        "policies"
+      ],
+      "rejectedBeforeEvaluation": null,
+      "reason": "regressed 1 case(s)",
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-approval-required-decision-1",
+        "family": "approval-required-decision",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-approval-required-decision-1",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w0-approval-required-decision-2",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-1",
+            "before": false,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-1",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w2-approval-required-decision-2",
+            "before": true,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-approval-required-decision-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 1,
+        "pairedLosses": 1
+      }
+    },
+    {
+      "statement": "Determine the payment terms in effect on the invoice's issue date by checking the customer record's revision history, then add that number of days to the issue date to calculate the due date.",
+      "sourceCaseId": "bm-development-w0-invoice-due-date-1",
+      "family": "invoice-due-date",
+      "tags": [
+        "customers",
+        "invoices"
+      ],
+      "rejectedBeforeEvaluation": null,
+      "reason": "no verified lift",
+      "lineage": {
+        "sourceCaseId": "bm-development-w0-invoice-due-date-1",
+        "family": "invoice-due-date",
+        "evaluatedOn": [
+          {
+            "caseId": "bm-development-w0-invoice-due-date-1",
+            "before": false,
+            "after": false
+          },
+          {
+            "caseId": "bm-development-w0-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w2-invoice-due-date-2",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-invoice-due-date-1",
+            "before": true,
+            "after": true
+          },
+          {
+            "caseId": "bm-development-w3-invoice-due-date-2",
+            "before": true,
+            "after": true
+          }
+        ],
+        "pairedWins": 0,
+        "pairedLosses": 0
+      }
+    }
+  ],
+  "claimBoundary": "Procedures were harvested from development-pool repairs and vested on development cases. Their value is measured only by the procedures arm on the holdout pool.",
+  "digest": "1ab7014ef9a1aba6de62f4794c8053b84f5898f9ee18bcafb8f011058fcd5b79"
+}
