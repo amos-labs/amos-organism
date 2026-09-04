@@ -113,6 +113,28 @@ npm run research:swarm:sleep -- --queue <promotion-queue> --store <store> \
   --enable-grading --grading-model-ids amos-qwen38-27b-fp8,stage1-r32-s20260903 --daemon
 ```
 
+## First run log
+
+**2026-09-04, run `stage1-20260904-r2`.** Rank 32, three seeds, 256 training
+examples from the explicit-rulebook curriculum. Job one completed in about 40
+minutes: training loss fell to zero by epoch three, validation token accuracy
+1.0, holdout token accuracy 0.98, adapter reload exact, base bitwise unchanged.
+
+The control arm graded the same day: the production base model passed 48 of 48
+explicit-rulebook holdout scenarios on the first attempt. That is the important
+result of the run. It says the explicit curriculum has no headroom, not that
+the adapter failed. The generator now has an implicit-rulebook mode (see
+[CURRICULUM_GENERATOR.md](CURRICULUM_GENERATOR.md)); the next run trains on
+implicit scenarios and is graded on the implicit holdout.
+
+Operational lessons folded into the runner: the trainer's boot script runs only
+on first boot, so jobs are dispatched over SSM Run Command; SSM's shell on
+Ubuntu is dash, so scripts need a bash shebang; the container needs
+`TORCH_DISABLE_NATIVE_JIT=1` passed explicitly; EC2 start calls fail in the
+post-stop window and during GPU capacity shortages, so the runner waits them
+out; adapter weights stay in S3 rather than syncing to the operator's machine;
+a finished job is recognized from its S3 result and never retrained.
+
 ## What a result means
 
 - **Lift on the holdout pool** means the adapter generalizes to reserved tools

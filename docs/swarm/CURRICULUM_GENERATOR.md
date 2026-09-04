@@ -63,6 +63,24 @@ contract discipline, not business judgment. Real Platform Mission episodes stay
 the highest-value data and should displace synthetic examples as they arrive.
 Frozen-holdout and blind frontier comparison remain the promotion gates.
 
+## Rulebooks: explicit and implicit
+
+Every scenario can be rendered two ways from the same facts. With the
+**explicit** rulebook the prompt states the governing rule: the approval
+policy, the repair mapping, the compaction rule, per-tool authority labels, a
+structured map of known values. With the **implicit** rulebook the verifier
+still holds every rule in the facts, but the prompt omits rule text and
+authority labels and describes values in prose. The model has to know AMOS
+governance rather than read it.
+
+The difference matters because of the first measurement: the production base
+model passed 48 of 48 explicit-rulebook holdout scenarios on the first attempt.
+With the rule in the prompt the task is careful transcription, and a 27B model
+transcribes carefully. There is no headroom for an adapter on explicit
+scenarios. Implicit scenarios are where a base model can be measured against a
+trained one, and where the adapter is learning something the prompt cannot
+supply. Pass `--rulebook implicit` to the generator and grader.
+
 ## Grading and harvesting
 
 `swarm/src/curriculumGrading.js` runs a served model on scenarios with one
