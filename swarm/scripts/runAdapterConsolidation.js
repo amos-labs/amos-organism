@@ -126,7 +126,8 @@ if (!readiness.ready) {
       try {
         const resultsDir = resolve(outputDir, runId, "results", job.contractId);
         await mkdir(resultsDir, { recursive: true });
-        aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors"]);
+        // Receipts and metrics only; adapter weights stay in S3 and are served from there.
+        aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors", "--exclude", "adapter/*.safetensors", "--exclude", "dataset/*"]);
         const result = JSON.parse(await readFile(resolve(resultsDir, "stage0-result.json"), "utf8"));
         resultDigest = result.digest ?? null;
         status = result.status?.startsWith("adapter-built") ? "completed" : "failed";
