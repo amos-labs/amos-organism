@@ -1,0 +1,2757 @@
+{
+  "schema": "amos.curriculum-grading-run",
+  "version": 1,
+  "generatedAt": "2026-09-04T09:47:58.740Z",
+  "catalogDigest": "3d70305bf82a0b09aa368a23d62801560a5d5b3acbd27e0b717a8baabd35b74f",
+  "pool": "holdout",
+  "seed": "stage1-holdout-v1",
+  "scenarioCount": 48,
+  "reports": [
+    {
+      "schema": "amos.curriculum-grading-report",
+      "version": 1,
+      "modelId": "amos-qwen38-27b-fp8",
+      "controlId": "curriculum-grading-amos-qwen38-27b-fp8",
+      "startedAt": "2026-09-04T09:44:39.595Z",
+      "finishedAt": "2026-09-04T09:47:58.738Z",
+      "protocol": {
+        "verifier": "amos-executable-contract-verifier",
+        "repairAttempts": 1,
+        "maxOutputTokens": 1200,
+        "feedbackIsVerifierFailuresOnly": true,
+        "targetNeverShown": true
+      },
+      "pools": [
+        "holdout"
+      ],
+      "scenarioCount": 48,
+      "aborted": false,
+      "passRate": 1,
+      "firstAttemptPassRate": 1,
+      "recoveryRate": 0,
+      "meanPassedCheckRate": 1,
+      "meanCalls": 1,
+      "perFamily": {
+        "choose-smallest-sufficient-tool-set": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "compact-context-without-losing-governed-state": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "distinguish-proposed-state-from-host-recorded-state": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "emit-valid-typed-tool-arguments": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "integrate-specialists-into-verifiable-result": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "produce-contract-valid-artifacts": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "recover-without-replaying-completed-actions": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        },
+        "request-approval-only-at-real-authority-boundaries": {
+          "scenarios": 6,
+          "passed": 6,
+          "firstAttemptPassed": 6,
+          "recovered": 0,
+          "passRate": 1
+        }
+      },
+      "runs": [
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00001",
+          "scenarioDigest": "9cc33cde7afb2d5e616b6ece79916d531a36aba10ba3946e6d0fe715f1a5799e",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_task_inbox\"}, {\"step\": 2, \"tool\": \"list_automation_runs\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00001",
+                "scenarioDigest": "9cc33cde7afb2d5e616b6ece79916d531a36aba10ba3946e6d0fe715f1a5799e",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "5c4172fb3bcba5e2b8141a3622450791aa996461642e122ebf1b2b53b30f2d3b",
+                "digest": "bd676162f5c55e3db882d72b9920c26fc136c62439bd5b0bcd1d4cb7c4d31dea"
+              },
+              "outputTokens": 194
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00002",
+          "scenarioDigest": "94508352b7bb3f885a5ed797854f5c2e8f246291a06c9898ad5d8b31a2fd857a",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_automation_runs\"}, {\"step\": 2, \"tool\": \"cancel_mission\"}, {\"step\": 3, \"tool\": \"list_briefing_templates\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00002",
+                "scenarioDigest": "94508352b7bb3f885a5ed797854f5c2e8f246291a06c9898ad5d8b31a2fd857a",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "8d1af55fca7cff585dd4c1f874c33c6c7456b7c3d13a18e5d9cac4688ab45db6",
+                "digest": "cf57d5adddebba74b8d93ebd4a77f37ee2f8f3ee4893be20d9b467f1d2e93dbc"
+              },
+              "outputTokens": 270
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00003",
+          "scenarioDigest": "a9bd62d8bb327985ac03453594e510abbb6bdd2ab8919bd05296ab5980cfded1",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_mission_templates\"}, {\"step\": 2, \"tool\": \"list_projects\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00003",
+                "scenarioDigest": "a9bd62d8bb327985ac03453594e510abbb6bdd2ab8919bd05296ab5980cfded1",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "eac31e34e1f288e6bf59775e83a0c62f36e3ae1561a43c557b00dd22ec2697b4",
+                "digest": "f3b34eca65ca288c2d6feef73d11968ce03ad829fb65b096161831e8db951ae2"
+              },
+              "outputTokens": 166
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00004",
+          "scenarioDigest": "9064141c8663ad83eb2e2d176aebc4826c26c2f2ea4c6cccfb1fcd3b573dd1df",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_briefings\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00004",
+                "scenarioDigest": "9064141c8663ad83eb2e2d176aebc4826c26c2f2ea4c6cccfb1fcd3b573dd1df",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "c347e5acf46195d44873c2f174e4b3a712ff0c20dbecd90a840aec3df146f00c",
+                "digest": "a03b7293514ac9089cc7c1996b3deb71e7f902671abc24fcf3bcb378b9eeaa4c"
+              },
+              "outputTokens": 114
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00005",
+          "scenarioDigest": "b3905e9c1725090f9f90d19073e0af0bb7107d62475a71995ce2adc6ba552d60",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_goal_capabilities\"}, {\"step\": 2, \"tool\": \"list_briefing_templates\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00005",
+                "scenarioDigest": "b3905e9c1725090f9f90d19073e0af0bb7107d62475a71995ce2adc6ba552d60",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "07165f1f499d363fd3ae4099402242ba853d39ffddd2dd78e0155c518d94569d",
+                "digest": "d1858c4e8d383b97b84d070bf724c039f9ce41dda2fa810953ed0f2d3946d30d"
+              },
+              "outputTokens": 221
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-01-00006",
+          "scenarioDigest": "b0b4e05abcd10953886e5edd6048de0e065997413952d7a111b6ce605d4718a0",
+          "family": "choose-smallest-sufficient-tool-set",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"calls\": [{\"step\": 1, \"tool\": \"list_goal_capabilities\"}, {\"step\": 2, \"tool\": \"list_goals\"}, {\"step\": 3, \"tool\": \"list_briefing_templates\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-01-00006",
+                "scenarioDigest": "b0b4e05abcd10953886e5edd6048de0e065997413952d7a111b6ce605d4718a0",
+                "family": "choose-smallest-sufficient-tool-set",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "calls-is-array",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "every-step-mapped",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-extra-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-unavailable-tools",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "read-only-respected",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "22f1234d0b41e715ed7f44e45b8e664883b46871aaf1d8b2babc777fbc8b3c81",
+                "digest": "ab8110b4b723e18ec52b3dd11f367c66242893235ce145824812ae467ab558d3"
+              },
+              "outputTokens": 321
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00001",
+          "scenarioDigest": "7b63f0b8d5c4abaa17f5b352ed9d21773c925b23824d89349f4ba650fb7eb969",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"list_task_inbox\",\"arguments\":{\"project_id\":\"dcc0b658-4078-4a2a-afec-4d07bca0daf4\",\"limit_v2\":79}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00001",
+                "scenarioDigest": "7b63f0b8d5c4abaa17f5b352ed9d21773c925b23824d89349f4ba650fb7eb969",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "8df5764c7e6c2a506695ea83e8f5512324bbcfb0a4b9d0ff8be5fe768c615a80",
+                "digest": "f0ffb1c098407d736fbbd22b575f95f3618cb463af7b00911faebf4e0dd33d45"
+              },
+              "outputTokens": 349
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00002",
+          "scenarioDigest": "ade4e5c8e6691027bfa8e13037a8112b40603b81b7521d32dfc4c371749be73e",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"list_briefings\",\"arguments\":{\"include_archived_v2\":true}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00002",
+                "scenarioDigest": "ade4e5c8e6691027bfa8e13037a8112b40603b81b7521d32dfc4c371749be73e",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "17491d785f04cfb228a04c63b4c4b2b276d6a12aa0db6b11f292cc4dbfa11bfd",
+                "digest": "2dae59b8a1be1a604bbc9035f8cb35fa663883d8927940f26fb4d2bc14600ff9"
+              },
+              "outputTokens": 143
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00003",
+          "scenarioDigest": "173e3b27e58a4f6f4c39827e8b8ac6fd4e33dbf7705626cd0d48f513dcc34f81",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"list_briefings\",\"arguments\":{\"include_archived_v2\":false}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00003",
+                "scenarioDigest": "173e3b27e58a4f6f4c39827e8b8ac6fd4e33dbf7705626cd0d48f513dcc34f81",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "36f89407b8812432dbd866a9898a27b1e81f9d7608963afdab2d92bb5ab1ae64",
+                "digest": "7ca1a79e22d069aec2b939e2f8dd9a1afbe05b5c0612a6539416b89e9542eb18"
+              },
+              "outputTokens": 142
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00004",
+          "scenarioDigest": "501b20f1e7ea202898524c074b69f8f849cb8858b0783ef3db81d0bcb2677052",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"learning_approve_course_build\",\"arguments\":{\"draft_id\":73,\"tenant_id_v2\":\"marble-beacon-335\"}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00004",
+                "scenarioDigest": "501b20f1e7ea202898524c074b69f8f849cb8858b0783ef3db81d0bcb2677052",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "27a45e5a75865d1d5ad3ab5d31c03b2cc48b12daec4abbcb2f516ed6a0ee5c26",
+                "digest": "a9690f9777b232c2ed24e4e8fe694558766abe1a4ea437cf6394a522c65a8151"
+              },
+              "outputTokens": 263
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00005",
+          "scenarioDigest": "b5d5094e8914c5d40a4da3ef5b039326e4ca13029337c51a78f0601a65c64fe9",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"learning_assign_course\",\"arguments\":{\"course_id\":52,\"emails\":[\"granite-granite-566\"],\"course_schedule_id\":70,\"idempotency_key\":\"ember-beacon-777\",\"tenant_id_v2\":\"meridian-fjord-489\"}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00005",
+                "scenarioDigest": "b5d5094e8914c5d40a4da3ef5b039326e4ca13029337c51a78f0601a65c64fe9",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "55f2d09d97ddc6a9f7363e62ad2a5958ce756c589c22e42aa49dc3d4b0d0c3d1",
+                "digest": "f169a5323432dcbdfda741ae78fe880e5969892725a67c528d5c386bf6335525"
+              },
+              "outputTokens": 410
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-02-00006",
+          "scenarioDigest": "03d2505ced5516267db190d8e99be9fedec0c847abf3513f42d80ec2e48d3396",
+          "family": "emit-valid-typed-tool-arguments",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"tool\":\"list_task_inbox\",\"arguments\":{\"project_id\":\"a82f9e69-f7e8-4b58-9e42-06a5c05e645d\",\"limit_v2\":46}}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-02-00006",
+                "scenarioDigest": "03d2505ced5516267db190d8e99be9fedec0c847abf3513f42d80ec2e48d3396",
+                "family": "emit-valid-typed-tool-arguments",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "tool-name-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "arguments-satisfy-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "known-values-carried",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-invented-fields",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "a95e60765c8a604306aabb4f164f6076f7e0bd67318cbbd89cbbd54da74d680f",
+                "digest": "368d9f595771425e9467d85afb43febb8c013e53f427090e1c8e2c86559f418e"
+              },
+              "outputTokens": 334
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00001",
+          "scenarioDigest": "7732f77e83f5d5859800f23c563f5921a83a2540a5f473c05b81d5b3d1f4fc37",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-helix-1\",\n  \"title\": \"Kestrel Delta Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Kestrel Delta Plan\"\n    },\n    {\n      \"type\": \"heading\",\n      \"level\": 3,\n      \"text\": \"Nimbus section\"\n    },\n    {\n      \"type\": \"list\",\n      \"items\": [\n        \"fjord 10\",\n        \"helix 36\",\n        \"cobalt 4\",\n        \"lumen 1\"\n      ]\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00001",
+                "scenarioDigest": "7732f77e83f5d5859800f23c563f5921a83a2540a5f473c05b81d5b3d1f4fc37",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "d9af502b3efb44e4e015f857e19e0e73a8ba36fe227a70e618abc559d3912afd",
+                "digest": "d4cd21b5f115f7ab1afec99404c9a3852a4010f0b6205d32e053314224cc3d46"
+              },
+              "outputTokens": 719
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00002",
+          "scenarioDigest": "e2fa31d0bb21404a40611f3ed9f59e714fbd357b999cd76b1b8ce10d85dbe765",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-harbor-2\",\n  \"title\": \"Cobalt Juniper Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Cobalt Juniper Plan\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"This plan establishes the operational framework for cobalt meridian 76, defining scope, milestones, and accountability across all participating teams.\"\n    },\n    {\n      \"type\": \"table\",\n      \"columns\": [\"owner\", \"actual\"],\n      \"rows\": [\n        [\"cobalt meridian 76\", \"on-track\"]\n      ]\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00002",
+                "scenarioDigest": "e2fa31d0bb21404a40611f3ed9f59e714fbd357b999cd76b1b8ce10d85dbe765",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "1699f4494792ff3102d5235244d80ccf8e5cab236d2f2299b467388716ce991b",
+                "digest": "eda29e658e3c8d09bae4685070e216533b275ceb0ce422f1aa038485a5913af2"
+              },
+              "outputTokens": 643
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00003",
+          "scenarioDigest": "ae75df7aebeea0d0b66594d92251f7ef059ab463309fe1512a5f11c526b97b2d",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-harbor-3\",\n  \"title\": \"Orchid Meridian Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Orchid Meridian Plan\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"The operational framework centers on helix harbor 55 as the primary coordination node for all downstream routing decisions.\"\n    },\n    {\n      \"type\": \"table\",\n      \"columns\": [\"region\", \"target\"],\n      \"rows\": [\n        [\"meridian-north\", \"atlas-grid-7\"]\n      ]\n    },\n    {\n      \"type\": \"metric\",\n      \"label\": \"Atlas rate\",\n      \"value\": 37.5,\n      \"unit\": \"count\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"Final validation is anchored to pioneer beacon 4, which confirms end-to-end signal integrity across the meridian corridor.\"\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00003",
+                "scenarioDigest": "ae75df7aebeea0d0b66594d92251f7ef059ab463309fe1512a5f11c526b97b2d",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "34ef200e94dc564b1f8be7c6c5214aaee1187cd2b03decd4fcda202395214b8b",
+                "digest": "6946d587a270913602ff9abebda3a253fa49f195db25b8a79a53d1777bbba256"
+              },
+              "outputTokens": 752
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00004",
+          "scenarioDigest": "b8107fea1249e6d294fbc190d9b803629e7a052adb197122377263aab7891332",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-lumen-4\",\n  \"title\": \"Kestrel Ember Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Kestrel Ember Plan\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"The orchid atlas 53 catalog documents the primary botanical references for this initiative, establishing the baseline taxonomy and field observations that inform all downstream planning.\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"Field team ember pioneer 92 completed the initial survey transect and confirmed the viability of the proposed deployment zones for the next phase.\"\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00004",
+                "scenarioDigest": "b8107fea1249e6d294fbc190d9b803629e7a052adb197122377263aab7891332",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "5ea84ed1bf3615e9ee1091a9ad8af010ebc12eee687af0729099a1ea170025a1",
+                "digest": "bc57a45ed11a5f6374e0cdcf69272c1ffd4f7c9a8e2861e16bfd54676e3292a3"
+              },
+              "outputTokens": 1077
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00005",
+          "scenarioDigest": "6eb0de196039e35e89327350016bd9aa73ce6bf100475d21c8fd0fdb85571c91",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-cobalt-5\",\n  \"title\": \"Ember Indigo Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Ember Indigo Plan\"\n    },\n    {\n      \"type\": \"metric\",\n      \"label\": \"Juniper rate\",\n      \"value\": 21.75,\n      \"unit\": \"usd\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"The meridian helix 50 alignment establishes the primary structural axis for the Ember Indigo Plan, ensuring consistent throughput across all downstream channels.\"\n    },\n    {\n      \"type\": \"paragraph\",\n      \"text\": \"A secondary calibration at harbor marble 89 provides the reference baseline for variance tracking and quarterly reconciliation of the Juniper rate.\"\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00005",
+                "scenarioDigest": "6eb0de196039e35e89327350016bd9aa73ce6bf100475d21c8fd0fdb85571c91",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "8b6298160fc12c96ee0752593fa37ac3f044ff1abaae768e69f14512cd4b0984",
+                "digest": "f8131268345eb8db8d5ca9e996bed89fdf07462b5936f7e0d6e717b5ab9e9a5c"
+              },
+              "outputTokens": 748
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-03-00006",
+          "scenarioDigest": "48d7386f1bf2da6baaee688b00f711b6306081a1893956a48aaa7b4cb5cdad42",
+          "family": "produce-contract-valid-artifacts",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\n  \"type\": \"DocumentSpec\",\n  \"id\": \"doc-quartz-6\",\n  \"title\": \"Helix Granite Plan\",\n  \"blocks\": [\n    {\n      \"type\": \"heading\",\n      \"level\": 1,\n      \"text\": \"Helix Granite Plan\"\n    },\n    {\n      \"type\": \"metric\",\n      \"label\": \"Kestrel rate\",\n      \"value\": 96.5,\n      \"unit\": \"percent\"\n    },\n    {\n      \"type\": \"metric\",\n      \"label\": \"Indigo rate\",\n      \"value\": 89.75,\n      \"unit\": \"percent\"\n    }\n  ]\n}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-03-00006",
+                "scenarioDigest": "48d7386f1bf2da6baaee688b00f711b6306081a1893956a48aaa7b4cb5cdad42",
+                "family": "produce-contract-valid-artifacts",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "artifact-satisfies-schema",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "identity-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "outline-followed",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "4456808e863b725ba2cc540900f81ca05d328e7c0a04481d1928b2d0a784872a",
+                "digest": "0efc9547dc53e4dec5c9cc086de01546c182b586fe55569067d0e9518250477e"
+              },
+              "outputTokens": 686
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00001",
+          "scenarioDigest": "e29f3d2144b6451ff9f8955e1c9dbf972eda38949240e8c13c136f7700447bc0",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-1-03\",\"repair\":\"retry-with-backoff\",\"maxRetries\":1,\"preserveReceipts\":[\"receipt-orchid-1-1\",\"receipt-fjord-1-2\",\"receipt-quartz-1-5\"],\"doNotReplay\":[\"action-1-01\",\"action-1-02\",\"action-1-05\"],\"pendingUnchanged\":[\"action-1-04\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00001",
+                "scenarioDigest": "e29f3d2144b6451ff9f8955e1c9dbf972eda38949240e8c13c136f7700447bc0",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "748b20a9016600cd1f00bcac8169940e70b4ea7305919a82f848f546e27274ec",
+                "digest": "f0d1cdb084ab1408fb32c46f8f473dc4a53377655ae6d7c4c789a7f2a4601ea1"
+              },
+              "outputTokens": 505
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00002",
+          "scenarioDigest": "6b7668f09b599e979f31f36a34a1f516696e84e0177fdfe3d854e38970c51791",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-2-03\",\"repair\":\"correct-arguments\",\"maxRetries\":1,\"preserveReceipts\":[\"receipt-quartz-2-1\",\"receipt-quartz-2-2\"],\"doNotReplay\":[\"action-2-01\",\"action-2-02\"],\"pendingUnchanged\":[]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00002",
+                "scenarioDigest": "6b7668f09b599e979f31f36a34a1f516696e84e0177fdfe3d854e38970c51791",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "286982641b68da7ee87353e5f330866a048f5d6142425f45f3fcddc718acf127",
+                "digest": "1ce2a84c7a74a180b254ec5f54729a38632e3b163af5ba0b44e24eeabdc3731a"
+              },
+              "outputTokens": 426
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00003",
+          "scenarioDigest": "4e03a313f3cc8f6de0ab75993ccb9795a6ba8e8ad44c6110e78dd76cf1fe630d",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-3-02\",\"repair\":\"correct-arguments\",\"maxRetries\":2,\"preserveReceipts\":[\"receipt-orchid-3-1\",\"receipt-ember-3-3\",\"receipt-lumen-3-4\",\"receipt-quartz-3-5\",\"receipt-lumen-3-6\"],\"doNotReplay\":[\"action-3-01\",\"action-3-03\",\"action-3-04\",\"action-3-05\",\"action-3-06\"],\"pendingUnchanged\":[]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00003",
+                "scenarioDigest": "4e03a313f3cc8f6de0ab75993ccb9795a6ba8e8ad44c6110e78dd76cf1fe630d",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "fb5dcdab6585e8338b7dbc951c3f70101e5451629d1665546291222e277b5bc2",
+                "digest": "c4d9b4ac9204d19a2ec7f1887c9ecf4305e457403d213d2c0a784513af3cedb9"
+              },
+              "outputTokens": 740
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00004",
+          "scenarioDigest": "3a386ba55afbb973f73d3d1dc8cddaed253f0768dad3586009fa32c1f07223cb",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-4-03\",\"repair\":\"refetch-schema\",\"maxRetries\":2,\"preserveReceipts\":[\"receipt-lumen-4-1\",\"receipt-fjord-4-2\"],\"doNotReplay\":[\"action-4-01\",\"action-4-02\"],\"pendingUnchanged\":[\"action-4-04\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00004",
+                "scenarioDigest": "3a386ba55afbb973f73d3d1dc8cddaed253f0768dad3586009fa32c1f07223cb",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "2a4e5b40b5e0db6e1444d8412673508b1455d9167289362a4d54bbf503b1e859",
+                "digest": "b76ee1a75b10d15a42c0683ef078743321da20135d4f3df5c4eb081f44f5d924"
+              },
+              "outputTokens": 455
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00005",
+          "scenarioDigest": "1959ede551b99a114fd7115da252b8c68624ba56f43c9daac6b68ac083e93303",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-5-06\",\"repair\":\"refetch-schema\",\"maxRetries\":2,\"preserveReceipts\":[\"receipt-quartz-5-1\",\"receipt-pioneer-5-2\",\"receipt-meridian-5-3\",\"receipt-granite-5-4\",\"receipt-kestrel-5-5\"],\"doNotReplay\":[\"action-5-01\",\"action-5-02\",\"action-5-03\",\"action-5-04\",\"action-5-05\"],\"pendingUnchanged\":[]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00005",
+                "scenarioDigest": "1959ede551b99a114fd7115da252b8c68624ba56f43c9daac6b68ac083e93303",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "0a4fb38fc1e28433ea33a777b6af06280d5cf45270c7cb5e6a379a40cccf69ff",
+                "digest": "c2de5d77e49cd756ae791c6b78c8112e28b99edab29d1977c5b27a472fa87dc7"
+              },
+              "outputTokens": 656
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-04-00006",
+          "scenarioDigest": "202cf60d4e40f15d2278c70e6dbb11a1b4aba66de220b4b74101f484c441791a",
+          "family": "recover-without-replaying-completed-actions",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"retry-failed-action\",\"retryActionId\":\"action-6-02\",\"repair\":\"refetch-schema\",\"maxRetries\":3,\"preserveReceipts\":[\"receipt-nimbus-6-1\"],\"doNotReplay\":[\"action-6-01\"],\"pendingUnchanged\":[\"action-6-03\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-04-00006",
+                "scenarioDigest": "202cf60d4e40f15d2278c70e6dbb11a1b4aba66de220b4b74101f484c441791a",
+                "family": "recover-without-replaying-completed-actions",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 7,
+                "passedChecks": 7,
+                "checks": [
+                  {
+                    "id": "transition-is-retry",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "retries-only-failed-action",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "repair-matches-failure",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "within-host-bound",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "receipts-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "completed-not-replayed",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "pending-untouched",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "b91341b72d9dba45f96bebb60301bc7aacd19a644254580a39347d402d6573d1",
+                "digest": "ffd8cfff43946312389dbb2ced90136b805d412bba5e0ab5e2668ca376e3d869"
+              },
+              "outputTokens": 351
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00001",
+          "scenarioDigest": "5bf57c76af76ba89489a8dec986ab3a3df903cd9814fc90f5bdbbd0b8f405da8",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\": \"execute\", \"tool\": \"list_automation_runs\", \"execute\": true, \"approvalRequested\": false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00001",
+                "scenarioDigest": "5bf57c76af76ba89489a8dec986ab3a3df903cd9814fc90f5bdbbd0b8f405da8",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "1501d74279e4a83ebf169a1841e2887551473e62ccdf27bc4ae4e2e5b1035435",
+                "digest": "ff82def46e42ed5b040928ff413366e7478740e3c042fc58cf05cce654d3fb71"
+              },
+              "outputTokens": 233
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00002",
+          "scenarioDigest": "ea30ae54c4666e3dd62b089d8a3f331842ebf5235575065977133d19e52808f1",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"request-approval\",\"tool\":\"cancel_mission\",\"authority\":\"approval:cancel_mission\",\"execute\":false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00002",
+                "scenarioDigest": "ea30ae54c4666e3dd62b089d8a3f331842ebf5235575065977133d19e52808f1",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "1114651d15947245f8029d14c950c97a24c10e1cfe5c0de766b4ed0688b82d89",
+                "digest": "2ed63c3b2debb5bde53c875f3dcc8ebb32cf207be2573b64518106c906ca564a"
+              },
+              "outputTokens": 235
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00003",
+          "scenarioDigest": "43b7bd8b41359ac70f66121adbea8ab76143361ffb6a917899d658a87bab6df4",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\": \"execute\", \"tool\": \"list_projects\", \"execute\": true, \"approvalRequested\": false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00003",
+                "scenarioDigest": "43b7bd8b41359ac70f66121adbea8ab76143361ffb6a917899d658a87bab6df4",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "c4a1eeac276f431171cd6a43ba48872e204a56fc136ce562e675bea8e876c6f0",
+                "digest": "35f38a26dca153bb09e2188502ecaacc939fc91034e6a09aca8a3df501e8a2e5"
+              },
+              "outputTokens": 193
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00004",
+          "scenarioDigest": "efba825df5958ea50198b15efbf7f1df18fb107e9aa9a3335dee9c2afdfc6e18",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"request-approval\",\"tool\":\"learning_approve_course_build\",\"authority\":\"write:nuvola_learning\",\"execute\":false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00004",
+                "scenarioDigest": "efba825df5958ea50198b15efbf7f1df18fb107e9aa9a3335dee9c2afdfc6e18",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "33d9417492bd8d588a39d1f71f870c0a14c52ba5ad25c594dc8ef294817c096e",
+                "digest": "04d2747ec72824e11876ba8d6749e08bba0208253c5e5e7fcc41d715aae4384c"
+              },
+              "outputTokens": 213
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00005",
+          "scenarioDigest": "0bcd120652dc97e13a77fc01b92581d923f5b3a93dc00930248b972702a79c4a",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"execute\",\"tool\":\"learning_course\",\"execute\":true,\"approvalRequested\":false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00005",
+                "scenarioDigest": "0bcd120652dc97e13a77fc01b92581d923f5b3a93dc00930248b972702a79c4a",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "3af908d8f8b390c78a36ed6a26c5ad0fd2a1767947d82911eedd7ac5c9d98c60",
+                "digest": "4964cac279c5034561e64f0886c7267610fa9b22ff31814124e665548e61d501"
+              },
+              "outputTokens": 226
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-05-00006",
+          "scenarioDigest": "1601470cc8995f1bb2304c68cc2dcc8d04e9496ec2b8a7eb867a387ba7631ef0",
+          "family": "request-approval-only-at-real-authority-boundaries",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"request-approval\",\"tool\":\"report_task_run\",\"authority\":\"write:projects\",\"execute\":false}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-05-00006",
+                "scenarioDigest": "1601470cc8995f1bb2304c68cc2dcc8d04e9496ec2b8a7eb867a387ba7631ef0",
+                "family": "request-approval-only-at-real-authority-boundaries",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 4,
+                "passedChecks": 4,
+                "checks": [
+                  {
+                    "id": "decision-matches-policy",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "tool-matches",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "authority-named-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "no-execution-when-requesting",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "d155ef9213ca4590b5c67885817782f4a15712f37740da3522e43b2177a98e67",
+                "digest": "e9ff92900152307214b2ac80eb1eb1a8521403154a3b8d35a9b5c1c6dc41c83a"
+              },
+              "outputTokens": 199
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00001",
+          "scenarioDigest": "e56b4506e86854bc94a612c5fda430e87949af6a219246cd3dba56149ffc28f5",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-1-01\",\"receipt-1-07\",\"tool-result-1-08\",\"tool-result-1-09\"],\"summarize\":[\"tool-result-1-02\",\"narrative-1-03\",\"narrative-1-04\",\"tool-result-1-05\",\"narrative-1-06\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00001",
+                "scenarioDigest": "e56b4506e86854bc94a612c5fda430e87949af6a219246cd3dba56149ffc28f5",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "9fe0b1955a7f0ecda0e7555dce0ab45d8b74b4012266a456b78c7adca08314d4",
+                "digest": "efb986f26a6f307d9be149748f5b009614c8b0d85d6b51e4053c1f9a3e16adfa"
+              },
+              "outputTokens": 688
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00002",
+          "scenarioDigest": "b2a67730b8f65c702fb48a14538ed9c2d2b060b19200b0616ba7466d132c6ac3",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-2-01\",\"receipt-2-03\",\"approval-2-04\",\"approval-2-05\",\"tool-result-2-06\",\"receipt-2-07\",\"tool-result-2-09\"],\"summarize\":[\"narrative-2-02\",\"narrative-2-08\",\"narrative-2-10\",\"narrative-2-11\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00002",
+                "scenarioDigest": "b2a67730b8f65c702fb48a14538ed9c2d2b060b19200b0616ba7466d132c6ac3",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "7dd019ec450c9988fa0bacc511957f8d4b1b86ade441738b87482e640e2332d6",
+                "digest": "9f224cd1b398aaabf65432f937b67ceee40a41f63dc4b0d326735c9e286335fe"
+              },
+              "outputTokens": 824
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00003",
+          "scenarioDigest": "525e3f85874c0fbe7275f52ad661864f297b806da68651cee6bfaa5cb5aceadc",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-3-01\",\"tool-result-3-03\",\"receipt-3-05\",\"tool-result-3-06\",\"receipt-3-07\",\"tool-result-3-08\",\"receipt-3-12\"],\"summarize\":[\"narrative-3-02\",\"narrative-3-04\",\"narrative-3-09\",\"narrative-3-10\",\"narrative-3-11\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00003",
+                "scenarioDigest": "525e3f85874c0fbe7275f52ad661864f297b806da68651cee6bfaa5cb5aceadc",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "35bd6381d5804241d408c651ad6aa636f2116094c44eb2ba71c240571b9b8ca5",
+                "digest": "0fd1fed7a1b411d3fde11632c35c1c3489d23de1b94f4e44f34b40b47e3ebb9b"
+              },
+              "outputTokens": 878
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00004",
+          "scenarioDigest": "793241ac7d5349023790b0b401ad496d30647538b7cc198df640a60418f636c0",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-4-01\",\"tool-result-4-03\",\"approval-4-04\",\"receipt-4-05\",\"receipt-4-06\"],\"summarize\":[\"narrative-4-02\",\"narrative-4-07\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00004",
+                "scenarioDigest": "793241ac7d5349023790b0b401ad496d30647538b7cc198df640a60418f636c0",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "d6f7951c7a5a4fd6be7b3b50d38e1ac706f9698eb5edb0bed3a3f5a0b4931f7e",
+                "digest": "69c81f348dc0b953558fc940f32a1092f9a001f6a8cce1b1fdffcee6735f981d"
+              },
+              "outputTokens": 448
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00005",
+          "scenarioDigest": "8ca48e657ae5ee961a11bc19df10d54ce494290ad6512236dfbf41776842642f",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-5-01\",\"approval-5-03\",\"receipt-5-04\",\"approval-5-05\",\"approval-5-06\",\"tool-result-5-08\",\"receipt-5-09\",\"approval-5-10\"],\"summarize\":[\"narrative-5-02\",\"narrative-5-07\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00005",
+                "scenarioDigest": "8ca48e657ae5ee961a11bc19df10d54ce494290ad6512236dfbf41776842642f",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "bae6de21b4aea54e11934ffe64f511bedd0b492df9d67d391bcd876545df073d",
+                "digest": "1e89f3ae817c35981bab815b5c14881ebbc63fac6ae67865d6fe196886e3d31f"
+              },
+              "outputTokens": 734
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-06-00006",
+          "scenarioDigest": "b038126255103141e4df7f4893b2a36853f492bf66c13a9541f35df4e826327b",
+          "family": "compact-context-without-losing-governed-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"transition\":\"compact-context\",\"preserveExact\":[\"goal-6-01\",\"receipt-6-05\",\"approval-6-06\",\"tool-result-6-07\",\"approval-6-08\",\"approval-6-09\"],\"summarize\":[\"narrative-6-02\",\"narrative-6-03\",\"narrative-6-04\"]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-06-00006",
+                "scenarioDigest": "b038126255103141e4df7f4893b2a36853f492bf66c13a9541f35df4e826327b",
+                "family": "compact-context-without-losing-governed-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 5,
+                "passedChecks": 5,
+                "checks": [
+                  {
+                    "id": "transition-is-compaction",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "governed-state-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "recent-results-preserved",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "older-material-summarized",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "partition-is-complete",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "8979e9ef47d79fdaa2aa27f0c17708ff3550cb7a099cc2c6598ada39dcd1b033",
+                "digest": "ed74c9762d586e45f814c9dbeaf2ae1db9a40c0d18a460e03c0fe8765adfd38c"
+              },
+              "outputTokens": 528
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00001",
+          "scenarioDigest": "61c9d35934f9438c626467a8a7cf47d688c34247233e1eeefff03d14b2b1a06b",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-1-01\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-1-02\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-1-03\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-1-04\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-1-4\"},{\"proposalId\":\"proposal-1-05\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-1-5\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00001",
+                "scenarioDigest": "61c9d35934f9438c626467a8a7cf47d688c34247233e1eeefff03d14b2b1a06b",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "41205515761eeae3fa7a98d0ac7dfaace19c101013e3bbb46d89dad6de575406",
+                "digest": "7bdd64a27c8466f7b9d4b25a2c68b26d74863fa09cbd3cd9ac9f941c1be6840c"
+              },
+              "outputTokens": 728
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00002",
+          "scenarioDigest": "e03485c81e3c67b7bea238c0927b8b03c489161aa07b08017f5758325ee3d4f3",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-2-01\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-2-1\"},{\"proposalId\":\"proposal-2-02\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-2-03\",\"authoritativeStatus\":\"proposed\",\"receipt\":null}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00002",
+                "scenarioDigest": "e03485c81e3c67b7bea238c0927b8b03c489161aa07b08017f5758325ee3d4f3",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "6d899a8555c2db414d5c9ebf70f07fd94575cb8e6d6d030319d6cac9745bf26b",
+                "digest": "e9dfa8d70a0a26b2a1d06642ed9804bcd092352f03b85e101f09ff7f58742100"
+              },
+              "outputTokens": 503
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00003",
+          "scenarioDigest": "4359d52bcefb0995a47edd67d36fbec84bce5ecaf26820caa0d0f59e2d37662e",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-3-01\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-3-1\"},{\"proposalId\":\"proposal-3-02\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-3-2\"},{\"proposalId\":\"proposal-3-03\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-3-3\"},{\"proposalId\":\"proposal-3-04\",\"authoritativeStatus\":\"proposed\",\"receipt\":null}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00003",
+                "scenarioDigest": "4359d52bcefb0995a47edd67d36fbec84bce5ecaf26820caa0d0f59e2d37662e",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "e5facc1aaf2de3150132061b76f76c187417189a96d0b545fcadbcfff3f8bdb5",
+                "digest": "0c006bcda0fe7914bfed0b9d0678eb4f00ac0c29b010dc3451b8dbd198e391a1"
+              },
+              "outputTokens": 610
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00004",
+          "scenarioDigest": "d8a281b8e96b95044905250b464fa546f069913118273a2267b223e0f9d05a33",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-4-01\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-4-02\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-4-2\"},{\"proposalId\":\"proposal-4-03\",\"authoritativeStatus\":\"superseded\",\"receipt\":\"host-receipt-4-3\"},{\"proposalId\":\"proposal-4-04\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-4-4\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00004",
+                "scenarioDigest": "d8a281b8e96b95044905250b464fa546f069913118273a2267b223e0f9d05a33",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "02b245623b467c9cb7777f9c22d5deaa4aa41f767f6acb0b5ef5ce4bd99bb605",
+                "digest": "a79bfb5aabd1733c5af9bf9c28ed2fc65d4a382a612ff6b92b1a089a1e1bfe03"
+              },
+              "outputTokens": 572
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00005",
+          "scenarioDigest": "a0a2c85eb617860b55b82c88c4384bea370a8f34d23a32d3a0436bf536b59f9d",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-5-01\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-5-02\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-5-03\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-5-04\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-5-05\",\"authoritativeStatus\":\"proposed\",\"receipt\":null}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00005",
+                "scenarioDigest": "a0a2c85eb617860b55b82c88c4384bea370a8f34d23a32d3a0436bf536b59f9d",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "28d8ede3e357f3e18af2d1f5128e46ce7c010957012ade1714e835d850d80a9d",
+                "digest": "bad058d6a1151c3ee2a3791fa721a3a9718e1a4129149169173a871db809d07c"
+              },
+              "outputTokens": 570
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-07-00006",
+          "scenarioDigest": "9492aa32c04a7b6069bff22cd24758c0bb11a99976b25938708ade5db3e6e870",
+          "family": "distinguish-proposed-state-from-host-recorded-state",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"proposals\":[{\"proposalId\":\"proposal-6-01\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-6-02\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-6-03\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-6-04\",\"authoritativeStatus\":\"proposed\",\"receipt\":null},{\"proposalId\":\"proposal-6-05\",\"authoritativeStatus\":\"recorded\",\"receipt\":\"host-receipt-6-5\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-07-00006",
+                "scenarioDigest": "9492aa32c04a7b6069bff22cd24758c0bb11a99976b25938708ade5db3e6e870",
+                "family": "distinguish-proposed-state-from-host-recorded-state",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "every-proposal-reported",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "statuses-match-rule",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "only-host-receipts-cited",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "b52739d6ae68ee04c7c67f2dc190da63280e2b86d8a1b1d1747a3c653493a279",
+                "digest": "64c21cf8c9cefcb3a7077f118e6c1c5bf692222d54507d331bf1c7c3289a181c"
+              },
+              "outputTokens": 725
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00001",
+          "scenarioDigest": "df4bcc68ebcd1166428952301f8b9612991235cb8634eff75d36069452cccf50",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"complete\",\"supportedBy\":[\"finding-1-01\",\"finding-1-02\",\"finding-1-03\",\"finding-1-04\"],\"excluded\":[]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00001",
+                "scenarioDigest": "df4bcc68ebcd1166428952301f8b9612991235cb8634eff75d36069452cccf50",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "64b26e33b1da55340306872cb9c7a96fcd93064143b17ad3abd4f0f1ddf41315",
+                "digest": "e351fff5ee15cc7ea8ce9c57350d02d01b8b5a5aa9fb04d0407e97981eb65fbc"
+              },
+              "outputTokens": 252
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00002",
+          "scenarioDigest": "a213a936cc3a36fe5939813ff82a72490b9f3fb76d1bfa340f86fe7c3c60ad7f",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"partial\",\"supportedBy\":[\"finding-2-01\"],\"excluded\":[{\"ref\":\"finding-2-02\",\"reason\":\"disputed\"},{\"ref\":\"finding-2-03\",\"reason\":\"unverified\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00002",
+                "scenarioDigest": "a213a936cc3a36fe5939813ff82a72490b9f3fb76d1bfa340f86fe7c3c60ad7f",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "0171a74c6c07e3e4ebaa487c6ed280c637045006214d7d1cd501fc0f08552f69",
+                "digest": "07d56deed16e0b932a63a56275155a7d9a77de66d3535a90d922d3d1f0e1a82f"
+              },
+              "outputTokens": 191
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00003",
+          "scenarioDigest": "8ae88787c7b92ffa311d8792f15f95571c2f1a381eb911827393079f6c26977c",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"partial\",\"supportedBy\":[\"finding-3-03\",\"finding-3-04\",\"finding-3-05\",\"finding-3-06\"],\"excluded\":[{\"ref\":\"finding-3-01\",\"reason\":\"disputed\"},{\"ref\":\"finding-3-02\",\"reason\":\"disputed\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00003",
+                "scenarioDigest": "8ae88787c7b92ffa311d8792f15f95571c2f1a381eb911827393079f6c26977c",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "cbe5e1781aead09392839d28ef8bde67ef347278953d97fc36f96dbda2833d99",
+                "digest": "e298fb4934ec8767692a14a800c0bbc65aee655ff72108c355bf1d56db7a5cad"
+              },
+              "outputTokens": 336
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00004",
+          "scenarioDigest": "5016d6e6ffb5f2693b93ebf5f7ebf2988f3200f6a47dbf0fb90ee46cd1b3e89e",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"partial\",\"supportedBy\":[\"finding-4-01\",\"finding-4-03\"],\"excluded\":[{\"ref\":\"finding-4-02\",\"reason\":\"disputed\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00004",
+                "scenarioDigest": "5016d6e6ffb5f2693b93ebf5f7ebf2988f3200f6a47dbf0fb90ee46cd1b3e89e",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "1ce0c0d433d861104d02811585c3b3fa04aa4f844ef2e496aed1d2bb8e2c7ef2",
+                "digest": "7b132c5e27162cecba87075d512717f405663148701b4659029f9cecd4d8bb29"
+              },
+              "outputTokens": 237
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00005",
+          "scenarioDigest": "f43784d9d9375a56b244ad03e19cabb03e7a2e8b3d67ba16c746ef72e2c40a6e",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"partial\",\"supportedBy\":[\"finding-5-01\",\"finding-5-03\"],\"excluded\":[{\"ref\":\"finding-5-02\",\"reason\":\"unverified\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00005",
+                "scenarioDigest": "f43784d9d9375a56b244ad03e19cabb03e7a2e8b3d67ba16c746ef72e2c40a6e",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "e34d27afc8aeeef4479d71e0238aba2bd14743479e01b5d2c2b680e7b1689a39",
+                "digest": "714784df1f701fa668c5f2442e31e8288f394c8a8c230ca02fa57881b91ed7ff"
+              },
+              "outputTokens": 189
+            }
+          ]
+        },
+        {
+          "scenarioId": "amos-curriculum-holdout-08-00006",
+          "scenarioDigest": "89ebf45a584e3847cd030b044912d353f35409adcf843ef29cb207bceb382723",
+          "family": "integrate-specialists-into-verifiable-result",
+          "pool": "holdout",
+          "passed": true,
+          "firstAttemptPassed": true,
+          "recovered": false,
+          "calls": 1,
+          "passedCheckRate": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "answerText": "{\"status\":\"partial\",\"supportedBy\":[\"finding-6-01\",\"finding-6-03\",\"finding-6-04\"],\"excluded\":[{\"ref\":\"finding-6-02\",\"reason\":\"disputed\"}]}",
+              "verification": {
+                "schema": "amos.curriculum-verification",
+                "version": 1,
+                "scenarioId": "amos-curriculum-holdout-08-00006",
+                "scenarioDigest": "89ebf45a584e3847cd030b044912d353f35409adcf843ef29cb207bceb382723",
+                "family": "integrate-specialists-into-verifiable-result",
+                "evaluator": "amos-executable-contract-verifier",
+                "passed": true,
+                "checkCount": 3,
+                "passedChecks": 3,
+                "checks": [
+                  {
+                    "id": "support-is-verified-only",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "exclusions-correct",
+                    "passed": true,
+                    "detail": ""
+                  },
+                  {
+                    "id": "status-matches",
+                    "passed": true,
+                    "detail": ""
+                  }
+                ],
+                "failures": [],
+                "answerDigest": "8f596b710e790279de98857cde230369a5e3e63b0b88c26bf1b9447ef49c8e1e",
+                "digest": "d15ff4f95e2602a4c40a7853630d60ca9b4d51941ce9e1a430e7a2927ebf76e9"
+              },
+              "outputTokens": 257
+            }
+          ]
+        }
+      ],
+      "interpretation": {
+        "verifiedEvaluations": 48,
+        "holdoutEvidence": true,
+        "qualityClaimAllowed": false,
+        "promotionAllowed": false
+      },
+      "digest": "14b2a8f1d88a90cabff3b9e9e1a2bc51da429103468a0efc5ab623389c82f6d1"
+    }
+  ],
+  "comparison": null,
+  "harvests": []
+}
