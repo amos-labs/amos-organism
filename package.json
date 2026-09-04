@@ -48,7 +48,9 @@
     "research:swarm:summarize-cycle": "node swarm/scripts/summarizeRecursiveOrganismCycle.js",
     "research:swarm:phase-probes": "node swarm/scripts/runSwarmOrganismQwenPhaseProbes.js",
     "research:swarm:blind": "node swarm/scripts/prepareSwarmBlindComparison.js",
-    "research:swarm:gateway": "node swarm/scripts/runSwarmTurnGateway.js"
+    "research:swarm:gateway": "node swarm/scripts/runSwarmTurnGateway.js",
+    "research:memory-benchmark": "node swarm/scripts/runBusinessMemoryBenchmark.js",
+    "research:memory-harvest": "node swarm/scripts/harvestBusinessMemoryProcedures.js"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

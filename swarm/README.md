@@ -93,6 +93,8 @@ npm run test:swarm                     # swarm tests only
 npm run research:swarm:hrr-v2 -- --out /tmp/hrr-v2.json
 npm run research:swarm:hrr-dual -- --out /tmp/hrr-dual.json
 npm run research:validate-quality-portfolio
+npm run research:memory-benchmark -- --dry-run --output /tmp/memory-benchmark.json
+npm run research:memory-harvest -- --worker "qwen|amos-qwen38-27b-fp8|http://127.0.0.1:18080|qwen" --output /tmp/harvested.json   # needs the served model
 npm run research:swarm:simulate -- --store PATH/TO/swarm-learning --output /tmp/sim.json
 npm run research:swarm:replay-artifacts -- --help
 npm run research:swarm:import-trace-bundle -- research/imports/verified-qwen-swarm-seed-genes-v1.json /tmp/events.jsonl
