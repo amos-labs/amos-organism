@@ -16,12 +16,14 @@ const planPath = option("--plan") ||
   resolve(swarmRoot, "benchmarks/swarm-qwen-adapter-training-v1.json");
 const preflightOnly = args.includes("--preflight-only");
 const stageZero = args.includes("--stage0");
+const excludeTreatmentIds = (option("--exclude-treatments") || "").split(",").map((value) => value.trim()).filter(Boolean);
 
 const plan = JSON.parse(await readFile(resolve(planPath), "utf8"));
 const store = await openSwarmLearningStore(resolve(storePath));
 const dataset = await compileAmosNativeTrainingDataset({
   store,
   plan,
+  excludeTreatmentIds,
   minimums: stageZero ? {
     trainingExamples: 64,
     validationExamples: 16,

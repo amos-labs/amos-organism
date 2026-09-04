@@ -129,6 +129,9 @@ test("recorded scenarios clear the stage-one data gate with the real plan minimu
   assert.equal(dataset.manifest.counts.taskFamilies, 8);
   assert.ok(dataset.manifest.counts.preferencePairs >= 200);
 
+  const excluded = await compileAmosNativeTrainingDataset({ store, plan, excludeTreatmentIds: ["amos-native-stage1-curriculum-v1"] });
+  assert.equal(excluded.manifest.counts.examples, 0);
+
   const holdout = generateCurriculumScenarios({ catalog, scenariosPerFamily: 2, seed: "gate", pool: "holdout" });
   await recordCurriculumScenarios({ store, scenarios: holdout, catalog });
   const episodes = await store.listEpisodes();

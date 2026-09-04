@@ -64,13 +64,16 @@ export function validateAmosSystemTrainingExample(input) {
 export async function compileAmosNativeTrainingDataset({
   store,
   plan,
-  minimums = null
+  minimums = null,
+  excludeTreatmentIds = []
 }) {
   if (!store || typeof store.listEpisodes !== "function" || typeof store.readBlob !== "function") {
     throw new Error("An open swarm learning store is required");
   }
   const trainingPlan = normalizePlan(plan, minimums);
+  const excluded = new Set(Array.isArray(excludeTreatmentIds) ? excludeTreatmentIds.map(String) : []);
   const episodes = (await store.listEpisodes())
+    .filter((episode) => !excluded.has(episode.treatmentId))
     .filter((episode) => episode.trainingEligibility.eligible)
     .filter((episode) => episode.dataPolicy.trainingApproved)
     .filter((episode) => episode.dataPolicy.permittedUses.includes("training"))

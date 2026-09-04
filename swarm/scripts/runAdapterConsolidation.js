@@ -41,12 +41,15 @@ const parameterName = option("--parameter-name") || process.env.AMOS_TRAINER_CON
 const execute = flag("--execute");
 const wait = !flag("--no-wait");
 const pollSeconds = integerOption("--poll-seconds", 60, 10, 900);
+const driver = option("--driver") || "ssm";
+if (!["ssm", "boot"].includes(driver)) throw new Error("--driver must be ssm or boot");
+const excludeTreatmentIds = (option("--exclude-treatments") || "amos-native-stage0-curriculum-v1").split(",").map((value) => value.trim()).filter(Boolean);
 if (!bucket) throw new Error("--bucket or AMOS_RESEARCH_ARTIFACT_BUCKET is required");
 if (!trainerImageUri) throw new Error("--trainer-image or AMOS_TRAINER_IMAGE_URI (immutable @sha256 URI) is required");
 
 const [plan, checkpoint] = await Promise.all([readJson(planPath), readJson(checkpointPath)]);
 const store = await openSwarmLearningStore(storePath);
-const dataset = await compileAmosNativeTrainingDataset({ store, plan });
+const dataset = await compileAmosNativeTrainingDataset({ store, plan, excludeTreatmentIds });
 const readiness = consolidationReadiness({ dataset });
 await mkdir(outputDir, { recursive: true });
 if (!readiness.ready) {
@@ -79,6 +82,8 @@ if (!readiness.ready) {
   const summary = {
     status: execute ? "executing" : "planned",
     runId,
+    driver,
+    excludedTreatments: excludeTreatmentIds,
     readiness,
     jobs: consolidation.jobs.map(({ contractId, rank, seed, contractUri, outputUri }) => ({ contractId, rank, seed, contractUri, outputUri })),
     plan: planPathOut,
@@ -102,9 +107,16 @@ if (!readiness.ready) {
     let job = nextConsolidationJob(consolidation, ledger);
     while (job) {
       const startedAt = new Date();
-      log({ event: "job-start", contractId: job.contractId, rank: job.rank, seed: job.seed, contractUri: job.contractUri });
-      aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
+      log({ event: "job-start", contractId: job.contractId, rank: job.rank, seed: job.seed, contractUri: job.contractUri, driver });
+      if (driver === "boot") {
+        aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
+      }
       aws(["ec2", "start-instances", "--instance-ids", instanceId]);
+      if (driver === "ssm") {
+        await waitForSsmOnline(instanceId);
+        const commandId = sendTrainerCommand(instanceId, job.contractUri);
+        log({ event: "trainer-command-sent", contractId: job.contractId, commandId });
+      }
       await appendFile(ledgerPath, `${JSON.stringify(createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status: "submitted", startedAt, instanceId }))}\n`);
       if (!wait) break;
       await waitForStop(instanceId);
@@ -128,6 +140,65 @@ if (!readiness.ready) {
     }
   }
   console.log(JSON.stringify(summary, null, 2));
+}
+
+/**
+ * SSM driver: the disposable trainer's boot script runs only on first boot, so
+ * a stopped instance is re-aimed by running the same container start over SSM
+ * Run Command. The script detaches, trains, records the exit status beside the
+ * stage-zero layout, and powers the instance off; the runner waits for "stopped".
+ */
+function sendTrainerCommand(id, contractUri) {
+  const registry = trainerImageUri.split("/")[0];
+  const script = [
+    "set -euo pipefail",
+    "export HOME=/root",
+    "install -d -m 0750 -o 10001 -g 10001 /opt/amos-stage0 /opt/amos-huggingface /opt/amos-triton /opt/amos-nvidia-cache",
+    `aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}`,
+    `docker pull ${shellQuote(trainerImageUri)}`,
+    "docker rm -f amos-qwen-stage1-trainer >/dev/null 2>&1 || true",
+    `nohup bash -c ${shellQuote(innerTrainerScript(contractUri))} > /var/log/amos-stage1-trainer.log 2>&1 &`,
+    "echo detached"
+  ].join("\n");
+  const parameters = JSON.stringify({ commands: [script], executionTimeout: ["600"] });
+  const output = aws(["ssm", "send-command", "--instance-ids", id, "--document-name", "AWS-RunShellScript", "--comment", "amos stage-one adapter training", "--parameters", parameters, "--query", "Command.CommandId", "--output", "text"]);
+  return output.trim();
+}
+
+function innerTrainerScript(contractUri) {
+  const runsRoot = `${contractUri.replace(/\/training-contracts\/.*$/, "")}/runs`;
+  return `set +e
+docker run --name amos-qwen-stage1-trainer --gpus all --ipc=host --network=bridge --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16g \
+  --env AMOS_TRAINING_CONTRACT_URI=${contractUri} \
+  --env HF_HOME=/home/trainer/.cache/huggingface \
+  --env TRITON_CACHE_DIR=/home/trainer/.triton/cache \
+  --env CUDA_CACHE_PATH=/home/trainer/.nv/ComputeCache \
+  --volume /opt/amos-stage0:/work/stage0:rw \
+  --volume /opt/amos-huggingface:/home/trainer/.cache/huggingface:rw \
+  --volume /opt/amos-triton:/home/trainer/.triton:rw \
+  --volume /opt/amos-nvidia-cache:/home/trainer/.nv:rw \
+  ${trainerImageUri} > /opt/amos-stage0/container.log 2>&1
+STATUS=$?
+printf '%s\n' "$STATUS" > /opt/amos-stage0/container-exit-status
+aws s3 cp /opt/amos-stage0/container.log ${runsRoot}/__last__/container.log --region ${region} --only-show-errors || true
+sync
+shutdown -h now
+`;
+}
+
+async function waitForSsmOnline(id) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 15_000));
+    const ping = aws(["ssm", "describe-instance-information", "--filters", `Key=InstanceIds,Values=${id}`, "--query", "InstanceInformationList[0].PingStatus", "--output", "text"]).trim();
+    log({ event: "trainer-ssm", instanceId: id, ping });
+    if (ping === "Online") return;
+  }
+  throw new Error(`Trainer ${id} did not come online over SSM`);
+}
+
+function shellQuote(text) {
+  return `'${String(text).replace(/'/g, `'\\''`)}'`;
 }
 
 async function waitForStop(id) {
