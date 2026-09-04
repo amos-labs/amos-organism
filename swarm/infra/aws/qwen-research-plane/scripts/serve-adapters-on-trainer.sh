@@ -38,6 +38,7 @@ docker run -d --name amos-adapter-grading --gpus all --ipc=host --network=host \
   --host 127.0.0.1 --port 8000 --api-key "$API_KEY" \
   --model /base --served-model-name base-bf16 \
   --enable-lora --lora-modules "${MODULES[@]}" --max-lora-rank "$MAX_RANK" --max-loras "$#" \
+  --reasoning-parser qwen3 \
   --max-model-len 6144 --gpu-memory-utilization 0.9 --enforce-eager --no-enable-log-requests
 echo "started amos-adapter-grading with modules: ${MODULES[*]}"
 for _ in $(seq 1 120); do
