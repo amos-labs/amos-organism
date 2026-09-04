@@ -65,6 +65,27 @@ test("holdout pool draws only reserved tools and always revises the schema", () 
   }
 });
 
+test("an implicit rulebook hides rules and authority labels but keeps the verifier's facts intact", () => {
+  const explicit = generateCurriculumScenario({ catalog, family: "request-approval-only-at-real-authority-boundaries", index: 5, seed: "rb" });
+  const implicit = generateCurriculumScenario({ catalog, family: "request-approval-only-at-real-authority-boundaries", index: 5, seed: "rb", rulebook: "implicit" });
+  assert.ok(explicit.prompt.user.includes('"policy"'));
+  assert.ok(!implicit.prompt.user.includes('"policy"'));
+  // The output contract still names the field; the facts must not carry the per-tool label.
+  assert.ok(!implicit.prompt.user.includes('"authority": "'));
+  assert.ok(implicit.facts.policy, "verifier facts keep the rule");
+  assert.equal(verifyCurriculumAnswer({ scenario: implicit, answer: implicit.target }).passed, true);
+  assert.equal(verifyCurriculumAnswer({ scenario: implicit, answer: implicit.rejected }).passed, false);
+  assert.ok(implicit.id.includes("-implicit-"));
+  const recovery = generateCurriculumScenario({ catalog, family: "recover-without-replaying-completed-actions", index: 2, seed: "rb", rulebook: "implicit" });
+  assert.ok(!recovery.prompt.user.includes("repairPolicy"));
+  assert.ok(recovery.prompt.user.includes("hostRetryBound"));
+  const typed = generateCurriculumScenario({ catalog, family: "emit-valid-typed-tool-arguments", index: 2, seed: "rb", rulebook: "implicit" });
+  assert.ok(typed.prompt.user.includes("knownValuesProse"));
+  assert.ok(!typed.prompt.user.includes('"knownValues"'));
+  const sweep = generateCurriculumScenarios({ catalog, scenariosPerFamily: 6, seed: "rb", pool: "holdout", rulebook: "implicit" });
+  assert.equal(sweep.length, 48);
+});
+
 test("the verifier grades semantics, not surface form", () => {
   const scenario = generateCurriculumScenario({ catalog, family: "recover-without-replaying-completed-actions", index: 3, seed: "semantics" });
   const reordered = {
@@ -128,6 +149,9 @@ test("recorded scenarios clear the stage-one data gate with the real plan minimu
   assert.ok(dataset.manifest.counts.holdoutExamples >= 50);
   assert.equal(dataset.manifest.counts.taskFamilies, 8);
   assert.ok(dataset.manifest.counts.preferencePairs >= 200);
+
+  const excluded = await compileAmosNativeTrainingDataset({ store, plan, excludeTreatmentIds: ["amos-native-stage1-curriculum-v1"] });
+  assert.equal(excluded.manifest.counts.examples, 0);
 
   const holdout = generateCurriculumScenarios({ catalog, scenariosPerFamily: 2, seed: "gate", pool: "holdout" });
   await recordCurriculumScenarios({ store, scenarios: holdout, catalog });

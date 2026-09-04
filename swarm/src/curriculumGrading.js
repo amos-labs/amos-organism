@@ -25,7 +25,8 @@ export async function runCurriculumGrading({
   repairAttempts = 1,
   now = () => new Date(),
   signal = null,
-  onScenario = null
+  onScenario = null,
+  concurrency = 1
 }) {
   if (!worker || typeof worker.runCase !== "function") {
     throw new Error("Curriculum grading requires a research worker");
@@ -36,10 +37,13 @@ export async function runCurriculumGrading({
   if (!Number.isInteger(repairAttempts) || repairAttempts < 0 || repairAttempts > 2) {
     throw new Error("repairAttempts must be 0, 1, or 2");
   }
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16) {
+    throw new Error("concurrency must be an integer from 1 to 16");
+  }
   const startedAt = now().toISOString();
-  const runs = [];
-  for (const scenario of scenarios) {
-    if (signal?.aborted) break;
+  const runs = new Array(scenarios.length);
+  let cursor = 0;
+  const gradeOne = async (scenario) => {
     const attempts = [];
     let previous = null;
     for (let attempt = 0; attempt <= repairAttempts; attempt += 1) {
@@ -67,7 +71,7 @@ export async function runCurriculumGrading({
       previous = { answerText, failures: verification.failures };
     }
     const final = attempts.at(-1).verification;
-    const run = {
+    return {
       scenarioId: scenario.id,
       scenarioDigest: scenario.digest,
       family: scenario.family,
@@ -79,10 +83,22 @@ export async function runCurriculumGrading({
       passedCheckRate: final.checkCount > 0 ? final.passedChecks / final.checkCount : 0,
       attempts
     };
-    runs.push(run);
-    if (typeof onScenario === "function") await onScenario(run, scenario);
-  }
-  const summary = summarizeRuns(runs);
+  };
+  // Bounded parallel workers over the scenario list; results keep scenario order.
+  const lanes = Array.from({ length: Math.min(concurrency, scenarios.length) }, async () => {
+    while (!signal?.aborted) {
+      const position = cursor;
+      cursor += 1;
+      if (position >= scenarios.length) return;
+      const scenario = scenarios[position];
+      const run = await gradeOne(scenario);
+      runs[position] = run;
+      if (typeof onScenario === "function") await onScenario(run, scenario);
+    }
+  });
+  await Promise.all(lanes);
+  const graded = runs.filter(Boolean);
+  const summary = summarizeRuns(graded);
   const reportBase = {
     schema: CURRICULUM_GRADING_REPORT_SCHEMA,
     version: CURRICULUM_GRADING_VERSION,
@@ -97,14 +113,15 @@ export async function runCurriculumGrading({
       feedbackIsVerifierFailuresOnly: true,
       targetNeverShown: true
     },
-    pools: [...new Set(runs.map(({ pool }) => pool))].sort(),
-    scenarioCount: runs.length,
+    protocolConcurrency: concurrency,
+    pools: [...new Set(graded.map(({ pool }) => pool))].sort(),
+    scenarioCount: graded.length,
     aborted: signal?.aborted === true,
     ...summary,
-    runs,
+    runs: graded,
     interpretation: {
-      verifiedEvaluations: runs.reduce((total, run) => total + run.calls, 0),
-      holdoutEvidence: runs.some(({ pool }) => pool === "holdout"),
+      verifiedEvaluations: graded.reduce((total, run) => total + run.calls, 0),
+      holdoutEvidence: graded.some(({ pool }) => pool === "holdout"),
       qualityClaimAllowed: false,
       promotionAllowed: false
     }
@@ -202,8 +219,8 @@ export function validateGradingReport(input) {
   return report;
 }
 
-export function scenariosForGrading({ catalog, pool = "holdout", scenariosPerFamily = 8, seed = "amos-curriculum-grading-v1", families }) {
-  return generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool, ...(families ? { families } : {}) });
+export function scenariosForGrading({ catalog, pool = "holdout", scenariosPerFamily = 8, seed = "amos-curriculum-grading-v1", families, rulebook = "explicit" }) {
+  return generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool, rulebook, ...(families ? { families } : {}) });
 }
 
 export function gradingMessages(scenario, previous = null) {

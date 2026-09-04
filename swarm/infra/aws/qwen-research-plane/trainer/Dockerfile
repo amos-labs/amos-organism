@@ -12,6 +12,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH
 
+# Build hosts on the research plane have HTTPS-only egress; Ubuntu mirrors default to HTTP.
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates git python3-venv \
     && rm -rf /var/lib/apt/lists/* \
@@ -32,9 +34,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HF_HUB_DISABLE_TELEMETRY=1 \
     HF_HUB_ENABLE_HF_TRANSFER=0 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    TORCH_DISABLE_NATIVE_JIT=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH
 
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get purge -y \

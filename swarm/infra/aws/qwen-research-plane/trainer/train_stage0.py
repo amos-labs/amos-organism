@@ -17,7 +17,9 @@ import math
 import os
 import random
 import sys
+import time
 import traceback
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Mapping
@@ -92,7 +94,7 @@ def run(contract: dict[str, Any], work: Path, *, validate_only: bool) -> dict[st
         verify_file(destination, expected["sha256"], expected["rows"])
         split_rows[split] = read_json_lines(destination)
 
-    lineage = verify_upstream_lineage(contract["base"])
+    lineage = verify_upstream_lineage(contract["base"], cached=work / "upstream-lineage-receipt.json")
     write_json(work / "upstream-lineage-receipt.json", lineage)
     preflight = {
         "schema": "amos.qwen-adapter-stage0-preflight",
@@ -521,15 +523,30 @@ def download_and_verify_checkpoint(base: dict[str, Any], destination: Path) -> s
     return snapshot
 
 
-def verify_upstream_lineage(base: dict[str, Any]) -> dict[str, Any]:
-    repository = urllib.parse.quote(base["repository"], safe="/")
-    revision = urllib.parse.quote(base["revision"], safe="")
-    url = (
-        f"https://huggingface.co/api/models/{repository}/tree/{revision}"
-        "?recursive=true&expand=true"
-    )
-    with urllib.request.urlopen(url, timeout=60) as response:
-        tree = json.load(response)
+def verify_upstream_lineage(base: dict[str, Any], cached: Path | None = None) -> dict[str, Any]:
+    """Verify the pinned upstream shards against the Hub, or reuse a matching receipt.
+
+    A pinned revision's lineage cannot change, so a receipt already on the trainer
+    disk for the same repository, revision, and checkpoint digest is reused. The
+    Hub call retries with backoff because unauthenticated requests are rate
+    limited; an optional HF_TOKEN raises the limit.
+    """
+    if cached is not None and cached.is_file():
+        try:
+            previous = json.loads(cached.read_text(encoding="utf-8"))
+            verify_embedded_digest(previous, "cached lineage receipt")
+            if (
+                previous.get("schema") == "amos.qwen-upstream-lineage-receipt"
+                and previous.get("status") == "passed"
+                and previous.get("repository") == base["repository"]
+                and previous.get("revision") == base["revision"]
+                and previous.get("checkpointDigest") == base["checkpointDigest"]
+                and previous.get("verifiedShards") == len(base["expectedShardDigests"])
+            ):
+                return previous
+        except (ValueError, OSError):
+            pass
+    tree = fetch_upstream_tree(base)
     files = {item.get("path"): item for item in tree if item.get("type") == "file"}
     for shard in base["expectedShardDigests"]:
         remote = files.get(shard["path"])
@@ -548,6 +565,40 @@ def verify_upstream_lineage(base: dict[str, Any]) -> dict[str, Any]:
     }
     receipt["digest"] = digest_value(receipt)
     return receipt
+
+
+def fetch_upstream_tree(base: dict[str, Any], attempts: int = 6, opener: Any = None) -> list[dict[str, Any]]:
+    repository = urllib.parse.quote(base["repository"], safe="/")
+    revision = urllib.parse.quote(base["revision"], safe="")
+    url = (
+        f"https://huggingface.co/api/models/{repository}/tree/{revision}"
+        "?recursive=true&expand=true"
+    )
+    headers = {"user-agent": "amos-organism-trainer/1"}
+    token = os.environ.get("HF_TOKEN")
+    if token:
+        headers["authorization"] = f"Bearer {token}"
+    open_url = opener or urllib.request.urlopen
+    delay = 15.0
+    for attempt in range(1, attempts + 1):
+        try:
+            with open_url(urllib.request.Request(url, headers=headers), timeout=60) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            retryable = error.code == 429 or error.code >= 500
+            if not retryable or attempt == attempts:
+                raise
+            retry_after = error.headers.get("Retry-After") if error.headers else None
+            wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
+            print(f"upstream lineage request returned {error.code}; retrying in {wait:.0f}s ({attempt}/{attempts})", flush=True)
+            time.sleep(wait)
+            delay = min(delay * 2, 240.0)
+        except urllib.error.URLError:
+            if attempt == attempts:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 240.0)
+    raise RuntimeError("unreachable")
 
 
 def validate_contract(contract: dict[str, Any]) -> None:

@@ -41,12 +41,16 @@ const parameterName = option("--parameter-name") || process.env.AMOS_TRAINER_CON
 const execute = flag("--execute");
 const wait = !flag("--no-wait");
 const pollSeconds = integerOption("--poll-seconds", 60, 10, 900);
+const startRetryMinutes = integerOption("--start-retry-minutes", 120, 1, 24 * 60);
+const driver = option("--driver") || "ssm";
+if (!["ssm", "boot"].includes(driver)) throw new Error("--driver must be ssm or boot");
+const excludeTreatmentIds = (option("--exclude-treatments") || "amos-native-stage0-curriculum-v1").split(",").map((value) => value.trim()).filter(Boolean);
 if (!bucket) throw new Error("--bucket or AMOS_RESEARCH_ARTIFACT_BUCKET is required");
 if (!trainerImageUri) throw new Error("--trainer-image or AMOS_TRAINER_IMAGE_URI (immutable @sha256 URI) is required");
 
 const [plan, checkpoint] = await Promise.all([readJson(planPath), readJson(checkpointPath)]);
 const store = await openSwarmLearningStore(storePath);
-const dataset = await compileAmosNativeTrainingDataset({ store, plan });
+const dataset = await compileAmosNativeTrainingDataset({ store, plan, excludeTreatmentIds });
 const readiness = consolidationReadiness({ dataset });
 await mkdir(outputDir, { recursive: true });
 if (!readiness.ready) {
@@ -79,6 +83,8 @@ if (!readiness.ready) {
   const summary = {
     status: execute ? "executing" : "planned",
     runId,
+    driver,
+    excludedTreatments: excludeTreatmentIds,
     readiness,
     jobs: consolidation.jobs.map(({ contractId, rank, seed, contractUri, outputUri }) => ({ contractId, rank, seed, contractUri, outputUri })),
     plan: planPathOut,
@@ -102,32 +108,146 @@ if (!readiness.ready) {
     let job = nextConsolidationJob(consolidation, ledger);
     while (job) {
       const startedAt = new Date();
-      log({ event: "job-start", contractId: job.contractId, rank: job.rank, seed: job.seed, contractUri: job.contractUri });
-      aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
-      aws(["ec2", "start-instances", "--instance-ids", instanceId]);
+      if (resultAlreadyInS3(job)) {
+        // A previous runner dispatched this job and the trainer finished it; do not train twice.
+        log({ event: "job-already-finished", contractId: job.contractId, outputUri: job.outputUri });
+        const finalized = await finalizeJob(job, consolidation, startedAt);
+        await appendFile(ledgerPath, `${JSON.stringify(finalized)}\n`);
+        job = nextConsolidationJob(consolidation, await readLedger(ledgerPath));
+        continue;
+      }
+      log({ event: "job-start", contractId: job.contractId, rank: job.rank, seed: job.seed, contractUri: job.contractUri, driver });
+      if (driver === "boot") {
+        aws(["ssm", "put-parameter", "--name", parameterName, "--type", "String", "--overwrite", "--value", job.contractUri]);
+      }
+      await startInstanceWithRetry(instanceId);
+      if (driver === "ssm") {
+        await waitForSsmOnline(instanceId);
+        const commandId = sendTrainerCommand(instanceId, job.contractUri);
+        log({ event: "trainer-command-sent", contractId: job.contractId, commandId });
+      }
       await appendFile(ledgerPath, `${JSON.stringify(createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status: "submitted", startedAt, instanceId }))}\n`);
       if (!wait) break;
       await waitForStop(instanceId);
-      let status = "failed";
-      let resultDigest = null;
-      let error = null;
-      try {
-        const resultsDir = resolve(outputDir, runId, "results", job.contractId);
-        await mkdir(resultsDir, { recursive: true });
-        aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors"]);
-        const result = JSON.parse(await readFile(resolve(resultsDir, "stage0-result.json"), "utf8"));
-        resultDigest = result.digest ?? null;
-        status = result.status?.startsWith("adapter-built") ? "completed" : "failed";
-      } catch (caught) {
-        error = caught?.message ?? String(caught);
-      }
-      const entry = createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status, startedAt, finishedAt: new Date(), instanceId, resultDigest, error });
+      const entry = await finalizeJob(job, consolidation, startedAt);
       await appendFile(ledgerPath, `${JSON.stringify(entry)}\n`);
-      log({ event: "job-finished", contractId: job.contractId, status, resultDigest, error });
+      log({ event: "job-finished", contractId: job.contractId, status: entry.status, resultDigest: entry.resultDigest, error: entry.error });
       job = nextConsolidationJob(consolidation, await readLedger(ledgerPath));
     }
   }
   console.log(JSON.stringify(summary, null, 2));
+}
+
+/**
+ * SSM driver: the disposable trainer's boot script runs only on first boot, so
+ * a stopped instance is re-aimed by running the same container start over SSM
+ * Run Command. The script detaches, trains, records the exit status beside the
+ * stage-zero layout, and powers the instance off; the runner waits for "stopped".
+ */
+function sendTrainerCommand(id, contractUri) {
+  const registry = trainerImageUri.split("/")[0];
+  const script = [
+    "#!/bin/bash",
+    "set -euo pipefail",
+    "export HOME=/root",
+    "install -d -m 0750 -o 10001 -g 10001 /opt/amos-stage0 /opt/amos-huggingface /opt/amos-triton /opt/amos-nvidia-cache",
+    // Keep the cached base checkpoint; clear receipts, datasets, and adapters from earlier contracts.
+    "find /opt/amos-stage0 -maxdepth 1 -type f ! -name upstream-lineage-receipt.json -delete",
+    "rm -rf /opt/amos-stage0/dataset /opt/amos-stage0/adapter /opt/amos-stage0/vllm-proof*",
+    `aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}`,
+    `docker pull ${shellQuote(trainerImageUri)}`,
+    "docker rm -f amos-qwen-stage1-trainer >/dev/null 2>&1 || true",
+    `nohup bash -c ${shellQuote(innerTrainerScript(contractUri))} > /var/log/amos-stage1-trainer.log 2>&1 &`,
+    "echo detached"
+  ].join("\n");
+  const parameters = JSON.stringify({ commands: [script], executionTimeout: ["600"] });
+  const output = aws(["ssm", "send-command", "--instance-ids", id, "--document-name", "AWS-RunShellScript", "--comment", "amos stage-one adapter training", "--parameters", parameters, "--query", "Command.CommandId", "--output", "text"]);
+  return output.trim();
+}
+
+function innerTrainerScript(contractUri) {
+  const runsRoot = `${contractUri.replace(/\/training-contracts\/.*$/, "")}/runs`;
+  return `#!/bin/bash
+set +e
+docker run --name amos-qwen-stage1-trainer --gpus all --ipc=host --network=bridge --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16g \
+  --env AMOS_TRAINING_CONTRACT_URI=${contractUri} \
+  --env TORCH_DISABLE_NATIVE_JIT=1 \
+  --env HF_HOME=/home/trainer/.cache/huggingface \
+  --env TRITON_CACHE_DIR=/home/trainer/.triton/cache \
+  --env CUDA_CACHE_PATH=/home/trainer/.nv/ComputeCache \
+  --volume /opt/amos-stage0:/work/stage0:rw \
+  --volume /opt/amos-huggingface:/home/trainer/.cache/huggingface:rw \
+  --volume /opt/amos-triton:/home/trainer/.triton:rw \
+  --volume /opt/amos-nvidia-cache:/home/trainer/.nv:rw \
+  ${trainerImageUri} > /opt/amos-stage0/container.log 2>&1
+STATUS=$?
+printf '%s\n' "$STATUS" > /opt/amos-stage0/container-exit-status
+aws s3 cp /opt/amos-stage0/container.log ${runsRoot}/__last__/container.log --region ${region} --only-show-errors || true
+sync
+shutdown -h now
+`;
+}
+
+/**
+ * EC2 rejects a start for a short window after an instance reports stopped, and
+ * GPU capacity in a single zone comes and goes. Keep asking, politely, for up to
+ * --start-retry-minutes (default two hours) before giving up on the run.
+ */
+async function startInstanceWithRetry(id) {
+  const deadline = Date.now() + startRetryMinutes * 60_000;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      aws(["ec2", "start-instances", "--instance-ids", id]);
+      return;
+    } catch (error) {
+      const capacity = /InsufficientInstanceCapacity/.test(String(error?.stderr ?? error?.message ?? ""));
+      log({ event: "start-instances-retry", instanceId: id, attempt, capacity, minutesLeft: Math.round((deadline - Date.now()) / 60_000) });
+      if (Date.now() >= deadline) throw error;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt < 4 ? 20_000 : 120_000));
+    }
+  }
+}
+
+async function waitForSsmOnline(id) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 15_000));
+    const ping = aws(["ssm", "describe-instance-information", "--filters", `Key=InstanceIds,Values=${id}`, "--query", "InstanceInformationList[0].PingStatus", "--output", "text"]).trim();
+    log({ event: "trainer-ssm", instanceId: id, ping });
+    if (ping === "Online") return;
+  }
+  throw new Error(`Trainer ${id} did not come online over SSM`);
+}
+
+function shellQuote(text) {
+  return `'${String(text).replace(/'/g, `'\\''`)}'`;
+}
+
+function resultAlreadyInS3(job) {
+  try {
+    const listing = aws(["s3", "ls", `${job.outputUri}/stage0-result.json`]);
+    return listing.includes("stage0-result.json");
+  } catch {
+    return false;
+  }
+}
+
+async function finalizeJob(job, consolidation, startedAt) {
+  let status = "failed";
+  let resultDigest = null;
+  let error = null;
+  try {
+    const resultsDir = resolve(outputDir, runId, "results", job.contractId);
+    await mkdir(resultsDir, { recursive: true });
+    // Receipts and metrics only; adapter weights stay in S3 and are served from there.
+    aws(["s3", "sync", `${job.outputUri}/`, resultsDir, "--only-show-errors", "--exclude", "adapter/*.safetensors", "--exclude", "dataset/*"]);
+    const result = JSON.parse(await readFile(resolve(resultsDir, "stage0-result.json"), "utf8"));
+    resultDigest = result.digest ?? null;
+    status = result.status?.startsWith("adapter-built") ? "completed" : "failed";
+  } catch (caught) {
+    error = caught?.message ?? String(caught);
+  }
+  return createConsolidationLedgerEntry({ planDigest: consolidation.digest, job, status, startedAt, finishedAt: new Date(), instanceId, resultDigest, error });
 }
 
 async function waitForStop(id) {
@@ -140,7 +260,12 @@ async function waitForStop(id) {
 }
 
 function aws(argv) {
-  return execFileSync("aws", ["--region", region, ...argv], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  try {
+    return execFileSync("aws", ["--region", region, ...argv], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    if (error?.stderr) process.stderr.write(String(error.stderr));
+    throw error;
+  }
 }
 
 async function readLedger(path) {

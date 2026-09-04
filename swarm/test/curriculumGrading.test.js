@@ -74,6 +74,17 @@ test("grading feeds back only verifier failures and separates first-attempt, rec
   assert.ok(!messages[3].content.includes(JSON.stringify(trainingScenarios[0].target)));
 });
 
+test("parallel grading keeps scenario order and matches sequential results", async () => {
+  const worker = fakeWorker({ model: "fake-parallel", scenariosById: byId, behavior: (scenario) => ["pass", "recover", "fail"][scenario.index % 3] ?? "pass" });
+  const sequential = await runCurriculumGrading({ worker, scenarios: trainingScenarios, now: () => new Date("2026-09-04T00:00:00Z") });
+  const parallel = await runCurriculumGrading({ worker, scenarios: trainingScenarios, concurrency: 5, now: () => new Date("2026-09-04T00:00:00Z") });
+  assert.deepEqual(parallel.runs.map(({ scenarioId }) => scenarioId), sequential.runs.map(({ scenarioId }) => scenarioId));
+  assert.equal(parallel.passRate, sequential.passRate);
+  assert.equal(parallel.firstAttemptPassRate, sequential.firstAttemptPassRate);
+  assert.equal(parallel.protocolConcurrency, 5);
+  await assert.rejects(runCurriculumGrading({ worker, scenarios: trainingScenarios, concurrency: 0 }), /concurrency/);
+});
+
 test("comparison pairs candidates against the control on identical scenarios", async () => {
   const base = fakeWorker({ model: "base", scenariosById: byId, behavior: (scenario) => (scenario.index === 1 ? "pass" : "fail") });
   const adapter = fakeWorker({ model: "adapter", scenariosById: byId, behavior: () => "pass" });

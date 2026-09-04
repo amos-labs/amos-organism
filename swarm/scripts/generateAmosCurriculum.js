@@ -21,13 +21,15 @@ const storePath = resolve(option("--store") || ".amos-agent/research/swarm-learn
 const catalogPath = resolve(option("--catalog") || resolve(swarmRoot, "benchmarks/amos-tool-catalog-v1.json"));
 const seed = option("--seed") || "amos-curriculum-v1";
 const pool = option("--pool") || "training";
+const rulebook = option("--rulebook") || "explicit";
 const scenariosPerFamily = integerOption("--per-family", 64, 1, 10_000);
 const manifestPath = option("--manifest") ? resolve(option("--manifest")) : null;
+const treatmentId = option("--treatment") || (rulebook === "implicit" ? "amos-native-stage1-implicit-curriculum-v1" : "amos-native-stage1-curriculum-v1");
 
 const catalog = validateToolCatalog(JSON.parse(await readFile(catalogPath, "utf8")));
 const store = await openSwarmLearningStore(storePath);
-const scenarios = generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool });
-const manifest = await recordCurriculumScenarios({ store, scenarios, catalog });
+const scenarios = generateCurriculumScenarios({ catalog, scenariosPerFamily, seed, pool, rulebook });
+const manifest = await recordCurriculumScenarios({ store, scenarios, catalog, treatmentId });
 if (manifestPath) {
   await mkdir(dirname(manifestPath), { recursive: true });
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
@@ -37,6 +39,8 @@ console.log(JSON.stringify({
   catalogDigest: catalog.digest,
   seed,
   pool,
+  rulebook,
+  treatmentId,
   scenarios: manifest.scenarioCount,
   taskFamilies: manifest.taskFamilies.length,
   distinctTools: new Set(scenarios.flatMap(({ toolsUsed }) => toolsUsed)).size,

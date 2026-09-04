@@ -113,6 +113,74 @@ npm run research:swarm:sleep -- --queue <promotion-queue> --store <store> \
   --enable-grading --grading-model-ids amos-qwen38-27b-fp8,stage1-r32-s20260903 --daemon
 ```
 
+## First run log
+
+**2026-09-04, run `stage1-20260904-r2`.** Rank 32, three seeds, 256 training
+examples from the explicit-rulebook curriculum. Job one completed in about 40
+minutes: training loss fell to zero by epoch three, validation token accuracy
+1.0, holdout token accuracy 0.98, adapter reload exact, base bitwise unchanged.
+
+The control arm graded the same day: the production base model passed 48 of 48
+explicit-rulebook holdout scenarios on the first attempt. That is the important
+result of the run. It says the explicit curriculum has no headroom, not that
+the adapter failed. The generator now has an implicit-rulebook mode (see
+[CURRICULUM_GENERATOR.md](CURRICULUM_GENERATOR.md)); the next run trains on
+implicit scenarios and is graded on the implicit holdout.
+
+Operational lessons folded into the runner: the trainer's boot script runs only
+on first boot, so jobs are dispatched over SSM Run Command; SSM's shell on
+Ubuntu is dash, so scripts need a bash shebang; the container needs
+`TORCH_DISABLE_NATIVE_JIT=1` passed explicitly; EC2 start calls fail in the
+post-stop window and during GPU capacity shortages, so the runner waits them
+out; adapter weights stay in S3 rather than syncing to the operator's machine;
+a finished job is recognized from its S3 result and never retrained.
+
+**2026-09-04, run `stage1-20260904-r3-implicit`.** Rank 32, three seeds, 256
+training examples from the implicit-rulebook curriculum, graded against the
+bf16 base served on the idle trainer, 48 implicit-rulebook holdout scenarios
+drawn from reserved tools and unseen families, identical across models.
+
+| model | pass | first-attempt pass | paired wins / losses vs base |
+|---|---|---|---|
+| base bf16 | 34/48 | 19/48 | – |
+| implicit adapter, seed 1 | 42/48 | 35/48 | 11 / 3 |
+| implicit adapter, seed 2 | 39/48 | 24/48 | 8 / 3 |
+| implicit adapter, seed 3 | 47/48 | 29/48 | 13 / 0 |
+| explicit adapter, seed 1 | 32/48 | 11/48 | 9 / 11 |
+
+Every implicit seed beats the base; the explicit-trained adapter regresses on
+implicit prompts. The approval-boundary family moves from 0 of 6 first-attempt
+passes to 4 or 5 of 6 for every implicit seed: the adapters learned the
+authority scopes the prompt no longer states. The recovery family stays at 0 of
+6 for every model, including the base with a repair attempt; the repair mapping
+did not transfer and needs a closer look. Seed variance is real (pass 39 to 47),
+which is what three seeds are for.
+
+The same five models on the 48 explicit-rulebook holdout scenarios, as a
+regression check:
+
+| model | pass | first-attempt pass | paired wins / losses vs base |
+|---|---|---|---|
+| base bf16 | 43/48 | 27/48 | – |
+| implicit adapter, seed 1 | 44/48 | 42/48 | 3 / 2 |
+| implicit adapter, seed 2 | 36/48 | 28/48 | 1 / 8 |
+| implicit adapter, seed 3 | 47/48 | 38/48 | 4 / 0 |
+| explicit adapter, seed 1 | 40/48 | 19/48 | 5 / 8 |
+
+Seeds one and three hold or improve on explicit prompts while lifting
+first-attempt pass sharply; seed two regresses there. Seed three is the best
+adapter on both holdouts and never loses a paired scenario to the base.
+
+Caveat: the grading server ran without Qwen's reasoning parser, so thinking
+text landed in answers for every model. Absolute numbers understate all five
+models equally; the pairing is fair. The serve script now enables the parser.
+
+This is the organism's first verified learning result: a procedure learned
+from generated, verifier-checked data generalized to tools and families it
+never trained on, measured by the same verifier with the base model as control.
+It is not promotion evidence. The sealed holdout and the blind frontier
+comparison remain ahead of it.
+
 ## What a result means
 
 - **Lift on the holdout pool** means the adapter generalizes to reserved tools
