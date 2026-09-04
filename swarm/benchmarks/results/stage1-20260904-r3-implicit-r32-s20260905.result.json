@@ -1,0 +1,168 @@
+{
+  "adapterFiles": [
+    {
+      "bytes": 5205,
+      "path": "README.md",
+      "sha256": "07280aabce912308b3af549cdb87f57f8ca82153db38b495e364c487388ba905"
+    },
+    {
+      "bytes": 1311,
+      "path": "adapter_config.json",
+      "sha256": "a07b6382921e01b99822148012f29d06c781c2a42111409892a359e39ce66bdb"
+    },
+    {
+      "bytes": 933974032,
+      "path": "adapter_model.safetensors",
+      "sha256": "ef7ad63754dd0ec0096232d0614e31a667ab603aa06ca3c8b78ade415fc50d36"
+    },
+    {
+      "bytes": 8952,
+      "path": "chat_template.jinja",
+      "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+    },
+    {
+      "bytes": 19989325,
+      "path": "tokenizer.json",
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+    },
+    {
+      "bytes": 1123,
+      "path": "tokenizer_config.json",
+      "sha256": "bee8eba30f0eb4af73c0fe2cd06d0f89b657d7819941c438157ec42f7c80ea87"
+    }
+  ],
+  "contractDigest": "6c711ed90fe66d85facc76636ad312217a7a9dc2dbda2c201cbe5630bde67879",
+  "contractId": "stage1-20260904-r3-implicit-r32-s20260905",
+  "digest": "262dfc9b7a9f46b67a3a7dcd1aefc106de7ef33e6e8ffa06823171b9058a5635",
+  "hardware": {
+    "cuda": "13.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "memoryGib": 94.972,
+    "torch": "2.13.0+cu130"
+  },
+  "metrics": {
+    "holdout": {
+      "meanLoss": 0.1230031763375005,
+      "supervisedTokenAccuracy": 0.971856504408745,
+      "supervisedTokens": 16558
+    },
+    "training": {
+      "meanLoss": 0.0005396044422827373,
+      "supervisedTokenAccuracy": 0.9998010049251281,
+      "supervisedTokens": 20101
+    },
+    "validation": {
+      "meanLoss": 2.347479194497737e-05,
+      "supervisedTokenAccuracy": 1.0,
+      "supervisedTokens": 1622
+    }
+  },
+  "multimodalBase": {
+    "architecture": "Qwen3_5ForConditionalGeneration",
+    "status": "complete-base-preserved-frozen",
+    "visionAdapterParameters": 0,
+    "visionTowerPresent": true
+  },
+  "parameters": {
+    "mtpAdapterParameters": 0,
+    "schema": "amos.qwen-stage0-parameter-receipt",
+    "status": "passed",
+    "totalParametersInTrainingView": 15186957552,
+    "trainableAdapterParameters": 233455616,
+    "trainableRatio": 0.015372112235162978,
+    "version": 1,
+    "visionAdapterParameters": 0
+  },
+  "preflight": {
+    "checkpointDigest": "2ec19f85101ed0d9db0a93a4dee6710401bdab18e942144d7c0b00a52633e313",
+    "contractDigest": "6c711ed90fe66d85facc76636ad312217a7a9dc2dbda2c201cbe5630bde67879",
+    "contractId": "stage1-20260904-r3-implicit-r32-s20260905",
+    "datasetDigest": "da875c95473e09854ab96190ef19fa732543fd4e987ea7b4e98eecd54f7196a4",
+    "lineageStatus": "passed",
+    "rows": {
+      "holdout": 192,
+      "training": 256,
+      "validation": 64
+    },
+    "schema": "amos.qwen-adapter-stage0-preflight",
+    "status": "passed",
+    "torchNativeJitDisabled": true,
+    "version": 1
+  },
+  "probes": {
+    "adapterAfterReload": "2a08c46b3c6bcc0ab6df79a0d71374481eb46360ebacd6950eac43cea20d0e32",
+    "adapterBeforeSave": "2a08c46b3c6bcc0ab6df79a0d71374481eb46360ebacd6950eac43cea20d0e32",
+    "adapterReloadExact": true,
+    "baseAfterAdapterUnload": "ebec0f131387656467a8c93d903bc477fd1bf33207ff702b5b8860bcd3c652f2",
+    "baseBefore": "ebec0f131387656467a8c93d903bc477fd1bf33207ff702b5b8860bcd3c652f2",
+    "baseBitwiseUnchanged": true
+  },
+  "promotionAllowed": false,
+  "purpose": "amos-system-competence-sft",
+  "qualityClaimAllowed": false,
+  "remainingExitCriteria": [
+    "vllm-adapter-load-proof"
+  ],
+  "schema": "amos.qwen-adapter-stage0-result",
+  "stage": 1,
+  "status": "adapter-built-awaiting-vllm-load-proof",
+  "tokenization": {
+    "chatTemplateThinking": "disabled-empty-visible-think-block",
+    "contractId": "stage1-20260904-r3-implicit-r32-s20260905",
+    "digest": "58d202a77e5301770457eb38ee2516d1fb1a04314995747f8463f22dee5da965",
+    "loss": "assistant-tokens-only",
+    "schema": "amos.qwen-stage0-tokenization-receipt",
+    "splits": {
+      "holdout": {
+        "maskedPromptTokens": 80211,
+        "maximumTokens": 1066,
+        "rows": 192,
+        "supervisedAssistantTokens": 16558
+      },
+      "training": {
+        "maskedPromptTokens": 115677,
+        "maximumTokens": 1128,
+        "rows": 256,
+        "supervisedAssistantTokens": 20101
+      },
+      "validation": {
+        "maskedPromptTokens": 26045,
+        "maximumTokens": 598,
+        "rows": 64,
+        "supervisedAssistantTokens": 1622
+      }
+    },
+    "status": "passed",
+    "version": 1
+  },
+  "trainingHistory": [
+    {
+      "epoch": 1,
+      "meanLoss": 0.022699599051243524,
+      "validation": {
+        "meanLoss": 8.265729809409095e-05,
+        "supervisedTokenAccuracy": 1.0,
+        "supervisedTokens": 1622
+      }
+    },
+    {
+      "epoch": 2,
+      "meanLoss": 0.004818996055474756,
+      "validation": {
+        "meanLoss": 6.526575040766147e-05,
+        "supervisedTokenAccuracy": 1.0,
+        "supervisedTokens": 1622
+      }
+    },
+    {
+      "epoch": 3,
+      "meanLoss": 0.0025524644286338827,
+      "validation": {
+        "meanLoss": 2.347479194497737e-05,
+        "supervisedTokenAccuracy": 1.0,
+        "supervisedTokens": 1622
+      }
+    }
+  ],
+  "version": 1
+}
