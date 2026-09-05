@@ -139,6 +139,39 @@ production intelligence candidate only after it improves verified mission
 outcomes without increasing unknown checks, unsafe proposals, cost, or
 recovery rate.
 
+### Attributing the served planner input
+
+New gateway traces and shadow records include an `inputEvidence` subrecord
+(`schema: "amos.swarm-input-evidence"`, `version: 1`). It contains `stage`,
+`compiledInputSha256` and `requestPayloadSha256`. Every stage observation also
+contains its own input evidence. The outer trace/shadow schema stays at v1;
+older records without this subrecord have unknown input provenance. The existing
+`messageDigest` remains the hash of the assistant output, never its input.
+
+`requestPayloadSha256` hashes the parsed JSON actually sent to the backend.
+`compiledInputSha256` hashes that same JSON with only `model` removed: messages,
+tools, seed, generation settings and all other serialized fields remain bound.
+Model identity belongs to the treatment separately. JSON-omitted undefined fields
+are omitted here too, and HTTP authorization headers are excluded. No Mission IDs
+or prompt content are normalized away to make two inputs compare equal.
+
+The trace's top-level input evidence identifies the request that produced the
+served response. Recovery calls and a selected fallback candidate retain their
+own identity, including when upstream response IDs repeat or requests interleave.
+Shadow mode sends that exact request with the alternate model name; the shadow's
+own `inputEvidence` is nested under `shadow`. A failed shadow call records the
+attempted request identity. Primary and shadow compiled-input hashes should match;
+their full request hashes differ because the model name differs.
+
+These fields are digests, not reconstructible training content or weight-training
+permission. Existing tenant-gated answer capture is unchanged. They also do not
+attest a model checkpoint, full inference defaults, first-attempt completion or
+which proposal Platform accepted. Ingestion still needs the treatment manifest,
+host attempt-to-step/receipt binding, complete recovery evidence, and independent
+outcomes from each executed arm. Gateway-internal correction stages must be
+included when assessing recovery coverage, rather than hidden behind a valid
+final response.
+
 The adapter shadow gate now reconstructs its decision from
 [paired verified mission comparisons](VERIFIED_MISSION_COMPARISON.md).
 Unexecuted alternate answers from the shadow gateway remain diagnostics; they
