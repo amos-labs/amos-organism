@@ -235,3 +235,13 @@ test("the MCP client posts tools/call with a bearer token and never serializes t
     /reported an error/
   );
 });
+
+test("Hosted tiers map to the legacy reasoning_effort override", async () => {
+  const { HOSTED_TIERS, hostedTierReasoningEffort } = await import("../src/businessMemoryLive.js");
+  assert.deepEqual(HOSTED_TIERS, { routine: "none", balanced: "medium", deep: "high", frontier: "max" });
+  assert.equal(hostedTierReasoningEffort("auto"), null);
+  assert.equal(hostedTierReasoningEffort(null), null);
+  assert.equal(hostedTierReasoningEffort("routine"), "none");
+  assert.equal(hostedTierReasoningEffort("deep"), "high");
+  assert.throws(() => hostedTierReasoningEffort("turbo"), /Unknown Hosted tier/);
+});

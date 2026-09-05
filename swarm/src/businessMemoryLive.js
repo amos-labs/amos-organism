@@ -40,6 +40,23 @@ export const LIVE_FAMILIES = Object.freeze([
   "derived-total-from-records"
 ]);
 export const LIVE_ARMS = Object.freeze(["alone", "memory-live"]);
+/**
+ * Hosted routing tiers and the legacy `reasoning_effort` value that pins each
+ * one on `/v1/chat/completions` (routing mode `legacy_override`). Frontier is
+ * listed for completeness; on a free-foreground tenant it is clamped to deep.
+ */
+export const HOSTED_TIERS = Object.freeze({
+  routine: "none",
+  balanced: "medium",
+  deep: "high",
+  frontier: "max"
+});
+export function hostedTierReasoningEffort(tier) {
+  if (tier === null || tier === undefined || tier === "auto") return null;
+  const effort = HOSTED_TIERS[String(tier)];
+  if (!effort) throw new Error(`Unknown Hosted tier ${tier}; expected auto, ${Object.keys(HOSTED_TIERS).join(", ")}`);
+  return effort;
+}
 const WORLD_REF_FIELD = "world_ref";
 const EVIDENCE_CHAR_LIMIT = 6_000;
 const RECORD_LIST_LIMIT = 200;
@@ -414,6 +431,7 @@ export async function runLiveBusinessMemoryBenchmark({
     version: BUSINESS_MEMORY_LIVE_VERSION,
     modelId: worker.model,
     controlId: worker.controlId,
+    pinnedTier: worker.pinnedTier ?? "auto",
     manifestDigest: manifest.digest,
     worldId: world.id,
     seedDigest: seedMap.digest,

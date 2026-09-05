@@ -1,5 +1,27 @@
 # Experiment Log
 
+## 2026-09-05 — live arm per Hosted tier (routine / balanced / deep)
+
+- Runner: `npm run research:memory-live -- --tiers routine,balanced,deep`
+  (new option; pins the tier through the legacy `reasoning_effort` override,
+  routing mode `legacy_override`). Same tenant, world, and 9 cases as the
+  first live run. Results: `…-live-tiers-2026-09-05.json`.
+- memory-live: routine 8/9, balanced 9/9, deep 9/9; alone 0/9 on every tier.
+  Mean wall per memory answer: routine 1.0 s, balanced 4.5 s, deep 6.7 s.
+- The routine miss is `value-as-of-date-2`: asked for the value at an instant
+  between two revisions, the routine tier (no reasoning) returned the later
+  revision's value (30) instead of the one in effect (60) while citing the
+  correct record. Balanced and deep got it right. First live evidence of the
+  tier trade-off Codex's quality priority is about: as-of reasoning is where
+  the routine tier gives ground.
+- Grounding-metric boundary: the routine miss was counted `fully_grounded`
+  (its citation resolved). Across the three tiers, 54 calls, 27 answers with
+  citations, 27 fully grounded, 0 unresolved; the verifier says 26 of those 27
+  were correct. The metric measures whether citations resolve, not whether the
+  value read from the cited record is right. Both numbers are needed.
+- Claim boundary: one world, one repetition, three families; the tier pin is
+  the legacy override, not the classifier's own choice.
+
 ## 2026-09-05 — business-memory benchmark, live arm on the Northwind test tenant
 
 - Runner: `npm run research:memory-live` (new; `swarm/src/businessMemoryLive.js`,
