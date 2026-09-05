@@ -1,5 +1,37 @@
 # Experiment Log
 
+## 2026-09-05 — business-memory benchmark, live arm on the Northwind test tenant
+
+- Runner: `npm run research:memory-live` (new; `swarm/src/businessMemoryLive.js`,
+  `swarm/src/amosMcpClient.js`). Tenant `northwind-test` (plan `test_fixture`,
+  production). World `world-holdout-0` from seed `amos-business-memory-v1`,
+  holdout pool, 3 cases per live family (9 cases).
+- Seeding through governed verbs: 5 collections defined, 14 records created,
+  10 revisions written, every record read back with `record_history`
+  (57 MCP calls, zero errors). Seed map and per-revision host instants are in
+  `swarm/benchmarks/results/business-memory-live-dry-2026-09-05.json`.
+- Model: the Hosted `/v1/chat/completions` route with automatic routing, which
+  the grounding summary reports as tier `balanced`, route `qwen` for all 18
+  calls. No tool calls; the material is in the prompt.
+- Result (`…-live-hosted-2026-09-05.json`): alone 0/9; memory-live 9/9
+  (current value 3/3, value as of an instant 3/3, derived total 3/3). Paired:
+  9 wins, 0 losses. Mean memory-live prompt 8.2K chars, mean wall 5.8 s, no
+  recovery prompts.
+- Grounding-metric calibration: the production summary
+  (`/api/v1/admin/observability/grounding?days=1`) went from 0 calls before
+  the run to 18 after, all from `northwind-test`: 18 content answers, 9 with
+  citations, 9 fully grounded, 11 resolved ids, 0 unresolved, 0 empty
+  completions. That matches the verifier exactly: the 9 memory-arm answers
+  cited only real record ids and were all correct; the 9 alone-arm answers
+  said `unknown` with no citations. First evidence that the metric tracks
+  verified correctness rather than citation volume.
+- Also observed: the day-long window held zero Hosted calls before this run,
+  so weekend production traffic is sparse; the metric needs weekday windows.
+- Claim boundary: three families only (single writing principal); as-of asked
+  at an instant between live revisions, not a calendar date; one repetition;
+  one world; one model route. Not a holdout claim about model quality. Scope
+  families wait for the member principal's key.
+
 ## 2026-09-04 — business-memory benchmark, first holdout runs
 
 - Holdout pool, manifest `de370e5056ab…`, 80 cases, 11 families, seed

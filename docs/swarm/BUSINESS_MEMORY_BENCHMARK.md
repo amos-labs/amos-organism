@@ -123,6 +123,47 @@ Repeat with `--pool holdout` only after the development result has stopped
 changing. The output records the manifest digest, every run, the paired arm
 comparisons per model, and the model comparisons per arm.
 
+## Live arm (real tenant)
+
+The live arm seeds a generated world into a real, non-public AMOS tenant and
+reads it back through the production verbs. Nothing about the model's view is
+rendered from the synthetic world: records arrive as `record_history` returns
+them (Platform UUIDs, host-recorded instants, actors), evidence comes from
+`search_company_context` with the case's `as_of`, and the envelope comes from
+`whoami` and `get_catalog`. The verifiers are the synthetic ones; the only
+bridge is translating cited Platform ids back to world ids before verification
+(`translateLiveAnswer`).
+
+- Tenant: the durable `test_fixture` tenant described in the platform repo's
+  `docs/TEST-TENANT.md` (`northwind-test`). The owner API key lives in AWS
+  Secrets Manager and is read into the environment at run time; it is never
+  written to a report.
+- Seeding (`seedWorldIntoTenant`) is idempotent: a record whose `world_ref`
+  already exists in its live collection is reused. Live collections are named
+  `bm_<world>_<collection>` so benchmark data never mixes with the tenant's
+  starter data.
+- Families: only `current-value-after-supersession`, `value-as-of-date`, and
+  `derived-total-from-records` are reproducible with one writing principal.
+  Receipt families need proposed/failed/uncertain receipts the governed verbs
+  will not fabricate; note and session families need shared notes and prior
+  sessions; scope families need a second principal (the member user, once its
+  key exists). Those stay synthetic.
+- As-of: live revisions are seconds apart, so an as-of *date* becomes an as-of
+  *instant* placed between the two live revisions that bracket the world's
+  date. The expected value is unchanged; the question text carries the instant.
+- Arms: `alone` (no material) and `memory-live` (envelope, records, evidence).
+- Workers: the Hosted `/v1/chat/completions` route by default (whatever AMOS
+  routes to), plus any `--workers` spec from the synthetic runner. Hosted calls
+  also land in `intelligence_grounding_events`, so the run captures the admin
+  grounding summary before and after when `AMOS_ADMIN_KEY` is set.
+
+```bash
+AMOS_NORTHWIND_OWNER_KEY=... npm run research:memory-live -- --dry-run --output reports/live-dry.json
+AMOS_NORTHWIND_OWNER_KEY=... AMOS_ADMIN_KEY=... npm run research:memory-live -- \
+  --pool holdout --world-index 0 --cases-per-family 3 \
+  --output swarm/benchmarks/results/business-memory-live-hosted-<date>.json
+```
+
 ## First results (2026-09-04)
 
 Full run records are under `swarm/benchmarks/results/business-memory-*.json`

@@ -1007,7 +1007,7 @@ export function selectProcedures({ testCase, procedures }) {
 // ---------------------------------------------------------------------------
 // Arm rendering
 
-const OUTPUT_CONTRACT = [
+export const OUTPUT_CONTRACT = [
   "Return exactly one JSON object and nothing else, shaped as:",
   '{"status":"answered"|"scope_denied"|"unknown","answer":<string|number|null>,"grounding":[<ids>],"conflict":null|{"claimed":<value>,"recorded":<value>}}',
   "status answered: you can determine the value from material available to you; list every record, receipt, or note id you relied on in grounding.",
@@ -1227,7 +1227,7 @@ function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function extractJson(text) {
+export function extractJson(text) {
   const source = String(text ?? "").trim();
   if (!source) return { error: "empty answer" };
   const fenced = source.match(/```(?:json)?\s*([\s\S]*?)```/i);
