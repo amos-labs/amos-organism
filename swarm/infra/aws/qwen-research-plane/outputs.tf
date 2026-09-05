@@ -45,5 +45,5 @@ output "trainer_contract_parameter" {
 
 output "runner_private_ip" {
   description = "Private address of the runner host; the organism intake listens here on intake_port"
-  value       = aws_instance.runner.private_ip
+  value       = one(aws_instance.runner[*].private_ip)
 }
