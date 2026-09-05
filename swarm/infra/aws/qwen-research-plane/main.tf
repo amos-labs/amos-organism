@@ -439,7 +439,10 @@ resource "aws_instance" "runner" {
     delete_on_termination = true
   }
 
-  user_data_replace_on_change = true
+  # The runner is a live host: it carries the sleep daemon, the Platform-episode
+  # intake, and the replay-sync timer beside the job runner. Bootstrap drift must
+  # not destroy it; replace deliberately with `terraform taint` when intended.
+  user_data_replace_on_change = false
   user_data = templatefile("${path.module}/templates/runner-user-data.sh.tftpl", {
     api_base          = "http://${data.aws_instance.inference.private_ip}:8000/v1"
     api_key_secret_id = data.aws_secretsmanager_secret.inference_api_key.id
