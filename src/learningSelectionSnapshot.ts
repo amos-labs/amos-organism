@@ -27,6 +27,8 @@ export interface SnapshotProcedureApplicability {
   readonly toolFamilies: readonly string[];
   readonly roles: readonly string[];
   readonly tenantScope: "any" | "tenant";
+  /** Required and non-empty when tenantScope is "tenant"; empty otherwise. The Platform enforces it. */
+  readonly tenantIds: readonly string[];
 }
 
 export interface SnapshotProcedureEvidence {
@@ -43,6 +45,8 @@ export interface SnapshotProcedure {
   readonly digest: string;
   readonly guidance: ProcedureGuidance;
   readonly applicability: SnapshotProcedureApplicability;
+  /** Bounded prose the Platform renders synchronously (resume_company must not fetch per procedure); cited as id@version. */
+  readonly statement: string;
   readonly contentRef: string;
   readonly tokens: number;
   readonly evidence: SnapshotProcedureEvidence;
@@ -57,6 +61,8 @@ export interface CompatibleRuntime {
 export interface LearningSelectionSnapshotInput {
   readonly id: string;
   readonly generatedAt: string | Date;
+  /** Cache expiry for (id, digest); must be after generatedAt. */
+  readonly validUntil: string | Date;
   readonly sourceChainDigest: string;
   readonly compatibleRuntimes: readonly CompatibleRuntime[];
   readonly permittedUseScope: readonly string[];
@@ -68,12 +74,14 @@ export interface LearningSelectionSnapshot extends LearningSelectionSnapshotInpu
   readonly schema: typeof LEARNING_SELECTION_SNAPSHOT_SCHEMA;
   readonly version: typeof LEARNING_SELECTION_SNAPSHOT_VERSION;
   readonly generatedAt: string;
+  readonly validUntil: string;
   readonly procedureSnapshotSha256: string;
   readonly digest: string;
 }
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$/;
+export const PROCEDURE_STATEMENT_MAX_CHARS = 600;
 
 /** Digest of the ordered procedure identities: the value a Mission treatment binds to. */
 export function procedureSnapshotSha256(procedures: readonly SnapshotProcedure[]): string {
@@ -92,6 +100,7 @@ export function createLearningSelectionSnapshot(input: LearningSelectionSnapshot
     version: LEARNING_SELECTION_SNAPSHOT_VERSION,
     id: requireId(input.id, "snapshot.id"),
     generatedAt: isoDate(input.generatedAt, "snapshot.generatedAt"),
+    validUntil: isoDate(input.validUntil, "snapshot.validUntil"),
     sourceChainDigest: requireSha(input.sourceChainDigest, "snapshot.sourceChainDigest"),
     procedureSnapshotSha256: procedureSnapshotSha256(procedures),
     compatibleRuntimes: normalizeRuntimes(input.compatibleRuntimes),
@@ -99,6 +108,7 @@ export function createLearningSelectionSnapshot(input: LearningSelectionSnapshot
     tokenBound: nonNegativeInteger(input.tokenBound, "snapshot.tokenBound"),
     procedures
   };
+  if (new Date(body.validUntil).getTime() <= new Date(body.generatedAt).getTime()) throw new Error("snapshot.validUntil must be after generatedAt");
   const total = procedures.reduce((sum, procedure) => sum + procedure.tokens, 0);
   if (total > body.tokenBound) throw new Error(`snapshot procedures need ${total} tokens, above tokenBound ${body.tokenBound}`);
   return Object.freeze({ ...body, digest: digest(body) });
@@ -126,13 +136,14 @@ export function emptyLearningSelectionSnapshot(fields: Omit<LearningSelectionSna
  * Guidance is "avoid" only when every observed outcome was a verified failure;
  * genes with no verified outcome are not published (nothing to guide by).
  */
-export function procedureFromStrategyGene(gene: StrategyGene, outcomes: readonly GeneOutcome[], { tenantScope = "any" as "any" | "tenant", version = 1 } = {}): SnapshotProcedure | null {
+export function procedureFromStrategyGene(gene: StrategyGene, outcomes: readonly GeneOutcome[], { tenantScope = "any" as "any" | "tenant", tenantIds = [] as readonly string[], version = 1 } = {}): SnapshotProcedure | null {
   const verified = outcomes.filter((outcome) => outcome.verifierOutcome !== "uncredited");
   if (verified.length === 0) return null;
   const passes = verified.filter((outcome) => outcome.verifierOutcome === "pass");
   const failures = verified.filter((outcome) => outcome.verifierOutcome === "fail");
   const guidance: ProcedureGuidance = passes.length === 0 ? "avoid" : "guide";
   const content = { name: gene.name, procedure: gene.procedure, retrievalRecipe: gene.retrievalRecipe, stopConditions: gene.stopConditions, rolePolicy: gene.rolePolicy };
+  const statement = boundedStatement(`${guidance === "avoid" ? "Avoid" : "Follow"} ${gene.name}: ${gene.procedure.join("; ")}${gene.stopConditions.length ? ` Stop when ${gene.stopConditions.join("; ")}.` : ""}`);
   return normalizeProcedure({
     id: gene.id,
     version,
@@ -144,10 +155,12 @@ export function procedureFromStrategyGene(gene: StrategyGene, outcomes: readonly
       failureModes: gene.preconditions.failureModes,
       toolFamilies: gene.preconditions.toolFamilies,
       roles: Object.keys(gene.rolePolicy),
-      tenantScope
+      tenantScope,
+      tenantIds
     },
+    statement,
     contentRef: `gene:${gene.id}@${gene.digest}`,
-    tokens: Math.ceil(canonicalJson(content).length / 4),
+    tokens: Math.ceil((canonicalJson(content).length + statement.length) / 4),
     evidence: {
       verifiedPasses: passes.length,
       verifiedFailures: failures.length,
@@ -161,6 +174,11 @@ export function procedureFromStrategyGene(gene: StrategyGene, outcomes: readonly
 function normalizeProcedure(procedure: SnapshotProcedure): SnapshotProcedure {
   if (!["guide", "avoid"].includes(procedure.guidance)) throw new Error(`procedure ${procedure.id} guidance must be guide or avoid`);
   if (!["any", "tenant"].includes(procedure.applicability?.tenantScope)) throw new Error(`procedure ${procedure.id} tenantScope must be any or tenant`);
+  const tenantIds = uniqueSorted(procedure.applicability.tenantIds ?? [], "applicability.tenantIds", 0);
+  if (procedure.applicability.tenantScope === "tenant" && tenantIds.length === 0) throw new Error(`procedure ${procedure.id} tenantScope "tenant" needs tenantIds`);
+  if (procedure.applicability.tenantScope === "any" && tenantIds.length > 0) throw new Error(`procedure ${procedure.id} tenantScope "any" must not list tenantIds`);
+  const statement = requireText(procedure.statement, "procedure.statement");
+  if (statement.length > PROCEDURE_STATEMENT_MAX_CHARS) throw new Error(`procedure ${procedure.id} statement exceeds ${PROCEDURE_STATEMENT_MAX_CHARS} characters`);
   const evidence = procedure.evidence;
   return Object.freeze({
     id: requireId(procedure.id, "procedure.id"),
@@ -173,8 +191,10 @@ function normalizeProcedure(procedure: SnapshotProcedure): SnapshotProcedure {
       failureModes: uniqueSorted(procedure.applicability.failureModes, "applicability.failureModes", 0),
       toolFamilies: uniqueSorted(procedure.applicability.toolFamilies, "applicability.toolFamilies", 0),
       roles: uniqueSorted(procedure.applicability.roles, "applicability.roles", 0),
-      tenantScope: procedure.applicability.tenantScope
+      tenantScope: procedure.applicability.tenantScope,
+      tenantIds
     }),
+    statement,
     contentRef: requireText(procedure.contentRef, "procedure.contentRef"),
     tokens: nonNegativeInteger(procedure.tokens, "procedure.tokens"),
     evidence: Object.freeze({
@@ -196,6 +216,7 @@ function normalizeRuntimes(runtimes: readonly CompatibleRuntime[]): readonly Com
   })).sort((left, right) => `${left.modelId}|${left.adapterArtifactSha256 ?? ""}`.localeCompare(`${right.modelId}|${right.adapterArtifactSha256 ?? ""}`)));
 }
 
+function boundedStatement(text: string): string { return text.length <= PROCEDURE_STATEMENT_MAX_CHARS ? text : `${text.slice(0, PROCEDURE_STATEMENT_MAX_CHARS - 1)}…`; }
 function byId(left: SnapshotProcedure, right: SnapshotProcedure): number { return left.id < right.id ? -1 : left.id > right.id ? 1 : 0; }
 function round(value: number): number { return Math.round(value * 1e6) / 1e6; }
 function requireText(value: unknown, label: string): string { if (typeof value !== "string" || !value.trim()) throw new Error(`${label} is required`); return value.trim(); }

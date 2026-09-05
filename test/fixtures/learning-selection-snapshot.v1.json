@@ -3,6 +3,7 @@
   "version": 1,
   "id": "snapshot-fixture-populated-v1",
   "generatedAt": "2026-09-05T20:00:00.000Z",
+  "validUntil": "2026-09-12T20:00:00.000Z",
   "sourceChainDigest": "b95b2cf6052d1fc32a3f795e05d225ee84da38e5eedc7843923d2a14c8ed98b0",
   "procedureSnapshotSha256": "c5ed8b0de60435167c69457fe6a13d224449831aaeb0290eedff4452afa1156f",
   "compatibleRuntimes": [
@@ -44,8 +45,10 @@
         "roles": [
           "planner"
         ],
-        "tenantScope": "any"
+        "tenantScope": "any",
+        "tenantIds": []
       },
+      "statement": "Follow recover-reserved-tool-boundary: when an operation is refused as outside the Run Contract, request the exact boundary change with the completion condition it advances, then retry with the allowed verb. Stop when the verifier passes.",
       "contentRef": "gene:recover-reserved-tool-boundary@e1dec2f55e5b4494421ab3b426b1daffac96a72d62025f6727708900f0dc2858",
       "tokens": 180,
       "evidence": {
@@ -75,8 +78,12 @@
         "roles": [
           "planner"
         ],
-        "tenantScope": "any"
+        "tenantScope": "tenant",
+        "tenantIds": [
+          "426b4297-73f3-45df-936a-dee3c263fa1b"
+        ]
       },
+      "statement": "Avoid replay-completed-effect: completed effects listed in recent_steps are facts; never re-issue the same operation to confirm it.",
       "contentRef": "gene:replay-completed-effect@f50342359d198b353a6aed2cff557c79f9d9c46b8d6fda6be7dbdc83a33ce53b",
       "tokens": 96,
       "evidence": {
@@ -88,5 +95,5 @@
       }
     }
   ],
-  "digest": "9988df6847e1d77ece9b95e95f4f5ba93950472c522c160afef42f4a442e3d30"
+  "digest": "556e2cf6dd508315732b86b0c2f61bee812d6ccd6c584bb6e94b80d2547f3074"
 }

@@ -11,7 +11,7 @@ const runtimes = [
   { modelId: "amos-qwen38-27b-fp8", adapterArtifactSha256: null, runtimeRevision: "e31eb568681d3a718b7aaa5ce646b6711494b186" },
   { modelId: "stage1-implicit-r32-s3", adapterArtifactSha256: "2a08c46b3c6bcc0ab6df79a0d71374481eb46360ebacd6950eac43cea20d0e32", runtimeRevision: "e31eb568681d3a718b7aaa5ce646b6711494b186" }
 ];
-const common = { generatedAt: "2026-09-05T20:00:00.000Z", sourceChainDigest: digest({ fixture: "learning-selection-snapshot", chain: "empty-event-chain" }), compatibleRuntimes: runtimes, permittedUseScope: ["strategy_learning"] };
+const common = { generatedAt: "2026-09-05T20:00:00.000Z", validUntil: "2026-09-12T20:00:00.000Z", sourceChainDigest: digest({ fixture: "learning-selection-snapshot", chain: "empty-event-chain" }), compatibleRuntimes: runtimes, permittedUseScope: ["strategy_learning"] };
 
 const populated = createLearningSelectionSnapshot({
   ...common,
@@ -23,7 +23,8 @@ const populated = createLearningSelectionSnapshot({
       version: 1,
       digest: digest({ gene: "recover-reserved-tool-boundary", v: 1 }),
       guidance: "guide",
-      applicability: { phases: ["execute", "recover"], artifactClasses: ["tool-call"], failureModes: ["authority-boundary"], toolFamilies: ["finance"], roles: ["planner"], tenantScope: "any" },
+      applicability: { phases: ["execute", "recover"], artifactClasses: ["tool-call"], failureModes: ["authority-boundary"], toolFamilies: ["finance"], roles: ["planner"], tenantScope: "any", tenantIds: [] },
+      statement: "Follow recover-reserved-tool-boundary: when an operation is refused as outside the Run Contract, request the exact boundary change with the completion condition it advances, then retry with the allowed verb. Stop when the verifier passes.",
       contentRef: `gene:recover-reserved-tool-boundary@${digest({ gene: "recover-reserved-tool-boundary", v: 1 })}`,
       tokens: 180,
       evidence: { verifiedPasses: 7, verifiedFailures: 1, uncreditedAttempts: 2, meanVerifiedQuality: 0.91, lastVerifiedAt: "2026-09-05T10:35:00.000Z" }
@@ -33,7 +34,8 @@ const populated = createLearningSelectionSnapshot({
       version: 2,
       digest: digest({ gene: "replay-completed-effect", v: 2 }),
       guidance: "avoid",
-      applicability: { phases: ["execute"], artifactClasses: ["tool-call"], failureModes: ["duplicate-effect"], toolFamilies: [], roles: ["planner"], tenantScope: "any" },
+      applicability: { phases: ["execute"], artifactClasses: ["tool-call"], failureModes: ["duplicate-effect"], toolFamilies: [], roles: ["planner"], tenantScope: "tenant", tenantIds: ["426b4297-73f3-45df-936a-dee3c263fa1b"] },
+      statement: "Avoid replay-completed-effect: completed effects listed in recent_steps are facts; never re-issue the same operation to confirm it.",
       contentRef: `gene:replay-completed-effect@${digest({ gene: "replay-completed-effect", v: 2 })}`,
       tokens: 96,
       evidence: { verifiedPasses: 0, verifiedFailures: 4, uncreditedAttempts: 0, meanVerifiedQuality: null, lastVerifiedAt: "2026-09-04T22:10:00.000Z" }

@@ -3,6 +3,7 @@
   "version": 1,
   "id": "snapshot-fixture-empty-v1",
   "generatedAt": "2026-09-05T20:00:00.000Z",
+  "validUntil": "2026-09-12T20:00:00.000Z",
   "sourceChainDigest": "b95b2cf6052d1fc32a3f795e05d225ee84da38e5eedc7843923d2a14c8ed98b0",
   "procedureSnapshotSha256": "3729e785172fb2d92b3a51f2d2f0efc409540291fd0497a569aaa2baefeadde3",
   "compatibleRuntimes": [
@@ -22,5 +23,5 @@
   ],
   "tokenBound": 0,
   "procedures": [],
-  "digest": "59736dd29b57d5001b06be63816827142fcccecffed7768466f37ee46068b747"
+  "digest": "16fdd854cc2042de4328d7c4396101708287d5155c7240dc97cc85448b514cf0"
 }

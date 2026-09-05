@@ -15,7 +15,7 @@ one avoid) and `learning-selection-snapshot.empty.v1.json` (the valid
 | field | meaning |
 | --- | --- |
 | `schema`, `version` | `amos.learning-selection-snapshot`, `1` |
-| `id`, `generatedAt`, `digest` | identity; `digest` is the canonical digest of everything else and is re-derived on validation |
+| `id`, `generatedAt`, `validUntil`, `digest` | identity; `validUntil` bounds the Platform's `(id, digest)` cache and must be after `generatedAt`; `digest` is the canonical digest of everything else and is re-derived on validation |
 | `sourceChainDigest` | digest of the organism event chain the snapshot was derived from |
 | `procedureSnapshotSha256` | digest of the ordered `{id, version, digest}` list; with no procedures it is the shared empty-snapshot sentinel `3729e785…`, the same value a comparison-v2 Mission treatment carries in `procedureSnapshotSha256` |
 | `compatibleRuntimes[]` | `{modelId, adapterArtifactSha256 or null, runtimeRevision}` the snapshot was evaluated against; a procedure is not assumed to transfer to runtimes not listed |
@@ -25,9 +25,13 @@ one avoid) and `learning-selection-snapshot.empty.v1.json` (the valid
 
 Each procedure: `id`, `version`, `digest` (the kernel gene digest), `guidance`
 (`guide` or `avoid`), `applicability` (`phases`, `artifactClasses`,
-`failureModes`, `toolFamilies`, `roles`, `tenantScope` any or tenant, all in the
-kernel's precondition vocabulary), `contentRef` (`gene:<id>@<digest>`, resolved
-by the Organism, never inlined here), `tokens`, and `evidence`
+`failureModes`, `toolFamilies`, `roles`, `tenantScope` any or tenant, and
+`tenantIds`, required and non-empty exactly when `tenantScope` is `tenant`, all in
+the kernel's precondition vocabulary), `statement` (bounded prose, at most 600
+characters, the text the Platform renders synchronously and cites as
+`id@version`; `resume_company` never fetches per procedure), `contentRef`
+(`gene:<id>@<digest>`, the full content resolved by the Organism when a consumer
+needs more than the statement), `tokens` (counts the statement), and `evidence`
 (`verifiedPasses`, `verifiedFailures`, `uncreditedAttempts`,
 `meanVerifiedQuality` or null, `lastVerifiedAt` or null).
 
