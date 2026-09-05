@@ -39,6 +39,8 @@ export const LIVE_FAMILIES = Object.freeze([
   "value-as-of-date",
   "derived-total-from-records"
 ]);
+/** Families that need a second, less-privileged principal (the member key). */
+export const LIVE_MEMBER_FAMILIES = Object.freeze(["scope-boundary"]);
 export const LIVE_ARMS = Object.freeze(["alone", "memory-live"]);
 /**
  * Hosted routing tiers and the legacy `reasoning_effort` value that pins each
@@ -187,8 +189,17 @@ export async function loadLiveSnapshot({ client, seedMap, signal = null }) {
   const identity = await client.callTool("whoami", {}, { signal });
   const catalog = await client.callTool("get_catalog", {}, { signal });
   const records = [];
+  const denied = [];
   for (const [worldRecordId, entry] of Object.entries(seedMap.records)) {
-    const history = await client.callTool("record_history", { record_id: entry.recordId, limit: 50 }, { signal });
+    let history;
+    try {
+      history = await client.callTool("record_history", { record_id: entry.recordId, limit: 50 }, { signal });
+    } catch (error) {
+      // A principal without read on the collection is refused by the host;
+      // that refusal is the fact the scope family is about.
+      denied.push({ worldRecordId, recordId: entry.recordId, collection: entry.live, reason: String(error?.message ?? error).slice(0, 200) });
+      continue;
+    }
     const revisions = (history?.revisions ?? [])
       .slice()
       .sort((a, b) => a.revision - b.revision)
@@ -221,7 +232,8 @@ export async function loadLiveSnapshot({ client, seedMap, signal = null }) {
       collections: (catalog?.collections ?? []).map((item) => (typeof item === "string" ? item : item?.name)).filter(Boolean),
       collectionsOutsideScope: catalog?.collections_outside_scope ?? []
     },
-    records
+    records,
+    denied
   };
 }
 
@@ -234,7 +246,7 @@ export async function loadLiveSnapshot({ client, seedMap, signal = null }) {
  * revisions that bracket the world's as-of date.
  */
 export function liveCase({ testCase, world, seedMap }) {
-  if (!LIVE_FAMILIES.includes(testCase.family)) {
+  if (!LIVE_FAMILIES.includes(testCase.family) && !LIVE_MEMBER_FAMILIES.includes(testCase.family)) {
     throw new Error(`Family ${testCase.family} is not reproducible live`);
   }
   const collections = testCase.collections.map((collection) => seedMap.collections[collection]?.live).filter(Boolean);
@@ -267,6 +279,23 @@ export function instantBetween(liveRevisions, inEffect) {
   const upper = Date.parse(sorted[inEffect].recordedAt);
   if (!(upper > lower)) throw new Error("Live revisions must have strictly increasing instants");
   return new Date(lower + Math.floor((upper - lower) / 2)).toISOString();
+}
+
+/**
+ * A scope case is live-reproducible only when the member principal really
+ * cannot see the hidden record's collection. Cases whose hidden collection the
+ * member was granted are skipped, never silently passed.
+ */
+export function memberScopeEligibility({ testCase, seedMap, memberSnapshot }) {
+  if (testCase.family !== "scope-boundary") return { eligible: false, reason: "not a scope case" };
+  const hidden = seedMap.records[testCase.facts.hiddenRecordId];
+  if (!hidden) return { eligible: false, reason: "hidden record not seeded" };
+  const visible = new Set(memberSnapshot.catalog.collections);
+  const deniedIds = new Set(memberSnapshot.denied.map((entry) => entry.recordId));
+  if (visible.has(hidden.live) && !deniedIds.has(hidden.recordId)) {
+    return { eligible: false, reason: `member can read ${hidden.live}` };
+  }
+  return { eligible: true, reason: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +389,8 @@ export async function runLiveBusinessMemoryBenchmark({
   world,
   seedMap,
   snapshot,
+  memberClient = null,
+  memberSnapshot = null,
   arms = LIVE_ARMS,
   maxOutputTokens = 600,
   evidenceLimit = 4,
@@ -369,24 +400,42 @@ export async function runLiveBusinessMemoryBenchmark({
 }) {
   if (!worker || typeof worker.runCase !== "function") throw new Error("Live grading requires a research worker");
   requireClient(client);
+  if (memberClient) {
+    requireClient(memberClient);
+    if (!memberSnapshot) throw new Error("A member client needs its own snapshot");
+  }
   for (const arm of arms) if (!LIVE_ARMS.includes(arm)) throw new Error(`Unknown live arm ${arm}`);
-  const cases = manifest.cases.filter((testCase) => testCase.worldId === world.id && LIVE_FAMILIES.includes(testCase.family));
+  const ownerCases = manifest.cases.filter((testCase) => testCase.worldId === world.id && LIVE_FAMILIES.includes(testCase.family));
+  const skipped = [];
+  const memberCases = memberClient
+    ? manifest.cases.filter((testCase) => {
+      if (testCase.worldId !== world.id || !LIVE_MEMBER_FAMILIES.includes(testCase.family)) return false;
+      const eligibility = memberScopeEligibility({ testCase, seedMap, memberSnapshot });
+      if (!eligibility.eligible) skipped.push({ caseId: testCase.id, family: testCase.family, reason: eligibility.reason });
+      return eligibility.eligible;
+    })
+    : [];
+  const cases = [...ownerCases, ...memberCases];
   if (cases.length === 0) throw new Error("No live-reproducible cases for this world");
+  const principalFor = (testCase) => (LIVE_MEMBER_FAMILIES.includes(testCase.family) ? "member" : "owner");
   const startedAt = now().toISOString();
   const runs = [];
   for (const arm of arms) {
     for (const testCase of cases) {
       if (signal?.aborted) break;
+      const principal = principalFor(testCase);
+      const principalClient = principal === "member" ? memberClient : client;
+      const principalSnapshot = principal === "member" ? memberSnapshot : snapshot;
       const item = liveCase({ testCase, world, seedMap });
       let evidence = null;
       let evidenceCalls = 0;
       if (arm === "memory-live") {
         const args = { query: item.liveQuestion.slice(0, 256), limit: evidenceLimit };
         if (item.liveAsOf) args.as_of = item.liveAsOf;
-        evidence = compactEvidence(await client.callTool("search_company_context", args, { signal }));
+        evidence = compactEvidence(await principalClient.callTool("search_company_context", args, { signal }));
         evidenceCalls = 1;
       }
-      const messages = renderLiveArmMessages({ arm, liveCase: item, world, snapshot, evidence, now: now() });
+      const messages = renderLiveArmMessages({ arm, liveCase: item, world, snapshot: principalSnapshot, evidence, now: now() });
       const promptChars = messages.reduce((total, message) => total + String(message.content).length, 0);
       const observation = await runResearchInference({
         worker,
@@ -407,6 +456,7 @@ export async function runLiveBusinessMemoryBenchmark({
         caseId: testCase.id,
         caseDigest: testCase.digest,
         family: testCase.family,
+        principal,
         arm,
         passed: graded.passed,
         failures: graded.failures,
@@ -436,17 +486,22 @@ export async function runLiveBusinessMemoryBenchmark({
     worldId: world.id,
     seedDigest: seedMap.digest,
     snapshotObservedAt: snapshot.observedAt,
-    families: [...LIVE_FAMILIES],
+    families: [...LIVE_FAMILIES, ...(memberClient ? LIVE_MEMBER_FAMILIES : [])],
+    memberPrincipal: memberClient ? { role: memberSnapshot.identity.role, visibleCollections: memberSnapshot.catalog.collections, deniedRecords: memberSnapshot.denied.length } : null,
+    skippedCases: skipped,
     caseCount: cases.length,
     startedAt,
     completedAt: now().toISOString(),
     arms: armSummaries,
     paired,
     mcpCalls: client.summary(),
+    memberMcpCalls: memberClient ? memberClient.summary() : null,
     runs,
     claimBoundary: [
       "Live arm: real tenant, real governed writes and reads, real Hosted route where the worker is Hosted.",
-      "Only three families are reproducible with one principal; receipt, note, session, and scope families remain synthetic.",
+      memberClient
+        ? "Four families live: three as the owner principal, scope-boundary as a real member principal granted one collection; receipt, note, and session families remain synthetic."
+        : "Only three families are reproducible with one principal; receipt, note, session, and scope families remain synthetic.",
       "As-of questions are asked at an RFC 3339 instant between live revisions, not at the world's calendar date.",
       "Single repetition; not a holdout claim about model quality."
     ]

@@ -152,6 +152,13 @@ bridge is translating cited Platform ids back to world ids before verification
   *instant* placed between the two live revisions that bracket the world's
   date. The expected value is unchanged; the question text carries the instant.
 - Arms: `alone` (no material) and `memory-live` (envelope, records, evidence).
+- Member principal: with `AMOS_NORTHWIND_MEMBER_KEY` set (a role-capped key
+  issued by the Platform's admin verb for `test_fixture` tenants and granted
+  exactly one benchmark collection), `scope-boundary` cases run as that
+  principal: its own `whoami`/`get_catalog` envelope, its own
+  `record_history` reads (denied records are recorded as denied, never
+  silently missing), its own `search_company_context`. Cases whose hidden
+  collection the member can read are reported in `skippedCases`, not passed.
 - Workers: the Hosted `/v1/chat/completions` route by default (whatever AMOS
   routes to), plus any `--workers` spec from the synthetic runner.
 - Tiers: `--tiers routine,balanced,deep` runs one Hosted worker per tier,
