@@ -153,3 +153,9 @@ variable "gateway_repository_arn" {
   type        = string
   default     = ""
 }
+
+variable "platform_task_role_arn" {
+  description = "IAM role of the Platform ECS tasks that fetch the published learning selection snapshot (sleep/learning-selection-snapshot.json and its .digest) from the research bucket. Empty disables the bucket-policy grant. The matching kms:Decrypt on the bucket key lives on the role itself (Platform stack) because the key policy delegates to IAM."
+  type        = string
+  default     = ""
+}

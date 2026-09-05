@@ -99,3 +99,28 @@ contract examples across eight mission families. Its family-disjoint 64/16/48
 train/validation/holdout split is qualified only for the QLoRA pipeline and
 lineage proof. It is explicitly insufficient for quality training or production
 promotion; the full adapter preflight remains gated at 200/50/50 examples.
+
+## Operator values (keep a local `research-plane.auto.tfvars`; tfvars are gitignored)
+
+Plans default both instances to disabled, so a plan without these values
+proposes destroying the runner and trainer. Recreate the file from this table
+before planning (non-secret; secrets are referenced by ARN):
+
+| variable | value in production (2026-09-05) |
+| --- | --- |
+| `runner_enabled` | `true` |
+| `runner_image_uri` | `637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research-plane/runner@sha256:3b44754c0cc63b3822637397e13c0600dca31c4d7df1c9e0cf8a297626e4343d` |
+| `trainer_enabled` | `true` |
+| `trainer_ami_id` | `ami-0a30b02f6c5660457` |
+| `trainer_image_uri` | `637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research-plane/trainer@sha256:dfad292abe70578148a9c37ea1c1d62cbc10b94156b44b149c9285512a22ea21` |
+| `trainer_contract_uri` | `s3://amos-qwen-research-plane-637423327454-us-east-1/training-contracts/qwen38-adapter-stage0-20260823-2014.json` |
+| `platform_ecs_security_group_id` | `sg-0967e26d543a5ce47` |
+| `intake_bearer_secret_arn` | `arn:aws:secretsmanager:us-east-1:637423327454:secret:amos-organism/platform-intake-bearer-Qos4RO` |
+| `platform_task_role_arn` | `arn:aws:iam::637423327454:role/swarm-infrastructure-rails-task-role` |
+
+Two behaviours to expect from a plan: a `user_data` template change is applied
+in place (`user_data_replace_on_change = false`), which stops and starts the
+instance, and starts the trainer if it was stopped; stop it again afterwards.
+The trainer's `associate_public_ip_address` is drift-pinned with
+`ignore_changes`; replacing the trainer would destroy the cached base
+checkpoint on its volume.

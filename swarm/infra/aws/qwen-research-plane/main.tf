@@ -656,6 +656,14 @@ resource "aws_instance" "trainer" {
     Name    = "${local.name}-trainer"
     Purpose = "stage-zero-qlora-lineage-proof"
   }
+
+  lifecycle {
+    # The live trainer was created without a public IP; changing this attribute
+    # forces replacement and would destroy the cached base checkpoint and
+    # adapters on its volume. Public-IP drift is tolerated, never "fixed" by
+    # replacement.
+    ignore_changes = [associate_public_ip_address]
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "trainer_status" {
@@ -672,4 +680,35 @@ resource "aws_cloudwatch_metric_alarm" "trainer_status" {
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "breaching"
   dimensions          = { InstanceId = aws_instance.trainer[0].id }
+}
+
+# The Platform reads the hourly learning selection snapshot straight from the
+# bucket. Only the two snapshot objects are readable; nothing else in the
+# bucket is exposed. The object is SSE-KMS encrypted with the inference key,
+# whose policy delegates to IAM, so the reader role also needs kms:Decrypt on
+# that key in its own policy (Platform stack).
+data "aws_iam_policy_document" "research_bucket" {
+  count = var.platform_task_role_arn != "" ? 1 : 0
+
+  statement {
+    sid    = "PlatformReadsLearningSelectionSnapshot"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = [var.platform_task_role_arn]
+    }
+    actions = ["s3:GetObject", "s3:GetObjectVersion"]
+    resources = [
+      "${aws_s3_bucket.research.arn}/sleep/learning-selection-snapshot.json",
+      "${aws_s3_bucket.research.arn}/sleep/learning-selection-snapshot.json.digest",
+    ]
+  }
+}
+
+resource "aws_s3_bucket_policy" "research" {
+  count  = var.platform_task_role_arn != "" ? 1 : 0
+  bucket = aws_s3_bucket.research.id
+  policy = data.aws_iam_policy_document.research_bucket[0].json
+
+  depends_on = [aws_s3_bucket_public_access_block.research]
 }
