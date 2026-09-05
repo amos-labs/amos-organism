@@ -4,11 +4,14 @@ import { digestResearchValue } from "../src/experimentProtocol.js";
 import {
   createAdapterCandidate,
   holdoutGateFromComparison,
+  shadowGateFromMissionComparison,
   nextAdapterAction,
   recordAdapterGate,
   recordHostAdapterGate,
   validateAdapterCandidate
 } from "../src/adapterCandidates.js";
+import { missionComparisonInput, passingMissionComparison } from "./fixtures/missionComparisonFixtures.js";
+import { compareVerifiedMissions } from "../src/missionComparison.js";
 
 function candidate() {
   return createAdapterCandidate({
@@ -63,7 +66,7 @@ test("canary and promotion cannot be recorded without a host receipt that attest
     { id: "trained", status: "passed", evaluator: "disposable-trainer", receiptDigest: "b".repeat(64) },
     holdoutGateFromComparison({ gateId: "frozen-holdout", comparison: comparison(10, 1, 0.2), adapterModelId: "implicit-r32-s3" }),
     holdoutGateFromComparison({ gateId: "sealed-holdout", comparison: comparison(10, 1, 0.2), adapterModelId: "implicit-r32-s3" }),
-    { id: "shadow", status: "passed", evaluator: "mission-verifier", receiptDigest: "f".repeat(64), metrics: { turns: 200 } }
+    shadowGateFromMissionComparison(passingMissionComparison())
   ]) c = recordAdapterGate(c, gate);
   assert.equal(c.nextGate, "canary");
   assert.equal(c.deployment.canaryAllowed, true);
@@ -80,7 +83,26 @@ test("canary and promotion cannot be recorded without a host receipt that attest
   assert.equal(c.deployment.automaticallyDeployed, false);
 });
 
+test("shadow advancement requires replayable paired evidence for this candidate", () => {
+  let c = candidate();
+  for (const gate of [
+    { id: "trained", status: "passed", evaluator: "disposable-trainer", receiptDigest: "b".repeat(64) },
+    holdoutGateFromComparison({ gateId: "frozen-holdout", comparison: comparison(10, 1, 0.2), adapterModelId: "implicit-r32-s3" }),
+    holdoutGateFromComparison({ gateId: "sealed-holdout", comparison: comparison(10, 1, 0.2), adapterModelId: "implicit-r32-s3" })
+  ]) c = recordAdapterGate(c, gate);
+  assert.throws(() => recordAdapterGate(c, { id: "shadow", status: "passed", evaluator: "mission-verifier", receiptDigest: "f".repeat(64), metrics: { turns: 200 } }), /verified mission comparison/);
+  const gate = shadowGateFromMissionComparison(passingMissionComparison());
+  assert.throws(() => recordAdapterGate(c, { ...gate, metrics: { turns: 200 } }), /does not match verified mission results/);
+  const other = { ...gate.missionComparison, candidate: { ...gate.missionComparison.candidate, adapterUri: "s3://bucket/another-adapter" } };
+  const { digest, ...body } = other; other.digest = digestResearchValue(body);
+  assert.throws(() => recordAdapterGate(c, shadowGateFromMissionComparison(other)), /does not evaluate this adapter/);
+});
+
 test("a tampered candidate fails validation", () => {
   const c = candidate();
   assert.throws(() => validateAdapterCandidate({ ...c, deployment: { ...c.deployment, productionAllowed: true } }), /digest does not match/);
+});
+
+test("insufficient mission evidence leaves the candidate awaiting its shadow gate", () => {
+  assert.throws(() => shadowGateFromMissionComparison(compareVerifiedMissions(missionComparisonInput(4))), /not ready/);
 });
