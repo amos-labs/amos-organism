@@ -17,7 +17,7 @@ one avoid) and `learning-selection-snapshot.empty.v1.json` (the valid
 | `schema`, `version` | `amos.learning-selection-snapshot`, `1` |
 | `id`, `generatedAt`, `validUntil`, `digest` | identity; `validUntil` bounds the Platform's `(id, digest)` cache and must be after `generatedAt`; `digest` is the canonical digest of everything else and is re-derived on validation |
 | `sourceChainDigest` | digest of the organism event chain the snapshot was derived from |
-| `procedureSnapshotSha256` | digest of the ordered `{id, version, digest}` list; with no procedures it is the shared empty-snapshot sentinel `3729e785…`, the same value a comparison-v2 Mission treatment carries in `procedureSnapshotSha256` |
+| `procedureSnapshotSha256` | digest of the frozen procedure set as `{id, contentSha256}` sorted by id, where `contentSha256` is each procedure's rendered-content identity (statement, guidance, applicability, contentRef, version, gene digest as lineage; evidence counts excluded). Changing a statement, flipping guide/avoid or narrowing tenant applicability changes it; reordering does not; duplicate ids are refused. With no procedures it is the shared empty-snapshot sentinel `3729e785…`, the same value a comparison-v2 Mission treatment carries in `procedureSnapshotSha256` |
 | `compatibleRuntimes[]` | `{modelId, adapterArtifactSha256 or null, runtimeRevision}` the snapshot was evaluated against; a procedure is not assumed to transfer to runtimes not listed |
 | `permittedUseScope[]` | permitted uses this snapshot may serve (today `strategy_learning`); the Platform refuses it for tenants without that use |
 | `tokenBound` | ceiling on the summed `tokens` of all procedures; the gateway compiler never exceeds it |
@@ -50,7 +50,11 @@ needs more than the statement), `tokens` (counts the statement), and `evidence`
   outcome; all-fail outcomes publish it as `avoid`. Uncredited attempts are
   counted but never credited.
 - Reordering procedures does not change `digest`; changing any evidence field,
-  procedure, runtime or bound does.
+  procedure, runtime or bound does. `procedureSnapshotSha256` is narrower: it
+  changes only when what is offered changes (content, guidance, applicability),
+  so accruing evidence does not silently re-identify a treatment.
+- The offered snapshot (this artifact) is distinct from what the gateway
+  actually compiled (expression evidence); the comparator reads the latter.
 
 ## Not yet
 
