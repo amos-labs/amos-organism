@@ -33,11 +33,18 @@ test("a replayed chain publishes only genes with verified outcomes, from a file 
   const dir = mkdtempSync(join(tmpdir(), "snapshot-publisher-"));
   const path = join(dir, "events.jsonl");
   const gate = new AllowListHostGate();
-  const archive = new StrategyGeneArchive(gate, new FileEventStore(path));
+  const store = new FileEventStore(path);
+  const archive = new StrategyGeneArchive(gate, store);
   const guided = archive.register(spec("recover reserved tool"), [], gate.allow(receipt("r-1", "m-1", "gene-approved")));
   const unproven = archive.register(spec("untested idea"), [], gate.allow(receipt("r-2", "m-1", "gene-approved")));
-  archive.recordOutcome({ geneId: guided.id, missionId: "m-2", verifiedQuality: 0.9, fitnessVested: 1, verifierOutcome: "pass" }, gate.allow(receipt("r-3", "m-2", "official-verification")));
-  archive.recordOutcome({ geneId: guided.id, missionId: "m-3", verifiedQuality: 0, fitnessVested: 0, verifierOutcome: "uncredited" }, gate.allow(receipt("r-4", "m-3", "official-verification")));
+  // The archive records outcomes in memory; the organism persists them as host events (src/organism.ts).
+  const persistOutcome = (missionId: string, quality: number, verifierOutcome: "pass" | "fail" | "uncredited", id: string) => {
+    const hostReceipt = gate.allow(receipt(id, missionId, "official-verification"));
+    const outcome = archive.recordOutcome({ geneId: guided.id, missionId, verifiedQuality: quality, fitnessVested: quality, verifierOutcome }, hostReceipt);
+    store.append({ id: `gene:outcome:${missionId}:${guided.id}:${id}`, type: "gene.outcome-recorded", missionId, occurredAt: hostReceipt.issuedAt, authority: "host", hostReceiptId: id, payload: { outcome } });
+  };
+  persistOutcome("m-2", 0.9, "pass", "r-3");
+  persistOutcome("m-3", 0, "uncredited", "r-4");
 
   const events = new FileEventStore(path).events();
   const derived = deriveLearningSelectionSnapshot({ events, id: "s-1", compatibleRuntimes: runtimes, now: new Date("2026-09-05T21:00:00Z") });
