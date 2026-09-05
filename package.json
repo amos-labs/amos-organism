@@ -44,6 +44,7 @@
     "organism:serve-platform-intake": "node scripts/servePlatformEpisodeIntake.ts",
     "organism:generate-episode-fixture": "node scripts/generatePlatformEpisodeDeliveryFixture.ts",
     "organism:generate-selection-snapshot-fixture": "node scripts/generateLearningSelectionSnapshotFixture.ts",
+    "organism:publish-selection-snapshot": "node scripts/publishLearningSelectionSnapshot.ts",
     "research:swarm:qualify-evolution": "python3 swarm/scripts/qualifySwarmCandidateEvolution.py",
     "research:swarm:hrr-v2": "node swarm/scripts/benchmarkHolographicWorldV2.js",
     "research:swarm:hrr-dual": "node swarm/scripts/benchmarkDualChannelHolographicWorld.js",

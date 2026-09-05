@@ -56,9 +56,22 @@ needs more than the statement), `tokens` (counts the statement), and `evidence`
 - The offered snapshot (this artifact) is distinct from what the gateway
   actually compiled (expression evidence); the comparator reads the latter.
 
+## Publishing from the live event chain
+
+`npm run organism:publish-selection-snapshot -- --events <organism events jsonl>
+--runtime modelId@revision[:adapterSha256] --out <path>` replays the chain
+read-only (`src/learningSnapshotPublisher.ts`), offers only genes with at least
+one verified outcome, sets `sourceChainDigest` to the chain head, and writes the
+snapshot plus a `.digest` sidecar atomically (temp file, then rename). A chain
+with no admitted genes publishes the empty snapshot; today's production chain
+holds only Platform episodes, so that is what production will see until genes
+are admitted. Scheduling it on the runner (hourly, copied to
+`s3://amos-qwen-research-plane-…/sleep/learning-selection-snapshot.json`) is
+the next infrastructure step; the Platform reads the path it is configured
+with.
+
 ## Not yet
 
-Snapshot publication from the live event chain (a standing order in the sleep
-cycle) and the Platform-side `resume_company.procedures` consumer are follow-ups
-in their respective lanes. Effectiveness of a procedure on a given runtime is
-established by comparison v2, not by appearing in this snapshot.
+The Platform-side `resume_company.procedures` consumer is Platform-lane work
+(#819). Effectiveness of a procedure on a given runtime is established by
+comparison v2, not by appearing in this snapshot.
