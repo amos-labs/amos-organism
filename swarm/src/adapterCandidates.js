@@ -1,4 +1,5 @@
 import { digestResearchValue } from "./experimentProtocol.js";
+import { validateVerifiedMissionComparison } from "./missionComparison.js";
 
 /**
  * Adapter candidate ledger: the governed path for a trained adapter to change
@@ -77,7 +78,8 @@ export function createAdapterCandidate({
  * Record a gate. Holdout gates require a paired comparison receipt whose
  * candidate row names this adapter; the gate passes only if the adapter did not
  * lose more paired scenarios than it won and its pass rate did not fall below
- * the base. Shadow requires a mission-verifier summary. Canary and promotion
+ * the base. Shadow requires a replayable comparison of independently executed
+ * Missions. Canary and promotion
  * require a host receipt and cannot be recorded through this function.
  */
 export function recordAdapterGate(candidateInput, gateInput) {
@@ -88,7 +90,29 @@ export function recordAdapterGate(candidateInput, gateInput) {
   if (!RESEARCH_RECORDABLE_GATES.includes(gate.id)) {
     throw new Error(`Gate ${gate.id} requires a host receipt; use recordHostAdapterGate`);
   }
+  if (gate.id === "shadow") {
+    const comparison = validateVerifiedMissionComparison(gateInput.missionComparison);
+    if (comparison.candidate.adapterUri !== candidate.adapterUri || comparison.baseline.modelId !== candidate.baseModel) throw new Error("Mission comparison does not evaluate this adapter against its base");
+    const derived = normalizeGate(shadowGateFromMissionComparison(comparison));
+    for (const key of ["status", "receiptDigest", "metrics", "feedbackSignals"]) {
+      if (digestResearchValue(gate[key]) !== digestResearchValue(derived[key])) throw new Error("Shadow gate does not match verified mission results");
+    }
+  }
   return applyGate(candidate, gate);
+}
+
+/** Build shadow evidence from paired executions, never unexecuted shadow prose. */
+export function shadowGateFromMissionComparison(input) {
+  const comparison = validateVerifiedMissionComparison(input);
+  if (!comparison.checks.enoughIndependentMissions || !comparison.checks.completeCheckerCoverage) {
+    throw new Error("Mission comparison is not ready: collect enough independently checked missions before recording a gate");
+  }
+  return {
+    id: "shadow", status: comparison.passed ? "passed" : "failed", evaluator: "mission-verifier",
+    receiptDigest: comparison.digest, metrics: comparison.metrics,
+    feedbackSignals: Object.entries(comparison.checks).filter(([, pass]) => !pass).map(([key]) => `mission-check-failed:${key}`),
+    missionComparison: comparison
+  };
 }
 
 export function recordHostAdapterGate(candidateInput, gateInput, hostReceipt) {

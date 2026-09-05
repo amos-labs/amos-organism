@@ -138,3 +138,8 @@ Direct Qwen and frontier providers remain valid controls. Swarm becomes a
 production intelligence candidate only after it improves verified mission
 outcomes without increasing unknown checks, unsafe proposals, cost, or
 recovery rate.
+
+The adapter shadow gate now reconstructs its decision from
+[paired verified mission comparisons](VERIFIED_MISSION_COMPARISON.md).
+Unexecuted alternate answers from the shadow gateway remain diagnostics; they
+cannot replace independently executed and checked mission outcomes.
