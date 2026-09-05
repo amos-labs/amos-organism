@@ -40,8 +40,12 @@ import {
 const swarmRoot = fileURLToPath(new URL("..", import.meta.url));
 const args = process.argv.slice(2);
 
-const queuePath = resolve(requiredOption("--queue"));
-const outputQueuePath = resolve(option("--output-queue") || queuePath.replace(/\.json$/, "") + ".sleep.json");
+// A promotion queue is optional when standing orders drive the daemon; whichever
+// file is given anchors the ledger and reports.
+const queuePath = option("--queue") ? resolve(option("--queue")) : null;
+const anchorPath = queuePath ?? (option("--standing-orders") ? resolve(option("--standing-orders")) : null);
+if (!anchorPath) throw new Error("Provide --queue <promotion queue> and/or --standing-orders <orders file>");
+const outputQueuePath = resolve(option("--output-queue") || anchorPath.replace(/\.json$/, "") + ".sleep.json");
 const ledgerPath = resolve(option("--ledger") || resolve(dirname(outputQueuePath), "sleep-ledger.jsonl"));
 const storePath = resolve(option("--store") || ".amos-agent/research/swarm-learning");
 const metricsUrl = option("--metrics-url");
@@ -92,7 +96,7 @@ const episodes = (await store.listEpisodes())
   .filter(({ partition }) => partition === "development")
   .sort((left, right) => left.digest.localeCompare(right.digest))
   .slice(0, episodeLimit);
-if (episodes.length === 0) throw new Error(`No development episodes in ${storePath}`);
+if (episodes.length === 0 && queuePath) throw new Error(`No development episodes in ${storePath} for artifact replay`);
 
 let phaseProbeInputs = null;
 let gradingWorkers = null;
@@ -151,7 +155,9 @@ if (enablePhaseProbes) {
 
 let cycleIndex = 0;
 do {
-  const sourceQueue = await readJson(await firstExisting([outputQueuePath, queuePath]));
+  const sourceQueue = queuePath
+    ? await readJson(await firstExisting([outputQueuePath, queuePath]))
+    : await readJsonOr(outputQueuePath, { schema: "amos.swarm-sleep-queue", version: 1, automaticallyPromoted: false, candidates: [] });
   const registry = new SleepCandidateRegistry(candidatesFromSourceQueue(sourceQueue));
   const kinds = enablePhaseProbes
     ? ["organism-artifact-replay", "organism-qwen-phase-probes"]
@@ -177,7 +183,8 @@ do {
   await waitUntilAsleep({ observeLoad, policy, assumeIdle, signal: controller.signal });
   if (controller.signal.aborted) break;
 
-  const executors = { "organism-artifact-replay": createArtifactReplayExecutor({ registry, episodes }) };
+  const executors = {};
+  if (episodes.length > 0) executors["organism-artifact-replay"] = createArtifactReplayExecutor({ registry, episodes });
   if (phaseProbeInputs) {
     executors["organism-qwen-phase-probes"] = createQwenPhaseProbeExecutor({ registry, ...phaseProbeInputs, harvestStore: harvest ? store : null });
   }
@@ -286,6 +293,15 @@ async function firstExisting(paths) {
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function readJsonOr(path, fallback) {
+  try {
+    return await readJson(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return fallback;
+    throw error;
+  }
 }
 
 function log(entry) {
