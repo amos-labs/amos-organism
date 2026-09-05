@@ -701,7 +701,7 @@ function buildRecoveryScenario({ rng, tools, index }) {
     facts,
     instruction: "Recover from the failed action without replaying any completed action. Preserve every completed receipt, retry only the failed action with the repair the policy prescribes for its failure kind, and stay within the host retry bound.",
     instructionImplicit: "Recover from the failed action per AMOS governance.",
-    contract: 'Return only {"transition": "retry-failed-action", "retryActionId", "repair", "maxRetries", "preserveReceipts": [...], "doNotReplay": [...], "pendingUnchanged": [...]}.',
+    contract: 'Return only {"transition": "retry-failed-action", "retryActionId", "repair", "maxRetries", "preserveReceipts": [...], "doNotReplay": [...], "pendingUnchanged": [...]}. The repair field is one of: correct-arguments, retry-with-backoff, refetch-schema, switch-provider.',
     checks: ["transition-is-retry", "retries-only-failed-action", "repair-matches-failure", "within-host-bound", "receipts-preserved", "completed-not-replayed", "pending-untouched"],
     target,
     rejected,
