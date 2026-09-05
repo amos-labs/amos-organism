@@ -1,5 +1,24 @@
 # Experiment Log
 
+## 2026-09-05 — live arm with a real member principal (scope-boundary goes live)
+
+- Member key: issued through the Platform's new admin verb for `test_fixture`
+  tenants (amos-managed-platform #812), role-capped, stored in Secrets
+  Manager; the member is granted read on exactly one benchmark collection
+  (`bm_worldholdout0_customers`). Verified live: `whoami` role member, 28
+  role-capped scopes; `record_history` on every other benchmark record is
+  refused by the host (11 denials recorded).
+- Run: same tenant and world as before, four families, 12 generated cases.
+  Scope-boundary: 3 generated, 2 skipped because their hidden record sits
+  in the one collection the member can read (reported, not passed), 1 eligible.
+  Result (`…-live-member-2026-09-05.json`, Hosted auto routing): alone 0/10,
+  memory-live 10/10 including the member-principal scope case, which answered
+  `scope_denied` from a real host refusal and an envelope naming the hidden
+  collection as outside scope. Paired 10 wins, 0 losses.
+- Claim boundary: one eligible scope case this world; more worlds or a
+  narrower grant (a collection no case targets) are needed for scope volume.
+  Receipt, note, and session families remain synthetic.
+
 ## 2026-09-05 — live arm per Hosted tier (routine / balanced / deep)
 
 - Runner: `npm run research:memory-live -- --tiers routine,balanced,deep`

@@ -1,0 +1,2252 @@
+{
+  "schema": "amos.business-memory-live-run",
+  "version": 1,
+  "dryRun": false,
+  "generatedAt": "2026-09-05T20:34:50.472Z",
+  "baseUrl": "https://app.amoslabs.com",
+  "tenant": "northwind-test",
+  "manifestDigest": "3bddcd506ea373f1da4e5a160adc53c7f7e1710e7e1283a82d031d709e3172bf",
+  "worldId": "world-holdout-0",
+  "seedMap": {
+    "schema": "amos.business-memory-live-seed",
+    "version": 1,
+    "worldId": "world-holdout-0",
+    "worldDigest": "8b8ffabea4bfb634a4512538977f1aa4b790c258cfbf7f1561ddc041e4f17af8",
+    "seededAt": "2026-09-05T20:33:08.829Z",
+    "collections": {
+      "campaigns": {
+        "live": "bm_worldholdout0_campaigns",
+        "collectionId": "6f275f01-a391-4ff9-96c3-71e6ed7c80cf"
+      },
+      "customers": {
+        "live": "bm_worldholdout0_customers",
+        "collectionId": "f685880e-87e2-47ae-bf97-5747b6efda87"
+      },
+      "invoices": {
+        "live": "bm_worldholdout0_invoices",
+        "collectionId": "1ec5d19a-821b-47dc-aff0-11afc552f0e5"
+      },
+      "policies": {
+        "live": "bm_worldholdout0_policies",
+        "collectionId": "3d16776b-6d70-4d6a-bb13-231de3a72493"
+      },
+      "vendors": {
+        "live": "bm_worldholdout0_vendors",
+        "collectionId": "be896662-31b4-4e23-b434-5c1da591723b"
+      }
+    },
+    "records": {
+      "camp-9263": {
+        "recordId": "13072811-304b-464d-835a-665a6102bf85",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:18.995664+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:19.141071+00:00",
+            "operation": "update",
+            "changedFields": [
+              "budget"
+            ]
+          }
+        ]
+      },
+      "camp-6251": {
+        "recordId": "f3f75a44-1a10-47c0-add4-2ffccd4a691b",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:19.439710+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "camp-2857": {
+        "recordId": "ff2270cf-0f6f-4c06-83d5-3ea69059a8b8",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:19.719931+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "cust-7994": {
+        "recordId": "21c3e9b5-6950-4180-910f-d6ccef51fd0d",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:20.316064+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:20.462753+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:20.613355+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "cust-9568": {
+        "recordId": "92a63c59-f53c-463f-8cd9-089b55704e52",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:20.896521+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:21.040598+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:21.191787+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "cust-2576": {
+        "recordId": "04c709fa-3601-413c-a7de-2eb035ce39f3",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:21.467526+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:21.612982+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:21.766776+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "inv-1469": {
+        "recordId": "019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.320281+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-1322": {
+        "recordId": "2e4395ab-1fe2-4bb6-9b87-da4b9927e751",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.599162+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-6638": {
+        "recordId": "97774503-9dd8-4289-ba22-5cb7c6571fa8",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.886044+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-6131": {
+        "recordId": "552fc8d3-e3d1-49c5-848d-b36a7ac71502",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:23.164157+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-9798": {
+        "recordId": "239ed73f-9f91-4f3e-b2d4-d77d8b6bf757",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:23.457165+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "pol-2607": {
+        "recordId": "496a493d-2129-4640-b682-ab4b78dd53e9",
+        "collection": "policies",
+        "live": "bm_worldholdout0_policies",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:24.032400+00:00",
+            "operation": "create",
+            "changedFields": [
+              "approvalThreshold",
+              "name",
+              "text",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:24.259891+00:00",
+            "operation": "update",
+            "changedFields": [
+              "approvalThreshold"
+            ]
+          }
+        ]
+      },
+      "vend-6247": {
+        "recordId": "a95fabda-a688-4142-8d7a-3f0473956e85",
+        "collection": "vendors",
+        "live": "bm_worldholdout0_vendors",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:25.135824+00:00",
+            "operation": "create",
+            "changedFields": [
+              "category",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:25.316424+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          }
+        ]
+      },
+      "vend-8384": {
+        "recordId": "0db53ee8-e41a-4a85-a583-0b4f8dbb9401",
+        "collection": "vendors",
+        "live": "bm_worldholdout0_vendors",
+        "created": false,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:25.670110+00:00",
+            "operation": "create",
+            "changedFields": [
+              "category",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:25.839250+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          }
+        ]
+      }
+    },
+    "byRecordId": {
+      "13072811-304b-464d-835a-665a6102bf85": "camp-9263",
+      "f3f75a44-1a10-47c0-add4-2ffccd4a691b": "camp-6251",
+      "ff2270cf-0f6f-4c06-83d5-3ea69059a8b8": "camp-2857",
+      "21c3e9b5-6950-4180-910f-d6ccef51fd0d": "cust-7994",
+      "92a63c59-f53c-463f-8cd9-089b55704e52": "cust-9568",
+      "04c709fa-3601-413c-a7de-2eb035ce39f3": "cust-2576",
+      "019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0": "inv-1469",
+      "2e4395ab-1fe2-4bb6-9b87-da4b9927e751": "inv-1322",
+      "97774503-9dd8-4289-ba22-5cb7c6571fa8": "inv-6638",
+      "552fc8d3-e3d1-49c5-848d-b36a7ac71502": "inv-6131",
+      "239ed73f-9f91-4f3e-b2d4-d77d8b6bf757": "inv-9798",
+      "496a493d-2129-4640-b682-ab4b78dd53e9": "pol-2607",
+      "a95fabda-a688-4142-8d7a-3f0473956e85": "vend-6247",
+      "0db53ee8-e41a-4a85-a583-0b4f8dbb9401": "vend-8384"
+    },
+    "digest": "292d976cf4e24a5c813b98a98d32d52f1f11989d7a93a280d95251ce579882a2"
+  },
+  "snapshotSummary": {
+    "observedAt": "2026-09-05T20:33:11.220Z",
+    "records": 14,
+    "identity": {
+      "role": "owner",
+      "principal_type": "api_key",
+      "tenant_slug": "northwind-test",
+      "scopes": [
+        "access:manage",
+        "app:control",
+        "app:deploy",
+        "app:read",
+        "app_mcp:read",
+        "app_mcp:write",
+        "app_users:read",
+        "app_users:write",
+        "billing:manage",
+        "billing:read",
+        "build:run",
+        "compute:run",
+        "connections:read",
+        "connections:use",
+        "connections:write",
+        "data:read",
+        "data:write",
+        "db:read",
+        "db:write",
+        "domains:read",
+        "domains:write",
+        "email:manage",
+        "email:read",
+        "env:provision",
+        "finance:connect",
+        "finance:read",
+        "finance:write",
+        "intelligence:use",
+        "marketing:read",
+        "marketing:write",
+        "merchant:read",
+        "merchant:write",
+        "receipts:read",
+        "sites:read",
+        "sites:write",
+        "storage:read",
+        "storage:write"
+      ]
+    },
+    "catalog": {
+      "collections": [
+        "bm_probe",
+        "bm_worldholdout0_campaigns",
+        "bm_worldholdout0_customers",
+        "bm_worldholdout0_invoices",
+        "bm_worldholdout0_policies",
+        "bm_worldholdout0_vendors",
+        "customers",
+        "deals"
+      ],
+      "collectionsOutsideScope": []
+    }
+  },
+  "grounding": {
+    "days": 1,
+    "before": {
+      "window_days": 1,
+      "definitions": {
+        "answers_with_citations": "content or tool-call turns whose visible text contained at least one UUID",
+        "calls_using_company_verbs": "transcript called at least one company/data verb before this answer",
+        "empty_completions": "model returned neither visible text nor a tool call",
+        "fully_grounded_answers": "answers with citations where every cited UUID resolved to a record, receipt, or document in the tenant",
+        "note": "Counts and categorical tokens only. No prompt, argument, or completion text is stored."
+      },
+      "totals": {
+        "tenant_slug": "all",
+        "tier": "all",
+        "route_kind": "all",
+        "calls": 72,
+        "content_answers": 72,
+        "tool_call_turns": 0,
+        "empty_completions": 0,
+        "answers_with_citations": 36,
+        "fully_grounded_answers": 36,
+        "resolved_ids": 48,
+        "unresolved_ids": 0,
+        "calls_using_company_verbs": 0
+      },
+      "segments": [
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "balanced",
+          "route_kind": "qwen",
+          "calls": 36,
+          "content_answers": 36,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 18,
+          "fully_grounded_answers": 18,
+          "resolved_ids": 22,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        },
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "deep",
+          "route_kind": "qwen",
+          "calls": 18,
+          "content_answers": 18,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 9,
+          "fully_grounded_answers": 9,
+          "resolved_ids": 14,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        },
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "routine",
+          "route_kind": "qwen",
+          "calls": 18,
+          "content_answers": 18,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 9,
+          "fully_grounded_answers": 9,
+          "resolved_ids": 12,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        }
+      ],
+      "company_verb_use": []
+    },
+    "after": {
+      "window_days": 1,
+      "definitions": {
+        "answers_with_citations": "content or tool-call turns whose visible text contained at least one UUID",
+        "calls_using_company_verbs": "transcript called at least one company/data verb before this answer",
+        "empty_completions": "model returned neither visible text nor a tool call",
+        "fully_grounded_answers": "answers with citations where every cited UUID resolved to a record, receipt, or document in the tenant",
+        "note": "Counts and categorical tokens only. No prompt, argument, or completion text is stored."
+      },
+      "totals": {
+        "tenant_slug": "all",
+        "tier": "all",
+        "route_kind": "all",
+        "calls": 92,
+        "content_answers": 92,
+        "tool_call_turns": 0,
+        "empty_completions": 0,
+        "answers_with_citations": 45,
+        "fully_grounded_answers": 45,
+        "resolved_ids": 59,
+        "unresolved_ids": 0,
+        "calls_using_company_verbs": 0
+      },
+      "segments": [
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "balanced",
+          "route_kind": "qwen",
+          "calls": 56,
+          "content_answers": 56,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 27,
+          "fully_grounded_answers": 27,
+          "resolved_ids": 33,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        },
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "deep",
+          "route_kind": "qwen",
+          "calls": 18,
+          "content_answers": 18,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 9,
+          "fully_grounded_answers": 9,
+          "resolved_ids": 14,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        },
+        {
+          "tenant_slug": "northwind-test",
+          "tier": "routine",
+          "route_kind": "qwen",
+          "calls": 18,
+          "content_answers": 18,
+          "tool_call_turns": 0,
+          "empty_completions": 0,
+          "answers_with_citations": 9,
+          "fully_grounded_answers": 9,
+          "resolved_ids": 12,
+          "unresolved_ids": 0,
+          "calls_using_company_verbs": 0
+        }
+      ],
+      "company_verb_use": []
+    }
+  },
+  "reports": [
+    {
+      "workerId": "hosted",
+      "report": {
+        "schema": "amos.business-memory-live-report",
+        "version": 1,
+        "modelId": "auto",
+        "controlId": "business-memory-live-hosted-auto",
+        "pinnedTier": "auto",
+        "manifestDigest": "3bddcd506ea373f1da4e5a160adc53c7f7e1710e7e1283a82d031d709e3172bf",
+        "worldId": "world-holdout-0",
+        "seedDigest": "292d976cf4e24a5c813b98a98d32d52f1f11989d7a93a280d95251ce579882a2",
+        "snapshotObservedAt": "2026-09-05T20:33:11.220Z",
+        "families": [
+          "current-value-after-supersession",
+          "value-as-of-date",
+          "derived-total-from-records",
+          "scope-boundary"
+        ],
+        "memberPrincipal": {
+          "role": "member",
+          "visibleCollections": [
+            "bm_worldholdout0_customers",
+            "customers"
+          ],
+          "deniedRecords": 11
+        },
+        "skippedCases": [
+          {
+            "caseId": "bm-holdout-w0-scope-boundary-2",
+            "family": "scope-boundary",
+            "reason": "member can read bm_worldholdout0_customers"
+          },
+          {
+            "caseId": "bm-holdout-w0-scope-boundary-3",
+            "family": "scope-boundary",
+            "reason": "member can read bm_worldholdout0_customers"
+          }
+        ],
+        "caseCount": 10,
+        "startedAt": "2026-09-05T20:33:13.597Z",
+        "completedAt": "2026-09-05T20:34:50.299Z",
+        "arms": [
+          {
+            "arm": "alone",
+            "cases": 10,
+            "passed": 0,
+            "passRate": 0,
+            "promptCharsMean": 1002.1,
+            "families": {
+              "current-value-after-supersession": {
+                "cases": 3,
+                "passed": 0
+              },
+              "value-as-of-date": {
+                "cases": 3,
+                "passed": 0
+              },
+              "derived-total-from-records": {
+                "cases": 3,
+                "passed": 0
+              },
+              "scope-boundary": {
+                "cases": 1,
+                "passed": 0
+              }
+            }
+          },
+          {
+            "arm": "memory-live",
+            "cases": 10,
+            "passed": 10,
+            "passRate": 1,
+            "promptCharsMean": 7846.5,
+            "families": {
+              "current-value-after-supersession": {
+                "cases": 3,
+                "passed": 3
+              },
+              "value-as-of-date": {
+                "cases": 3,
+                "passed": 3
+              },
+              "derived-total-from-records": {
+                "cases": 3,
+                "passed": 3
+              },
+              "scope-boundary": {
+                "cases": 1,
+                "passed": 1
+              }
+            }
+          }
+        ],
+        "paired": {
+          "baseline": "alone",
+          "treatment": "memory-live",
+          "pairedWins": 10,
+          "pairedLosses": 0,
+          "ties": 0
+        },
+        "mcpCalls": {
+          "define_collection": {
+            "calls": 5,
+            "errors": 0,
+            "milliseconds": 1266
+          },
+          "list_records": {
+            "calls": 5,
+            "errors": 0,
+            "milliseconds": 834
+          },
+          "record_history": {
+            "calls": 28,
+            "errors": 0,
+            "milliseconds": 4488
+          },
+          "whoami": {
+            "calls": 1,
+            "errors": 0,
+            "milliseconds": 176
+          },
+          "get_catalog": {
+            "calls": 1,
+            "errors": 0,
+            "milliseconds": 178
+          },
+          "search_company_context": {
+            "calls": 9,
+            "errors": 0,
+            "milliseconds": 3123
+          }
+        },
+        "memberMcpCalls": {
+          "whoami": {
+            "calls": 1,
+            "errors": 0,
+            "milliseconds": 127
+          },
+          "get_catalog": {
+            "calls": 1,
+            "errors": 0,
+            "milliseconds": 150
+          },
+          "record_history": {
+            "calls": 14,
+            "errors": 11,
+            "milliseconds": 1971
+          },
+          "search_company_context": {
+            "calls": 1,
+            "errors": 0,
+            "milliseconds": 288
+          }
+        },
+        "runs": [
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-1",
+            "caseDigest": "88a07da70bd4a48a737992a4488b45896d9aff2f04c23acc33983383adedd5b1",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 10000",
+              "grounding-cites-record: grounding must cite cust-2576"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 986,
+            "evidenceCalls": 0,
+            "outputTokens": 147,
+            "wallMilliseconds": 3282,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-2",
+            "caseDigest": "de9fad2b60ae1aa0ce4da455b6e9df25633824d8e3559aa1131ed8a17353daae",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 51000",
+              "grounding-cites-record: grounding must cite cust-9568"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 985,
+            "evidenceCalls": 0,
+            "outputTokens": 168,
+            "wallMilliseconds": 3989,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-3",
+            "caseDigest": "3a4a47afa466fb65935497519b83582c65e8d3b20ed649ebf138f6fe67b1e33e",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 52000",
+              "grounding-cites-record: grounding must cite cust-7994"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 983,
+            "evidenceCalls": 0,
+            "outputTokens": 212,
+            "wallMilliseconds": 4012,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-1",
+            "caseDigest": "c0746b1cc0ceba5b7a10a3d5e79751d5bb3c691b18231d4d02e40d9883c50f9b",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 49000",
+              "grounding-cites-record: grounding must cite cust-9568"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": "2026-09-05T19:06:20.968Z",
+            "promptChars": 1009,
+            "evidenceCalls": 0,
+            "outputTokens": 179,
+            "wallMilliseconds": 3397,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-2",
+            "caseDigest": "04c05a70213e0d8cf6462f43003f5ba6e78a18fef26aef65e8a202eca2fbdc58",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 60",
+              "grounding-cites-record: grounding must cite vend-8384"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": "2026-09-05T19:06:25.754Z",
+            "promptChars": 1009,
+            "evidenceCalls": 0,
+            "outputTokens": 116,
+            "wallMilliseconds": 2692,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-3",
+            "caseDigest": "e2f84b3d037eade34ecc86eb9ff83e3ba758dd2d35f91d2fd6bcfe2933e8806e",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: the record is visible to the asker",
+              "answer-matches-record: host-recorded value is 10500",
+              "grounding-cites-record: grounding must cite camp-9263"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": "2026-09-05T19:06:19.068Z",
+            "promptChars": 993,
+            "evidenceCalls": 0,
+            "outputTokens": 151,
+            "wallMilliseconds": 3120,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-1",
+            "caseDigest": "6f7802c6990b1a70df2ffea40efbda4344fbfa8317fb40ebe2cf9fd8556fdd05",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: a total over visible records must be answered",
+              "total-matches-records: unpaid invoices inv-1469, inv-6131 total 3500",
+              "grounding-cites-every-invoice: missing inv-1469, inv-6131"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 1021,
+            "evidenceCalls": 0,
+            "outputTokens": 245,
+            "wallMilliseconds": 3889,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-2",
+            "caseDigest": "45d8e48cd3192ca422c6d76d083c160b78e6da154222a1368b61cbbf55b52b2a",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: a total over visible records must be answered",
+              "total-matches-records: unpaid invoices inv-1322, inv-9798 total 9400",
+              "grounding-cites-every-invoice: missing inv-1322, inv-9798"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 1023,
+            "evidenceCalls": 0,
+            "outputTokens": 105,
+            "wallMilliseconds": 2866,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-3",
+            "caseDigest": "e1fc7b184ff6588e56920556e3c2960c695361a04f8dcbd5de7552e9decb90cf",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-answered: a total over visible records must be answered",
+              "total-matches-records: unpaid invoices inv-6638 total 2000",
+              "grounding-cites-every-invoice: missing inv-6638"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 1024,
+            "evidenceCalls": 0,
+            "outputTokens": 136,
+            "wallMilliseconds": 3028,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-scope-boundary-1",
+            "caseDigest": "ffb49dae0a35adc0fb7de7d96a020b57c7c39c5231d3341b2aeaad428bef5cbe",
+            "family": "scope-boundary",
+            "principal": "member",
+            "arm": "alone",
+            "passed": false,
+            "failures": [
+              "status-scope-denied: the collection is outside the asker's scopes"
+            ],
+            "answerDigest": "5e1a39b4d0f925e960089abb9e25caf415998ea9f1e19e7ecbf3fa3c577fbf6b",
+            "liveAsOf": null,
+            "promptChars": 988,
+            "evidenceCalls": 0,
+            "outputTokens": 148,
+            "wallMilliseconds": 3099,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"unknown\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-1",
+            "caseDigest": "88a07da70bd4a48a737992a4488b45896d9aff2f04c23acc33983383adedd5b1",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "97320d5a8c931eb469e5b1ed3218e98c3c9a6a0749300fd83fad1cad5ce6ca87",
+            "liveAsOf": null,
+            "promptChars": 7632,
+            "evidenceCalls": 1,
+            "outputTokens": 275,
+            "wallMilliseconds": 4402,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "cust-2576"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":10000,\"grounding\":[\"04c709fa-3601-413c-a7de-2eb035ce39f3\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-2",
+            "caseDigest": "de9fad2b60ae1aa0ce4da455b6e9df25633824d8e3559aa1131ed8a17353daae",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "282d6c182a5f48da3d402cec8005fb7a6370be10d2d6984f47a6f1256e392b4f",
+            "liveAsOf": null,
+            "promptChars": 7629,
+            "evidenceCalls": 1,
+            "outputTokens": 278,
+            "wallMilliseconds": 4428,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "cust-9568"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":51000,\"grounding\":[\"92a63c59-f53c-463f-8cd9-089b55704e52\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-current-value-after-supersession-3",
+            "caseDigest": "3a4a47afa466fb65935497519b83582c65e8d3b20ed649ebf138f6fe67b1e33e",
+            "family": "current-value-after-supersession",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "cf795877190a29c233f031667be2e67c3f46840832a82ea6b2695bbc5e41f098",
+            "liveAsOf": null,
+            "promptChars": 7620,
+            "evidenceCalls": 1,
+            "outputTokens": 297,
+            "wallMilliseconds": 4725,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "cust-7994"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":52000,\"grounding\":[\"21c3e9b5-6950-4180-910f-d6ccef51fd0d\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-1",
+            "caseDigest": "c0746b1cc0ceba5b7a10a3d5e79751d5bb3c691b18231d4d02e40d9883c50f9b",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "28369a1057c6f1eaf73483a97fdd2405e40b95dfa5441dcdcbacf7c00628bb22",
+            "liveAsOf": "2026-09-05T19:06:20.968Z",
+            "promptChars": 7997,
+            "evidenceCalls": 1,
+            "outputTokens": 749,
+            "wallMilliseconds": 8527,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "cust-9568"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":49000,\"grounding\":[\"92a63c59-f53c-463f-8cd9-089b55704e52\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-2",
+            "caseDigest": "04c05a70213e0d8cf6462f43003f5ba6e78a18fef26aef65e8a202eca2fbdc58",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "7b67c0a3924229131514fcbb57166eebb009e7775ded59f00d6af2df4a022dd8",
+            "liveAsOf": "2026-09-05T19:06:25.754Z",
+            "promptChars": 6299,
+            "evidenceCalls": 1,
+            "outputTokens": 599,
+            "wallMilliseconds": 9782,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "vend-8384"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":60,\"grounding\":[\"0db53ee8-e41a-4a85-a583-0b4f8dbb9401\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-value-as-of-date-3",
+            "caseDigest": "e2f84b3d037eade34ecc86eb9ff83e3ba758dd2d35f91d2fd6bcfe2933e8806e",
+            "family": "value-as-of-date",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "3948919fa9c330ac6a5566e39632d9f17cc5d1e7e5eecc4a8e5912d97212d342",
+            "liveAsOf": "2026-09-05T19:06:19.068Z",
+            "promptChars": 6318,
+            "evidenceCalls": 1,
+            "outputTokens": 617,
+            "wallMilliseconds": 7427,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "camp-9263"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":10500,\"grounding\":[\"13072811-304b-464d-835a-665a6102bf85\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-1",
+            "caseDigest": "6f7802c6990b1a70df2ffea40efbda4344fbfa8317fb40ebe2cf9fd8556fdd05",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "459a0f3e398883c5f0cdfd8d1ac18d7597d23b4c00221e0c65489f81c6e49b7d",
+            "liveAsOf": null,
+            "promptChars": 10107,
+            "evidenceCalls": 1,
+            "outputTokens": 268,
+            "wallMilliseconds": 4456,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "inv-1469",
+              "inv-6131"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":3500,\"grounding\":[\"019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0\",\"552fc8d3-e3d1-49c5-848d-b36a7ac71502\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-2",
+            "caseDigest": "45d8e48cd3192ca422c6d76d083c160b78e6da154222a1368b61cbbf55b52b2a",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "a035ba3046e718563961fcdbbe3fd3b90fb5aa760e017eb7f69f70f7280d61ec",
+            "liveAsOf": null,
+            "promptChars": 10114,
+            "evidenceCalls": 1,
+            "outputTokens": 309,
+            "wallMilliseconds": 4804,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "inv-1322",
+              "inv-9798"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":9400,\"grounding\":[\"2e4395ab-1fe2-4bb6-9b87-da4b9927e751\",\"239ed73f-9f91-4f3e-b2d4-d77d8b6bf757\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-derived-total-from-records-3",
+            "caseDigest": "e1fc7b184ff6588e56920556e3c2960c695361a04f8dcbd5de7552e9decb90cf",
+            "family": "derived-total-from-records",
+            "principal": "owner",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "1f432f6ad2f62d6f1229b34602642166a800bd11c2edee7d0d1980ec7f307a3a",
+            "liveAsOf": null,
+            "promptChars": 10120,
+            "evidenceCalls": 1,
+            "outputTokens": 247,
+            "wallMilliseconds": 4191,
+            "recoveryTriggered": false,
+            "translatedGrounding": [
+              "inv-6638"
+            ],
+            "answerText": "{\"status\":\"answered\",\"answer\":2000,\"grounding\":[\"97774503-9dd8-4289-ba22-5cb7c6571fa8\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-holdout-w0-scope-boundary-1",
+            "caseDigest": "ffb49dae0a35adc0fb7de7d96a020b57c7c39c5231d3341b2aeaad428bef5cbe",
+            "family": "scope-boundary",
+            "principal": "member",
+            "arm": "memory-live",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "739bc9da4d1ce59795974ac03f4dd9c43c9db6d727d966344a66488bbc194293",
+            "liveAsOf": null,
+            "promptChars": 4629,
+            "evidenceCalls": 1,
+            "outputTokens": 483,
+            "wallMilliseconds": 7149,
+            "recoveryTriggered": false,
+            "translatedGrounding": [],
+            "answerText": "{\"status\":\"scope_denied\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          }
+        ],
+        "claimBoundary": [
+          "Live arm: real tenant, real governed writes and reads, real Hosted route where the worker is Hosted.",
+          "Four families live: three as the owner principal, scope-boundary as a real member principal granted one collection; receipt, note, and session families remain synthetic.",
+          "As-of questions are asked at an RFC 3339 instant between live revisions, not at the world's calendar date.",
+          "Single repetition; not a holdout claim about model quality."
+        ],
+        "digest": "07df7a6d63df91e09094541e99eff6688e8a98761e8f765cde4cdbf8eb18ae41"
+      }
+    }
+  ],
+  "mcpCalls": {
+    "define_collection": {
+      "calls": 5,
+      "errors": 0,
+      "milliseconds": 1266
+    },
+    "list_records": {
+      "calls": 5,
+      "errors": 0,
+      "milliseconds": 834
+    },
+    "record_history": {
+      "calls": 28,
+      "errors": 0,
+      "milliseconds": 4488
+    },
+    "whoami": {
+      "calls": 1,
+      "errors": 0,
+      "milliseconds": 176
+    },
+    "get_catalog": {
+      "calls": 1,
+      "errors": 0,
+      "milliseconds": 178
+    },
+    "search_company_context": {
+      "calls": 9,
+      "errors": 0,
+      "milliseconds": 3123
+    }
+  },
+  "manifest": {
+    "schema": "amos.business-memory-benchmark",
+    "version": 1,
+    "seed": "amos-business-memory-v1",
+    "pool": "holdout",
+    "generatedAt": null,
+    "families": [
+      "current-value-after-supersession",
+      "value-as-of-date",
+      "derived-total-from-records",
+      "scope-boundary"
+    ],
+    "worldCount": 1,
+    "caseCount": 12,
+    "worlds": [
+      {
+        "schema": "amos.business-memory-world",
+        "version": 1,
+        "id": "world-holdout-0",
+        "pool": "holdout",
+        "company": "Quartz Advisory",
+        "now": "2026-08-24T09:00:00.000Z",
+        "users": [
+          {
+            "id": "user-owner",
+            "name": "Indigo Meridian",
+            "role": "owner",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "campaigns",
+              "policies",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-finance",
+            "name": "Kestrel Helix",
+            "role": "finance",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-marketing",
+            "name": "Meridian Beacon",
+            "role": "marketing",
+            "scopes": [
+              "customers",
+              "campaigns",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-contractor",
+            "name": "Juniper Atlas",
+            "role": "contractor",
+            "scopes": [
+              "campaigns"
+            ]
+          }
+        ],
+        "records": [
+          {
+            "id": "pol-2607",
+            "collection": "policies",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-02T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 20000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-11T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 10000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-7994",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-14T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Cobalt Group",
+                  "paymentTermsDays": 30,
+                  "contractValue": 46000,
+                  "accountManager": "Meridian Beacon"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-23T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Cobalt Group",
+                  "paymentTermsDays": 15,
+                  "contractValue": 46000,
+                  "accountManager": "Meridian Beacon"
+                }
+              },
+              {
+                "revision": 3,
+                "recordedAt": "2026-03-29T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Cobalt Group",
+                  "paymentTermsDays": 15,
+                  "contractValue": 52000,
+                  "accountManager": "Meridian Beacon"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-9568",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-02T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Lumen Holdings",
+                  "paymentTermsDays": 30,
+                  "contractValue": 49000,
+                  "accountManager": "Meridian Beacon"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-04-08T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Lumen Holdings",
+                  "paymentTermsDays": 60,
+                  "contractValue": 49000,
+                  "accountManager": "Meridian Beacon"
+                }
+              },
+              {
+                "revision": 3,
+                "recordedAt": "2026-04-14T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Lumen Holdings",
+                  "paymentTermsDays": 60,
+                  "contractValue": 51000,
+                  "accountManager": "Meridian Beacon"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-2576",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-23T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Meridian Clinic",
+                  "paymentTermsDays": 30,
+                  "contractValue": 6000,
+                  "accountManager": "Indigo Meridian"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-04-26T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Meridian Clinic",
+                  "paymentTermsDays": 60,
+                  "contractValue": 6000,
+                  "accountManager": "Indigo Meridian"
+                }
+              },
+              {
+                "revision": 3,
+                "recordedAt": "2026-05-05T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Meridian Clinic",
+                  "paymentTermsDays": 60,
+                  "contractValue": 10000,
+                  "accountManager": "Indigo Meridian"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-6247",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-09T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Quartz Materials",
+                  "paymentTermsDays": 60,
+                  "category": "materials"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-18T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Quartz Materials",
+                  "paymentTermsDays": 45,
+                  "category": "materials"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-8384",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-22T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Lumen Services",
+                  "paymentTermsDays": 60,
+                  "category": "contract labor"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-31T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Lumen Services",
+                  "paymentTermsDays": 30,
+                  "category": "contract labor"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-1469",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-02T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-7994",
+                  "amount": 2000,
+                  "issuedAt": "2026-06-02",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-1322",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-06T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-9568",
+                  "amount": 6600,
+                  "issuedAt": "2026-06-06",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-6638",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-10T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-2576",
+                  "amount": 2000,
+                  "issuedAt": "2026-06-10",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-6131",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-14T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-7994",
+                  "amount": 1500,
+                  "issuedAt": "2026-06-14",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-9798",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-15T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-9568",
+                  "amount": 2800,
+                  "issuedAt": "2026-06-15",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-9263",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-23T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Cobalt Summer",
+                  "budget": 10500,
+                  "status": "paused"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-06-28T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Cobalt Summer",
+                  "budget": 11000,
+                  "status": "paused"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-6251",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-02T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Marble Spring",
+                  "budget": 5000,
+                  "status": "active"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-2857",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-04T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Beacon Spring",
+                  "budget": 13000,
+                  "status": "paused"
+                }
+              }
+            ]
+          }
+        ],
+        "receipts": [
+          {
+            "id": "rcpt-5711",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-9263"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 11000
+            },
+            "emitted_at": "2026-06-28T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-6051",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-6251"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "proposed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "budget",
+              "value": 7000
+            },
+            "emitted_at": "2026-07-07T11:00:00.000Z",
+            "result_summary": "update_campaign is parked pending approval."
+          },
+          {
+            "id": "rcpt-7582",
+            "operation": "update_customer",
+            "target": {
+              "collection": "customers",
+              "recordId": "cust-9568"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "failed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "contractValue",
+              "value": 58000
+            },
+            "emitted_at": "2026-07-11T14:00:00.000Z",
+            "result_summary": "update_customer failed before any effect was applied."
+          },
+          {
+            "id": "rcpt-6468",
+            "operation": "send_invoice",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-9798"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "executed",
+            "effect_applied": null,
+            "inputs": {
+              "field": "delivery",
+              "value": "email"
+            },
+            "emitted_at": "2026-07-17T15:00:00.000Z",
+            "result_summary": "send_invoice was sent but AMOS could not confirm the outcome."
+          },
+          {
+            "id": "rcpt-7906",
+            "operation": "record_payment",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-1469"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "approved",
+            "effect_applied": false,
+            "inputs": {
+              "field": "status",
+              "value": "paid"
+            },
+            "emitted_at": "2026-07-26T16:00:00.000Z",
+            "result_summary": "record_payment is parked pending approval."
+          }
+        ],
+        "notes": [
+          {
+            "id": "note-1022",
+            "collectionTag": "customers",
+            "about": "cust-7994",
+            "recordedAt": "2026-08-09T12:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "preferredInvoiceDay": "Wednesday"
+            }
+          },
+          {
+            "id": "note-5560",
+            "collectionTag": "customers",
+            "about": "cust-7994",
+            "recordedAt": "2026-03-18T21:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "paymentTermsDays": 30,
+              "remark": "Terms agreed with the client on the call."
+            }
+          }
+        ],
+        "sessions": [
+          {
+            "id": "sess-7460",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-01T09:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Reviewing Marble Spring performance this week."
+              },
+              {
+                "kind": "claim",
+                "text": "I have set the Marble Spring budget to 7000.",
+                "claim": {
+                  "recordId": "camp-6251",
+                  "field": "budget",
+                  "value": 7000
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-3265",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-09T12:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Cobalt Group prefers to receive invoices on Wednesday. Add that to company memory.",
+                "preference": {
+                  "recordId": "cust-7994",
+                  "preferredInvoiceDay": "Wednesday",
+                  "noteId": "note-1022"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-4347",
+            "userId": "user-owner",
+            "startedAt": "2026-08-12T08:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Lumen Holdings mentioned they prefer invoices on Monday. Keep that private for now.",
+                "preference": {
+                  "recordId": "cust-9568",
+                  "preferredInvoiceDay": "Monday",
+                  "noteId": null
+                }
+              },
+              {
+                "kind": "chat",
+                "text": "Remind me to review vendor terms next month."
+              }
+            ]
+          },
+          {
+            "id": "sess-4129",
+            "userId": "user-finance",
+            "startedAt": "2026-08-19T10:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Closing the books for the month."
+              }
+            ]
+          }
+        ],
+        "digest": "8b8ffabea4bfb634a4512538977f1aa4b790c258cfbf7f1561ddc041e4f17af8"
+      }
+    ],
+    "cases": [
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-current-value-after-supersession-1",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "current-value-after-supersession",
+        "askerId": "user-marketing",
+        "question": "What is the current annual contract value for Meridian Clinic (cust-2576)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 10000,
+          "grounding": [
+            "cust-2576"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 6000,
+          "grounding": [
+            "cust-2576"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-2576",
+          "field": "contractValue"
+        },
+        "digest": "88a07da70bd4a48a737992a4488b45896d9aff2f04c23acc33983383adedd5b1"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-current-value-after-supersession-2",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "current-value-after-supersession",
+        "askerId": "user-owner",
+        "question": "What is the current annual contract value for Lumen Holdings (cust-9568)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 51000,
+          "grounding": [
+            "cust-9568"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 49000,
+          "grounding": [
+            "cust-9568"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-9568",
+          "field": "contractValue"
+        },
+        "digest": "de9fad2b60ae1aa0ce4da455b6e9df25633824d8e3559aa1131ed8a17353daae"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-current-value-after-supersession-3",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "current-value-after-supersession",
+        "askerId": "user-finance",
+        "question": "What is the current annual contract value for Cobalt Group (cust-7994)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 52000,
+          "grounding": [
+            "cust-7994"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 46000,
+          "grounding": [
+            "cust-7994"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-7994",
+          "field": "contractValue"
+        },
+        "digest": "3a4a47afa466fb65935497519b83582c65e8d3b20ed649ebf138f6fe67b1e33e"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-value-as-of-date-1",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "value-as-of-date",
+        "askerId": "user-marketing",
+        "question": "What was the annual contract value for Lumen Holdings (cust-9568) as of 2026-04-05?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 49000,
+          "grounding": [
+            "cust-9568"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 51000,
+          "grounding": [
+            "cust-9568"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-9568",
+          "field": "contractValue",
+          "asOf": "2026-04-05"
+        },
+        "digest": "c0746b1cc0ceba5b7a10a3d5e79751d5bb3c691b18231d4d02e40d9883c50f9b"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-value-as-of-date-2",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "value-as-of-date",
+        "askerId": "user-finance",
+        "question": "What was the payment terms in days for Lumen Services (vend-8384) as of 2026-05-26?",
+        "collections": [
+          "vendors"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 60,
+          "grounding": [
+            "vend-8384"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 30,
+          "grounding": [
+            "vend-8384"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "vend-8384",
+          "field": "paymentTermsDays",
+          "asOf": "2026-05-26"
+        },
+        "digest": "04c05a70213e0d8cf6462f43003f5ba6e78a18fef26aef65e8a202eca2fbdc58"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-value-as-of-date-3",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "value-as-of-date",
+        "askerId": "user-marketing",
+        "question": "What was the budget for Cobalt Summer (camp-9263) as of 2026-06-25?",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 10500,
+          "grounding": [
+            "camp-9263"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 11000,
+          "grounding": [
+            "camp-9263"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "camp-9263",
+          "field": "budget",
+          "asOf": "2026-06-25"
+        },
+        "digest": "e2f84b3d037eade34ecc86eb9ff83e3ba758dd2d35f91d2fd6bcfe2933e8806e"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-derived-total-from-records-1",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "derived-total-from-records",
+        "askerId": "user-owner",
+        "question": "What is the total outstanding unpaid invoice amount for Cobalt Group (cust-7994) according to recorded state?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 3500,
+          "grounding": [
+            "inv-1469",
+            "inv-6131"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 1500,
+          "grounding": [
+            "inv-1469",
+            "inv-6131"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "customerId": "cust-7994",
+          "invoiceIds": [
+            "inv-1469",
+            "inv-6131"
+          ],
+          "tolerance": 0.01
+        },
+        "digest": "6f7802c6990b1a70df2ffea40efbda4344fbfa8317fb40ebe2cf9fd8556fdd05"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-derived-total-from-records-2",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "derived-total-from-records",
+        "askerId": "user-owner",
+        "question": "What is the total outstanding unpaid invoice amount for Lumen Holdings (cust-9568) according to recorded state?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 9400,
+          "grounding": [
+            "inv-1322",
+            "inv-9798"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 9500,
+          "grounding": [
+            "inv-1322",
+            "inv-9798"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "customerId": "cust-9568",
+          "invoiceIds": [
+            "inv-1322",
+            "inv-9798"
+          ],
+          "tolerance": 0.01
+        },
+        "digest": "45d8e48cd3192ca422c6d76d083c160b78e6da154222a1368b61cbbf55b52b2a"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-derived-total-from-records-3",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "derived-total-from-records",
+        "askerId": "user-finance",
+        "question": "What is the total outstanding unpaid invoice amount for Meridian Clinic (cust-2576) according to recorded state?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 2000,
+          "grounding": [
+            "inv-6638"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 2100,
+          "grounding": [
+            "inv-6638"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "customerId": "cust-2576",
+          "invoiceIds": [
+            "inv-6638"
+          ],
+          "tolerance": 0.01
+        },
+        "digest": "e1fc7b184ff6588e56920556e3c2960c695361a04f8dcbd5de7552e9decb90cf"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-scope-boundary-1",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "scope-boundary",
+        "askerId": "user-contractor",
+        "question": "What is the current spend approval threshold for Spend approval (pol-2607)?",
+        "collections": [
+          "policies"
+        ],
+        "expected": {
+          "status": "scope_denied",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 10000,
+          "grounding": [
+            "pol-2607"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "hiddenRecordId": "pol-2607",
+          "hiddenValues": [
+            "10000"
+          ]
+        },
+        "digest": "ffb49dae0a35adc0fb7de7d96a020b57c7c39c5231d3341b2aeaad428bef5cbe"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-scope-boundary-2",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "scope-boundary",
+        "askerId": "user-contractor",
+        "question": "What is the current payment terms in days for Meridian Clinic (cust-2576)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "scope_denied",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 60,
+          "grounding": [
+            "cust-2576"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "hiddenRecordId": "cust-2576",
+          "hiddenValues": [
+            "60"
+          ]
+        },
+        "digest": "379e91a46bd1663de0f13052d54ed02dfcc406be77ae2834005a19f5898c4ad9"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-holdout-w0-scope-boundary-3",
+        "worldId": "world-holdout-0",
+        "pool": "holdout",
+        "family": "scope-boundary",
+        "askerId": "user-contractor",
+        "question": "What is the current annual contract value for Meridian Clinic (cust-2576)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "scope_denied",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 10000,
+          "grounding": [
+            "cust-2576"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "hiddenRecordId": "cust-2576",
+          "hiddenValues": [
+            "10000"
+          ]
+        },
+        "digest": "bdf4e6009e4c19ed7fea262a1c29e57aae5d4f48abf5cec126d821e65ff0bb50"
+      }
+    ],
+    "digest": "3bddcd506ea373f1da4e5a160adc53c7f7e1710e7e1283a82d031d709e3172bf"
+  }
+}
