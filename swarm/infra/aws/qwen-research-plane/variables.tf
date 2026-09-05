@@ -141,3 +141,9 @@ variable "intake_port" {
   type        = number
   default     = 8787
 }
+
+variable "intake_bearer_secret_arn" {
+  description = "Secrets Manager ARN of the bearer token shared by the Platform delivery worker and the organism intake."
+  type        = string
+  default     = ""
+}

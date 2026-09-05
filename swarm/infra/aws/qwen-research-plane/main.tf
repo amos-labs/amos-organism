@@ -384,6 +384,12 @@ resource "aws_iam_role_policy" "runner" {
         Resource = [aws_ecr_repository.runner.arn]
       },
       {
+        Sid      = "ReadIntakeBearerSecret"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = var.intake_bearer_secret_arn != "" ? [var.intake_bearer_secret_arn] : ["arn:aws:secretsmanager:${var.aws_region}:*:secret:amos-organism/platform-intake-bearer-*"]
+      },
+      {
         Sid    = "BuildAndPushTrainerImages"
         Effect = "Allow"
         Action = [
