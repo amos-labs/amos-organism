@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SwarmTurnOrchestrator } from "../src/swarmTurnGateway.js";
 import { digestResearchValue } from "../src/experimentProtocol.js";
+import { gatewayRecoveryEvidenceFromTrace } from "../src/gatewayRecoveryEvidence.js";
 
 test("the swarm turn gateway fans out proposals, critiques them, and returns one integrated action", async () => {
   const calls = [];
@@ -385,6 +386,10 @@ test("the swarm gateway implements the Platform Mission worker contract and self
   assert.equal(traces[0].mission.verificationPolicyDigest.length, 64);
   assert.equal(traces[0].mission.plannerAttempt, 2);
   assert.equal(traces[0].mission.recoveryKind, "usage_accounting");
+  assert.deepEqual(result.amos_swarm.gatewayRecoveryEvidence.mission, {
+    tenantId: "tenant-1", missionId: "mission-1", contractId: "contract-1", plannerAttempt: 2
+  });
+  assert.equal(result.amos_swarm.gatewayRecoveryEvidence.unexpectedCorrections, 1);
 });
 
 test("shadow mode sends the final-stage request to the shadow model and records the pair without touching the primary answer", async () => {
@@ -518,6 +523,14 @@ test("shadow and trace input evidence follows the actual served response through
     const { digest: shadowDigest, ...shadowBody } = shadows[0];
     assert.equal(shadowDigest, digestResearchValue(shadowBody));
     assert.equal(result.amos_swarm.traceDigest, traceDigest);
+    const recovery = result.amos_swarm.gatewayRecoveryEvidence;
+    assert.deepEqual(recovery, gatewayRecoveryEvidenceFromTrace(traces[0]));
+    assert.equal(recovery.scope, "gateway-turn");
+    assert.equal(recovery.coverage, "complete");
+    assert.equal(recovery.unexpectedCorrections, mode === "both-recoveries" ? 2 : mode.endsWith("recovery") ? 1 : 0);
+    assert.equal(recovery.requiredRecoveries, 0);
+    assert.equal(recovery.traceDigest, traceDigest);
+    assert.equal(recovery.corrections.length, recovery.unexpectedCorrections);
     assert.equal(shadows[0].servedToMission, "primary");
     assert.equal(shadows[0].textCaptured, false);
     const logged = JSON.stringify({ traces, shadows });
