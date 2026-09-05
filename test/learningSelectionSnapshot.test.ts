@@ -44,6 +44,11 @@ test("procedure order does not change identity and the token bound is enforced",
   assert.equal(reversed.digest, base.digest);
   assert.throws(() => createLearningSelectionSnapshot({ ...base, tokenBound: 100 }), /tokenBound/);
   assert.throws(() => createLearningSelectionSnapshot({ ...base, compatibleRuntimes: [] }), /compatibleRuntimes/);
+  assert.throws(() => createLearningSelectionSnapshot({ ...base, validUntil: base.generatedAt }), /validUntil/);
+  const tenantScoped = base.procedures.find((procedure) => procedure.applicability.tenantScope === "tenant")!;
+  assert.deepEqual(tenantScoped.applicability.tenantIds, ["426b4297-73f3-45df-936a-dee3c263fa1b"]);
+  assert.throws(() => createLearningSelectionSnapshot({ ...base, procedures: [{ ...tenantScoped, applicability: { ...tenantScoped.applicability, tenantIds: [] } }] }), /needs tenantIds/);
+  assert.throws(() => createLearningSelectionSnapshot({ ...base, procedures: [{ ...tenantScoped, statement: "x".repeat(601) }] }), /statement exceeds/);
 });
 
 test("strategy genes map to procedures only with verified outcomes; all-fail becomes avoid", () => {
@@ -69,9 +74,11 @@ test("strategy genes map to procedures only with verified outcomes; all-fail bec
   assert.equal(guide?.evidence.meanVerifiedQuality, 0.9);
   assert.equal(guide?.evidence.uncreditedAttempts, 1);
   assert.deepEqual(guide?.applicability.roles, ["planner"]);
+  assert.match(guide?.statement ?? "", /^Follow recover from reserved tool: request the boundary change/);
+  assert.deepEqual(guide?.applicability.tenantIds, []);
   const avoid = procedureFromStrategyGene(gene, [outcome("fail", 0), outcome("fail", 0)]);
   assert.equal(avoid?.guidance, "avoid");
   assert.equal(avoid?.evidence.meanVerifiedQuality, null);
-  const snapshot = emptyLearningSelectionSnapshot({ id: "s", generatedAt: new Date("2026-09-05T20:00:00Z"), sourceChainDigest: digest({}), compatibleRuntimes: [{ modelId: "m", adapterArtifactSha256: null, runtimeRevision: "abc" }], permittedUseScope: ["strategy_learning"] });
+  const snapshot = emptyLearningSelectionSnapshot({ id: "s", generatedAt: new Date("2026-09-05T20:00:00Z"), validUntil: new Date("2026-09-06T20:00:00Z"), sourceChainDigest: digest({}), compatibleRuntimes: [{ modelId: "m", adapterArtifactSha256: null, runtimeRevision: "abc" }], permittedUseScope: ["strategy_learning"] });
   assert.equal(snapshot.tokenBound, 0);
 });
