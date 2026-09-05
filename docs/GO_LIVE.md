@@ -48,7 +48,33 @@ The Platform task role needs `kms:Sign` on that key (grant it in the key policy 
 
 ## Terraform to apply (research plane)
 
-Plan file and variable file are under the session scratchpad; the variable file reproduces the applied values (AMIs, image URIs, contract URI) plus the two new inputs. Expected changes: SSM contract-pointer parameter, runner role statements (image push, intake secret read), intake ingress rule, trainer instance update in place (boot-template no longer forces replacement). Confirm the plan shows no replacement before applying. After applying, delete the temporary inline policy `amos-stage1-trainer-image-push` from the runner role.
+Planned on 2026-09-05 against live state with the applied variable values:
+**2 to add, 4 to change, 0 to destroy.** Adds the SSM contract-pointer
+parameter and the intake ingress rule from the Platform ECS security group;
+changes the runner role policy (image push, intake-secret read), the runner
+security group (description text only), and both instances in place. Both
+instances now have `user_data_replace_on_change = false`, so bootstrap drift
+never replaces a live host. The AWS provider stops and starts an instance to
+change its user data in place, so expect a short runner restart; the daemon,
+intake, and timers are enabled and return on boot.
+
+Variable values (write them to `terraform.tfvars` in the module):
+
+```
+runner_enabled                 = true
+runner_ami_id                  = "ami-0332d564d76dbd8d6"
+runner_image_uri               = "<live runner image digest, from the instance user data>"
+trainer_enabled                = true
+trainer_ami_id                 = "ami-0a30b02f6c5660457"
+trainer_image_uri              = "<live trainer image digest>"
+trainer_contract_uri           = "<live contract uri>"
+platform_ecs_security_group_id = "sg-0967e26d543a5ce47"
+intake_bearer_secret_arn       = "<bearer secret arn above>"
+```
+
+Then `terraform init && terraform plan -var-file=terraform.tfvars -out=plan`,
+confirm `0 to destroy`, `terraform apply plan`, and delete the temporary inline
+policy `amos-stage1-trainer-image-push` from the runner role.
 
 ## Production inference cell, deliberately not touched
 
