@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SwarmTurnOrchestrator } from "../src/swarmTurnGateway.js";
+import { digestResearchValue } from "../src/experimentProtocol.js";
 
 test("the swarm turn gateway fans out proposals, critiques them, and returns one integrated action", async () => {
   const calls = [];
@@ -456,6 +457,95 @@ test("a failing shadow backend is recorded as an error and never affects the pri
   assert.equal(shadows.length, 1);
   assert.equal(shadows[0].shadow.text, null);
   assert.match(shadows[0].shadow.error, /503/);
+  assert.equal(shadows[0].shadow.inputEvidence.compiledInputSha256, shadows[0].inputEvidence.compiledInputSha256);
+});
+
+test("shadow and trace input evidence follows the actual served response through recovery and fallback", async () => {
+  const validPlan = { decision: "tool", summary: "Read inventory", verb: "inventory.read", args: {}, checkpoint: {} };
+  for (const [mode, expectedStage, expectedPrimaryCalls] of [
+    ["normal", "integrator", 4],
+    ["integration-recovery", "integrator:recovery", 5],
+    ["contract-recovery", "mission:contract-recovery", 5],
+    ["both-recoveries", "mission:contract-recovery", 6],
+    ["primary-fallback", "candidate:primary", 2],
+    ["alternative-fallback", "candidate:alternative", 2]
+  ]) {
+    const calls = [], traces = [], shadows = [];
+    const isMission = mode === "contract-recovery" || mode === "both-recoveries";
+    let primaryCalls = 0;
+    const gateway = new SwarmTurnOrchestrator({
+      backendBaseUrl: "http://127.0.0.1:18080", backendModel: "base", backendApiKey: "private-backend-key-1700",
+      shadowModel: "adapter", internalMaxTokens: 1024, onTrace: trace => traces.push(trace), onShadow: shadow => shadows.push(shadow),
+      fetchImpl: async (_url, init) => {
+        const payload = JSON.parse(init.body);
+        calls.push(payload);
+        const index = payload.model === "base" ? ++primaryCalls : 0;
+        const exhausted = ((mode === "integration-recovery" || mode === "both-recoveries") && index === 4) || (mode === "alternative-fallback" && index === 1);
+        const correctedPlan = isMission && index === expectedPrimaryCalls;
+        return new Response(JSON.stringify({
+          id: "upstream-reuses-response-id", model: payload.model,
+          choices: [{ index: 0, finish_reason: exhausted ? "length" : "stop", message: { role: "assistant", content: exhausted ? null : correctedPlan ? JSON.stringify(validPlan) : `visible-${index}` } }],
+          usage: { prompt_tokens: mode.endsWith("-fallback") ? 31500 : 10, completion_tokens: 2, total_tokens: mode.endsWith("-fallback") ? 31502 : 12 }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+    });
+    const content = isMission ? JSON.stringify({
+      contract: "amos-mission-worker:2026-09-06",
+      mission: { tenant_id: "tenant-no-text-capture", mission_id: "mission-input-evidence", contract_id: "contract-input-evidence", objective: "private-mission-text-1700", verification_policy: { schema_version: "1", requirements: [{ id: "done" }] }, planner_attempt: 1 },
+      output_schema: { tool: { decision: "tool", summary: "...", verb: "...", args: {}, checkpoint: {} } }
+    }) : "private-mission-text-1700";
+    const result = await gateway.complete({ model: "swarm", messages: [{ role: "user", content }], max_tokens: 256, reasoning_effort: "high" });
+    await gateway.drainShadows();
+    assert.equal(primaryCalls, expectedPrimaryCalls, mode);
+    const primaryPayload = calls.filter(c => c.model === "base").at(mode === "primary-fallback" ? 0 : -1);
+    const shadowPayloads = calls.filter(c => c.model === "adapter");
+    assert.equal(shadowPayloads.length, 1, mode);
+    assert.deepEqual(shadowPayloads[0], { ...primaryPayload, model: "adapter" }, `${mode}: shadow must receive the request that produced the served response`);
+    const { model, ...compiledInput } = primaryPayload;
+    const evidence = traces[0].inputEvidence;
+    assert.equal(evidence.schema, "amos.swarm-input-evidence");
+    assert.equal(evidence.version, 1);
+    assert.equal(evidence.stage, expectedStage, mode);
+    assert.equal(evidence.compiledInputSha256, digestResearchValue(compiledInput), mode);
+    assert.equal(evidence.requestPayloadSha256, digestResearchValue(primaryPayload), mode);
+    assert.deepEqual(traces[0].stages.find(s => s.stage === expectedStage).inputEvidence, evidence);
+    assert.deepEqual(shadows[0].inputEvidence, evidence);
+    assert.equal(shadows[0].shadow.inputEvidence.compiledInputSha256, evidence.compiledInputSha256);
+    assert.equal(shadows[0].shadow.inputEvidence.requestPayloadSha256, digestResearchValue(shadowPayloads[0]));
+    assert.notEqual(shadows[0].shadow.inputEvidence.requestPayloadSha256, evidence.requestPayloadSha256);
+    const { digest: traceDigest, ...traceBody } = traces[0];
+    assert.equal(traceDigest, digestResearchValue(traceBody));
+    const { digest: shadowDigest, ...shadowBody } = shadows[0];
+    assert.equal(shadowDigest, digestResearchValue(shadowBody));
+    assert.equal(result.amos_swarm.traceDigest, traceDigest);
+    assert.equal(shadows[0].servedToMission, "primary");
+    assert.equal(shadows[0].textCaptured, false);
+    const logged = JSON.stringify({ traces, shadows });
+    assert.equal(logged.includes("private-mission-text-1700"), false);
+    assert.equal(logged.includes("private-backend-key-1700"), false);
+  }
+});
+
+test("concurrent completions bind their own inputs even when upstream response IDs repeat", async () => {
+  const calls = [], traces = [];
+  const gateway = new SwarmTurnOrchestrator({
+    backendBaseUrl: "http://127.0.0.1:18080", backendModel: "base", onTrace: trace => traces.push(trace),
+    fetchImpl: async (_url, init) => {
+      const payload = JSON.parse(init.body); calls.push(payload);
+      await new Promise(resolve => setImmediate(resolve));
+      const tag = payload.messages.find(m => m.role === "user").content;
+      return new Response(JSON.stringify({ id: "shared-id", model: "base", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: tag } }], usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 } }), { status: 200 });
+    }
+  });
+  const tags = ["request-alpha", "request-beta"];
+  const results = await Promise.all(tags.map(content => gateway.complete({ model: "swarm", messages: [{ role: "user", content }] })));
+  for (const [index, result] of results.entries()) {
+    const trace = traces.find(t => t.digest === result.amos_swarm.traceDigest);
+    const payload = calls.filter(c => c.messages.find(m => m.role === "user").content === tags[index]).at(-1);
+    assert.equal(trace.inputEvidence.requestPayloadSha256, digestResearchValue(payload));
+    assert.equal(result.choices[0].message.content, tags[index]);
+  }
+  assert.notEqual(traces[0].inputEvidence.compiledInputSha256, traces[1].inputEvidence.compiledInputSha256);
 });
 
 test("shadow pairs keep full answer text only for tenants on the consent allowlist", async () => {

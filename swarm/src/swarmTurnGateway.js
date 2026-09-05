@@ -37,6 +37,11 @@ const MINIMUM_EVIDENCE_TOKENS = 256;
 const CONSERVATIVE_EVIDENCE_CHARACTERS_PER_TOKEN = 3;
 
 export class SwarmTurnOrchestrator {
+  // Response identity survives candidate selection and recovery. Keeping the
+  // actual serialized request here avoids attributing a response to an earlier
+  // prompt or to the first candidate when another candidate was served.
+  #responseInputs = new WeakMap();
+
   constructor({
     backendBaseUrl,
     backendModel,
@@ -119,8 +124,9 @@ export class SwarmTurnOrchestrator {
       const started = this.monotonicNow();
       let shadowResponse = null;
       let error = null;
+      const shadowPayload = { ...payload, model: this.shadowModel };
       try {
-        shadowResponse = await this.#callBackend({ ...payload, model: this.shadowModel }, { stage: `shadow:${stage}`, signal: controller.signal });
+        shadowResponse = await this.#callBackend(shadowPayload, { stage: `shadow:${stage}`, signal: controller.signal });
       } catch (caught) {
         error = String(caught?.message ?? caught).slice(0, 500);
       } finally {
@@ -141,6 +147,7 @@ export class SwarmTurnOrchestrator {
         completedAt: validDate(this.now(), "now").toISOString(),
         wallMilliseconds: Math.max(0, Math.round(this.monotonicNow() - started)),
         stage,
+        inputEvidence: inputEvidence(payload, stage),
         requestDigest: digestResearchValue(redactedRequest(request)),
         mission: mission
           ? { tenantId, missionId: mission.missionId ?? null, contractId: mission.contractId ?? null, plannerAttempt: mission.plannerAttempt ?? null, planDecision: mission.planDecision ?? null, contractSatisfied: mission.contractSatisfied ?? null }
@@ -149,8 +156,8 @@ export class SwarmTurnOrchestrator {
         textPolicy: textCaptured ? "consenting-tenant" : "digest-only",
         primary: { model: this.backendModel, ...primaryAnswer, usage: normalizedUsage(primary.usage) },
         shadow: shadowAnswer
-          ? { model: this.shadowModel, ...shadowAnswer, usage: normalizedUsage(shadowResponse.usage), error: null }
-          : { model: this.shadowModel, text: null, textDigest: null, textLength: null, usage: null, error },
+          ? { model: this.shadowModel, ...shadowAnswer, inputEvidence: this.#responseInputs.get(shadowResponse).evidence, usage: normalizedUsage(shadowResponse.usage), error: null }
+          : { model: this.shadowModel, text: null, textDigest: null, textLength: null, inputEvidence: inputEvidence(shadowPayload, `shadow:${stage}`), usage: null, error },
         agreement: shadowResponse ? messageText(primary.choices[0].message).trim() === messageText(shadowResponse.choices[0].message).trim() : null,
         servedToMission: "primary"
       };
@@ -171,9 +178,9 @@ export class SwarmTurnOrchestrator {
     const startedAt = validDate(this.now(), "now").toISOString();
     const started = this.monotonicNow();
     const observations = [];
-    let finalStage = { payload: null, stage: null };
     const finish = async (response, contextBudget) => {
       let finalResponse = response;
+      let finalBackendResponse = response;
       let mission = null;
       if (missionRequest) {
         let plan;
@@ -190,9 +197,10 @@ export class SwarmTurnOrchestrator {
             ),
             { stage: "mission:contract-recovery", signal }
           );
-          observations.push(observation("mission:contract-recovery", recovered));
+          observations.push(this.#observation("mission:contract-recovery", recovered));
           plan = parseMissionPlan(messageText(recovered.choices[0].message));
           finalResponse = recovered;
+          finalBackendResponse = recovered;
         }
         finalResponse = withCanonicalMissionPlan(finalResponse, plan);
         mission = {
@@ -201,6 +209,7 @@ export class SwarmTurnOrchestrator {
           contractSatisfied: true
         };
       }
+      const finalCall = this.#responseInputs.get(finalBackendResponse);
       const completedAt = validDate(this.now(), "now").toISOString();
       const traceBase = {
         schema: SWARM_TURN_GATEWAY_SCHEMA,
@@ -211,24 +220,24 @@ export class SwarmTurnOrchestrator {
         backendModel: this.backendModel,
         contextBudget,
         requestDigest: digestResearchValue(redactedRequest(request)),
+        inputEvidence: finalCall.evidence,
         mission,
         stages: observations,
         usage: aggregateUsage(observations)
       };
       const trace = { ...traceBase, digest: digestResearchValue(traceBase) };
       await this.onTrace?.(structuredClone(trace));
-      if (finalStage.payload) this.#shadow({ payload: finalStage.payload, stage: finalStage.stage, primary: finalResponse, request, mission });
+      this.#shadow({ payload: finalCall.payload, stage: finalCall.evidence.stage, primary: finalResponse, request, mission });
       return mergedCompletion(finalResponse, trace);
     };
     const candidateRequests = this.roles.map(async (role, index) => {
       const payload = candidatePayload(request, role, this.backendModel, this.internalMaxTokens, index);
-      if (index === 0) finalStage = { payload, stage: `candidate:${role.id}` };
       const response = await this.#callBackend(payload, { stage: `candidate:${role.id}`, signal });
       return { role: role.id, response, message: assistantMessage(response) };
     });
     const candidateResults = await Promise.all(candidateRequests);
     observations.push(...candidateResults.map(({ role, response }) =>
-      observation(`candidate:${role}`, response)));
+      this.#observation(`candidate:${role}`, response)));
     const candidates = candidateResults.map(({ role, message }) => ({ role, message }));
     const basePromptTokens = Math.max(...candidateResults.map(({ response }) =>
       normalizedUsage(response.usage).prompt_tokens));
@@ -254,7 +263,7 @@ export class SwarmTurnOrchestrator {
       critiquePayload(request, board, this.backendModel, criticBudget.maximumOutputTokens),
       { stage: "critic", signal }
     );
-    observations.push(observation("critic", critiqueResponse));
+    observations.push(this.#observation("critic", critiqueResponse));
     if (requiresAnswerRecovery(critiqueResponse)) {
       critiqueResponse = await this.#callBackend(
         critiqueRecoveryPayload(
@@ -265,7 +274,7 @@ export class SwarmTurnOrchestrator {
         ),
         { stage: "critic:recovery", signal }
       );
-      observations.push(observation("critic:recovery", critiqueResponse));
+      observations.push(this.#observation("critic:recovery", critiqueResponse));
     }
     assertVisibleCompletion(critiqueResponse, "critic");
     const critique = assistantMessage(critiqueResponse);
@@ -291,9 +300,8 @@ export class SwarmTurnOrchestrator {
       this.backendModel,
       integrationOutputTokens
     );
-    finalStage = { payload: integrationRequestPayload, stage: "integrator" };
     let integrationResponse = await this.#callBackend(integrationRequestPayload, { stage: "integrator", signal });
-    observations.push(observation("integrator", integrationResponse));
+    observations.push(this.#observation("integrator", integrationResponse));
     if (requiresAnswerRecovery(integrationResponse)) {
       integrationResponse = await this.#callBackend(
         integrationRecoveryPayload(
@@ -304,7 +312,7 @@ export class SwarmTurnOrchestrator {
         ),
         { stage: "integrator:recovery", signal }
       );
-      observations.push(observation("integrator:recovery", integrationResponse));
+      observations.push(this.#observation("integrator:recovery", integrationResponse));
     }
     assertVisibleCompletion(integrationResponse, "integrator");
 
@@ -321,6 +329,12 @@ export class SwarmTurnOrchestrator {
     });
   }
 
+  #observation(stage, response) {
+    const call = this.#responseInputs.get(response);
+    if (!call || call.evidence.stage !== stage) throw new Error("Missing backend input attribution");
+    return { ...observation(stage, response), inputEvidence: call.evidence };
+  }
+
   async #callBackend(payload, { stage, signal }) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(new Error(`${stage} timed out`)), this.requestTimeoutMs);
@@ -329,6 +343,10 @@ export class SwarmTurnOrchestrator {
     if (signal?.aborted) abort();
     else signal?.addEventListener("abort", abort, { once: true });
     try {
+      const serialized = JSON.stringify(payload);
+      // Match JSON sent over the wire, including omitted undefined recovery
+      // settings. Never include authorization headers in input evidence.
+      const wirePayload = JSON.parse(serialized);
       const response = await this.fetchImpl(
         new URL("chat/completions", this.backendBaseUrl),
         {
@@ -337,7 +355,7 @@ export class SwarmTurnOrchestrator {
             "content-type": "application/json",
             ...(this.backendApiKey ? { authorization: `Bearer ${this.backendApiKey}` } : {})
           },
-          body: JSON.stringify(payload),
+          body: serialized,
           signal: controller.signal
         }
       );
@@ -346,12 +364,24 @@ export class SwarmTurnOrchestrator {
         throw new Error(`${stage} failed with HTTP ${response.status}: ${boundedJson(body)}`);
       }
       validateUpstreamCompletion(body, stage);
+      this.#responseInputs.set(body, { payload: wirePayload, evidence: inputEvidence(wirePayload, stage) });
       return body;
     } finally {
       clearTimeout(timeout);
       signal?.removeEventListener("abort", abort);
     }
   }
+}
+
+function inputEvidence(payload, stage) {
+  // The selected model is a separate treatment identity. Everything else in the
+  // backend JSON request (messages, tools, seed and generation settings) is bound.
+  const { model, ...compiledInput } = payload;
+  return {
+    schema: "amos.swarm-input-evidence", version: 1, stage,
+    compiledInputSha256: digestResearchValue(compiledInput),
+    requestPayloadSha256: digestResearchValue(payload)
+  };
 }
 
 function candidatePayload(request, role, model, internalMaxTokens, index) {
