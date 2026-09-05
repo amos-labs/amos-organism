@@ -76,14 +76,83 @@ Then `terraform init && terraform plan -var-file=terraform.tfvars -out=plan`,
 confirm `0 to destroy`, `terraform apply plan`, and delete the temporary inline
 policy `amos-stage1-trainer-image-push` from the runner role.
 
-## Production inference cell, deliberately not touched
+## Shadow in production: the operator checklist
 
-Enabling adapter serving on the live cell restarts vLLM and writes into the pinned model bucket. Both were refused by the permission gate in this session and are the operator's call:
+Decision taken 2026-09-05: run seed three in shadow on the production cell and
+move to live on evidence. Every step below changes production or IAM, which
+this session's permission gate refuses, so they are yours. Order matters.
 
-1. Apply the inference module with `enable_lora = true`, `max_lora_rank = 32`, `max_loras = 4`, or run the equivalent unit edit during a maintenance window.
-2. Copy the chosen adapter into a prefix the inference role can read (the role reads only `models/Qwen--Qwen3.8-27B-FP8/<revision>/*`), e.g. `…/<revision>/adapters/stage1-implicit-r32-s3/`, then `load-adapter.sh stage1-implicit-r32-s3 <that s3 uri>` on the cell.
-3. Add the adapter model id to the sleep daemon's grading list (installer argument six) so base versus adapter is graded nightly on the production cell.
-4. Start the swarm gateway with `--shadow-model stage1-implicit-r32-s3 --shadow-trace <path>` so Mission turns record base and adapter answers side by side; the Mission always receives the base answer.
+**1. Build and push the shadow-capable gateway image** (needs a working Docker
+Desktop; the engine on this machine has been hung all day, restart it first):
+
+```
+cd swarm/infra/aws/qwen-inference && terraform init
+../qwen-inference/scripts/build-swarm-gateway-image.sh      # prints the new image digest
+```
+
+**2. Enable adapter serving on the cell in place** (about ten minutes of vLLM
+downtime; the instance keeps its IP, which the runner and Platform depend on).
+Open `aws ssm start-session --target i-08540d9f7831d4950` and paste:
+
+```
+sudo bash -c '
+set -e
+U=/etc/systemd/system/amos-qwen.service; E=/etc/amos/qwen.env
+grep -q -- --enable-lora $U && { echo already enabled; exit 0; }
+install -d -m 0755 /opt/amos/adapters; cp $U $U.pre-lora.bak
+sed -i "s#-v /opt/amos/qwen-model:/model:ro #-v /opt/amos/qwen-model:/model:ro -v /opt/amos/adapters:/adapters:ro #" $U
+sed -i "s#--enable-prefix-caching #--enable-prefix-caching --enable-lora --max-lora-rank 32 --max-loras 4 #" $U
+grep -q VLLM_ALLOW_RUNTIME_LORA_UPDATING $E || echo VLLM_ALLOW_RUNTIME_LORA_UPDATING=True >> $E
+systemctl daemon-reload && systemctl restart amos-qwen.service
+until curl -fsS -H "authorization: Bearer $(grep ^VLLM_API_KEY= $E | cut -d= -f2-)" http://127.0.0.1:8000/v1/models >/dev/null 2>&1; do sleep 10; done; echo vllm back'
+```
+
+If vLLM does not come back within twenty minutes, restore `$U.pre-lora.bak`
+and restart; the likely cause is the speculative-decoding config conflicting
+with LoRA on the pinned image, in which case set `mtp_speculative_tokens = 0`.
+
+**3. Stage and load the seed-three adapter** (the cell's role reads only the
+pinned model prefix, so the adapter goes under it). From your machine:
+
+```
+aws s3 sync s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-20260904-r3-implicit/runs/stage1-20260904-r3-implicit-r32-s20260905/adapter/ \
+  s3://amos-qwen-research-637423327454-us-east-1/models/Qwen--Qwen3.8-27B-FP8/017b9c7af6b5689d5dd426a76e0bc077eb5ca20a/adapters/stage1-implicit-r32-s3/
+```
+
+Then on the cell, run `swarm/infra/aws/qwen-inference/scripts/load-adapter.sh
+stage1-implicit-r32-s3 <that s3 uri>`; it registers the adapter as model id
+`stage1-implicit-r32-s3` and prints the served model list.
+
+**4. Turn on shadow** by applying the inference module with two new values:
+
+```
+swarm_gateway_image_uri    = "<digest printed in step 1>"
+swarm_gateway_shadow_model = "stage1-implicit-r32-s3"
+```
+
+The install document re-runs on the cell, restarts only the gateway container,
+and refuses to proceed if vLLM changed process during the install. Shadow pairs
+land in `/var/lib/amos-swarm-gateway/shadow.jsonl`. Reconstructed applied
+values for the same tfvars, from the live boot script: `vllm_image_uri =
+"637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research/vllm-openai@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"`, `model_manifest_sha256 = "e15523a1398754fda09bfd6d2a6755111f6fb8a1cf7839bafb5b8430fd7feb96"`, `served_model_name =
+"amos-qwen38-27b-fp8"`, `max_model_len = 32768`, `max_num_seqs = 8`,
+`max_num_batched_tokens = 16384`, `gpu_memory_utilization = 0.85`,
+`mtp_speculative_tokens = 3`, `platform_vpc_id = "vpc-004397889bd118cbc"`,
+`platform_ecs_security_group_id = "sg-0967e26d543a5ce47"`, plus
+`inference_enabled = true`, `swarm_gateway_enabled = true`. Take the remaining
+network values from `terraform state pull`. Do not set `enable_lora` here yet:
+that path replaces the instance; step 2 already enabled it in place.
+
+**5. Grade base against the adapter nightly on the production cell**: re-run
+the sleep-daemon installer with a sixth argument
+`amos-qwen38-27b-fp8,stage1-implicit-r32-s3`. Paired comparisons then appear in
+the nightly reports without anyone at a keyboard.
+
+**6. Read the shadow evidence.** Canary bar: sealed holdout positive; a few
+hundred shadow turns where the adapter's answer passes the Mission verifier at
+least as often as the base's; no new failure class on explicit traffic; no
+latency regression you would not accept. Then canary with the base as instant
+fallback and a host-receipted promotion through the adapter ledger.
 
 ## Adapter governance
 
