@@ -171,7 +171,26 @@ Seeds one and three hold or improve on explicit prompts while lifting
 first-attempt pass sharply; seed two regresses there. Seed three is the best
 adapter on both holdouts and never loses a paired scenario to the base.
 
-Caveat: the grading server ran without Qwen's reasoning parser, so thinking
+**Regrade with the reasoning parser, 2026-09-05.** Same 48 implicit holdout
+scenarios, same four models, grading server now parsing Qwen's thinking:
+
+| model | pass | first-attempt | paired W / L vs base |
+|---|---|---|---|
+| base bf16 | 45/48 | 38/48 | – |
+| implicit adapter, seed 1 | 46/48 | 42/48 | 2 / 1 |
+| implicit adapter, seed 2 | 47/48 | 44/48 | 3 / 1 |
+| implicit adapter, seed 3 | 47/48 | 42/48 | 3 / 1 |
+
+Most of the previous day's gap was the missing parser hurting the base more than
+the adapters, which had been trained to answer without thinking text. The
+honest result is a small, consistent edge: every seed is net positive on paired
+scenarios and on first-attempt pass, approval boundaries still improve (base 3
+of 6, adapters 4 to 5 of 6), and the differences are inside the noise of 48
+scenarios. The wider and sealed holdouts decide whether it is real. Note the
+recovery contract now names the allowed repair verbs, so recovery is easier for
+every model than in the earlier runs.
+
+Original caveat: the first grading server ran without Qwen's reasoning parser, so thinking
 text landed in answers for every model. Absolute numbers understate all five
 models equally; the pairing is fair. The serve script now enables the parser.
 
