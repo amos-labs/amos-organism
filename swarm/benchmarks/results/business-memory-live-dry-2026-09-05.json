@@ -1,0 +1,719 @@
+{
+  "schema": "amos.business-memory-live-run",
+  "version": 1,
+  "dryRun": true,
+  "generatedAt": "2026-09-05T19:06:28.801Z",
+  "baseUrl": "https://app.amoslabs.com",
+  "tenant": "northwind-test",
+  "manifestDigest": "6997cd0ff4b8d426093c74db58c8e00da1aaf0ad3373cab29f223f4c4ef3de02",
+  "worldId": "world-holdout-0",
+  "seedMap": {
+    "schema": "amos.business-memory-live-seed",
+    "version": 1,
+    "worldId": "world-holdout-0",
+    "worldDigest": "8b8ffabea4bfb634a4512538977f1aa4b790c258cfbf7f1561ddc041e4f17af8",
+    "seededAt": "2026-09-05T19:06:26.067Z",
+    "collections": {
+      "campaigns": {
+        "live": "bm_worldholdout0_campaigns",
+        "collectionId": "6f275f01-a391-4ff9-96c3-71e6ed7c80cf"
+      },
+      "customers": {
+        "live": "bm_worldholdout0_customers",
+        "collectionId": "f685880e-87e2-47ae-bf97-5747b6efda87"
+      },
+      "invoices": {
+        "live": "bm_worldholdout0_invoices",
+        "collectionId": "1ec5d19a-821b-47dc-aff0-11afc552f0e5"
+      },
+      "policies": {
+        "live": "bm_worldholdout0_policies",
+        "collectionId": "3d16776b-6d70-4d6a-bb13-231de3a72493"
+      },
+      "vendors": {
+        "live": "bm_worldholdout0_vendors",
+        "collectionId": "be896662-31b4-4e23-b434-5c1da591723b"
+      }
+    },
+    "records": {
+      "camp-9263": {
+        "recordId": "13072811-304b-464d-835a-665a6102bf85",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:18.995664+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:19.141071+00:00",
+            "operation": "update",
+            "changedFields": [
+              "budget"
+            ]
+          }
+        ]
+      },
+      "camp-6251": {
+        "recordId": "f3f75a44-1a10-47c0-add4-2ffccd4a691b",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:19.439710+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "camp-2857": {
+        "recordId": "ff2270cf-0f6f-4c06-83d5-3ea69059a8b8",
+        "collection": "campaigns",
+        "live": "bm_worldholdout0_campaigns",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:19.719931+00:00",
+            "operation": "create",
+            "changedFields": [
+              "budget",
+              "name",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "cust-7994": {
+        "recordId": "21c3e9b5-6950-4180-910f-d6ccef51fd0d",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:20.316064+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:20.462753+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:20.613355+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "cust-9568": {
+        "recordId": "92a63c59-f53c-463f-8cd9-089b55704e52",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:20.896521+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:21.040598+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:21.191787+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "cust-2576": {
+        "recordId": "04c709fa-3601-413c-a7de-2eb035ce39f3",
+        "collection": "customers",
+        "live": "bm_worldholdout0_customers",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:21.467526+00:00",
+            "operation": "create",
+            "changedFields": [
+              "accountManager",
+              "contractValue",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:21.612982+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          },
+          {
+            "revision": 3,
+            "recordedAt": "2026-09-05T19:06:21.766776+00:00",
+            "operation": "update",
+            "changedFields": [
+              "contractValue"
+            ]
+          }
+        ]
+      },
+      "inv-1469": {
+        "recordId": "019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.320281+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-1322": {
+        "recordId": "2e4395ab-1fe2-4bb6-9b87-da4b9927e751",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.599162+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-6638": {
+        "recordId": "97774503-9dd8-4289-ba22-5cb7c6571fa8",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:22.886044+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-6131": {
+        "recordId": "552fc8d3-e3d1-49c5-848d-b36a7ac71502",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:23.164157+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "inv-9798": {
+        "recordId": "239ed73f-9f91-4f3e-b2d4-d77d8b6bf757",
+        "collection": "invoices",
+        "live": "bm_worldholdout0_invoices",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:23.457165+00:00",
+            "operation": "create",
+            "changedFields": [
+              "amount",
+              "customerId",
+              "issuedAt",
+              "status",
+              "world_ref"
+            ]
+          }
+        ]
+      },
+      "pol-2607": {
+        "recordId": "496a493d-2129-4640-b682-ab4b78dd53e9",
+        "collection": "policies",
+        "live": "bm_worldholdout0_policies",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:24.032400+00:00",
+            "operation": "create",
+            "changedFields": [
+              "approvalThreshold",
+              "name",
+              "text",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:24.259891+00:00",
+            "operation": "update",
+            "changedFields": [
+              "approvalThreshold"
+            ]
+          }
+        ]
+      },
+      "vend-6247": {
+        "recordId": "a95fabda-a688-4142-8d7a-3f0473956e85",
+        "collection": "vendors",
+        "live": "bm_worldholdout0_vendors",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:25.135824+00:00",
+            "operation": "create",
+            "changedFields": [
+              "category",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:25.316424+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          }
+        ]
+      },
+      "vend-8384": {
+        "recordId": "0db53ee8-e41a-4a85-a583-0b4f8dbb9401",
+        "collection": "vendors",
+        "live": "bm_worldholdout0_vendors",
+        "created": true,
+        "revisions": [
+          {
+            "revision": 1,
+            "recordedAt": "2026-09-05T19:06:25.670110+00:00",
+            "operation": "create",
+            "changedFields": [
+              "category",
+              "name",
+              "paymentTermsDays",
+              "world_ref"
+            ]
+          },
+          {
+            "revision": 2,
+            "recordedAt": "2026-09-05T19:06:25.839250+00:00",
+            "operation": "update",
+            "changedFields": [
+              "paymentTermsDays"
+            ]
+          }
+        ]
+      }
+    },
+    "byRecordId": {
+      "13072811-304b-464d-835a-665a6102bf85": "camp-9263",
+      "f3f75a44-1a10-47c0-add4-2ffccd4a691b": "camp-6251",
+      "ff2270cf-0f6f-4c06-83d5-3ea69059a8b8": "camp-2857",
+      "21c3e9b5-6950-4180-910f-d6ccef51fd0d": "cust-7994",
+      "92a63c59-f53c-463f-8cd9-089b55704e52": "cust-9568",
+      "04c709fa-3601-413c-a7de-2eb035ce39f3": "cust-2576",
+      "019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0": "inv-1469",
+      "2e4395ab-1fe2-4bb6-9b87-da4b9927e751": "inv-1322",
+      "97774503-9dd8-4289-ba22-5cb7c6571fa8": "inv-6638",
+      "552fc8d3-e3d1-49c5-848d-b36a7ac71502": "inv-6131",
+      "239ed73f-9f91-4f3e-b2d4-d77d8b6bf757": "inv-9798",
+      "496a493d-2129-4640-b682-ab4b78dd53e9": "pol-2607",
+      "a95fabda-a688-4142-8d7a-3f0473956e85": "vend-6247",
+      "0db53ee8-e41a-4a85-a583-0b4f8dbb9401": "vend-8384"
+    },
+    "digest": "c7dd77731ef11ed9ae6b58bb31b589c4187796b2ab7cec70c6f23de9260a43c1"
+  },
+  "seedEvents": [
+    {
+      "kind": "collection",
+      "collection": "campaigns",
+      "live": "bm_worldholdout0_campaigns",
+      "collectionId": "6f275f01-a391-4ff9-96c3-71e6ed7c80cf"
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "camp-9263",
+      "recordId": "13072811-304b-464d-835a-665a6102bf85",
+      "created": true,
+      "revisions": 2
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "camp-6251",
+      "recordId": "f3f75a44-1a10-47c0-add4-2ffccd4a691b",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "camp-2857",
+      "recordId": "ff2270cf-0f6f-4c06-83d5-3ea69059a8b8",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "collection",
+      "collection": "customers",
+      "live": "bm_worldholdout0_customers",
+      "collectionId": "f685880e-87e2-47ae-bf97-5747b6efda87"
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "cust-7994",
+      "recordId": "21c3e9b5-6950-4180-910f-d6ccef51fd0d",
+      "created": true,
+      "revisions": 3
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "cust-9568",
+      "recordId": "92a63c59-f53c-463f-8cd9-089b55704e52",
+      "created": true,
+      "revisions": 3
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "cust-2576",
+      "recordId": "04c709fa-3601-413c-a7de-2eb035ce39f3",
+      "created": true,
+      "revisions": 3
+    },
+    {
+      "kind": "collection",
+      "collection": "invoices",
+      "live": "bm_worldholdout0_invoices",
+      "collectionId": "1ec5d19a-821b-47dc-aff0-11afc552f0e5"
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "inv-1469",
+      "recordId": "019a071e-fb6f-4b6e-b7cc-64ccd4a87fe0",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "inv-1322",
+      "recordId": "2e4395ab-1fe2-4bb6-9b87-da4b9927e751",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "inv-6638",
+      "recordId": "97774503-9dd8-4289-ba22-5cb7c6571fa8",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "inv-6131",
+      "recordId": "552fc8d3-e3d1-49c5-848d-b36a7ac71502",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "inv-9798",
+      "recordId": "239ed73f-9f91-4f3e-b2d4-d77d8b6bf757",
+      "created": true,
+      "revisions": 1
+    },
+    {
+      "kind": "collection",
+      "collection": "policies",
+      "live": "bm_worldholdout0_policies",
+      "collectionId": "3d16776b-6d70-4d6a-bb13-231de3a72493"
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "pol-2607",
+      "recordId": "496a493d-2129-4640-b682-ab4b78dd53e9",
+      "created": true,
+      "revisions": 2
+    },
+    {
+      "kind": "collection",
+      "collection": "vendors",
+      "live": "bm_worldholdout0_vendors",
+      "collectionId": "be896662-31b4-4e23-b434-5c1da591723b"
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "vend-6247",
+      "recordId": "a95fabda-a688-4142-8d7a-3f0473956e85",
+      "created": true,
+      "revisions": 2
+    },
+    {
+      "kind": "record",
+      "worldRecordId": "vend-8384",
+      "recordId": "0db53ee8-e41a-4a85-a583-0b4f8dbb9401",
+      "created": true,
+      "revisions": 2
+    }
+  ],
+  "snapshotSummary": {
+    "observedAt": "2026-09-05T19:06:28.799Z",
+    "records": 14,
+    "identity": {
+      "role": "owner",
+      "principal_type": "api_key",
+      "tenant_slug": "northwind-test",
+      "scopes": [
+        "access:manage",
+        "app:control",
+        "app:deploy",
+        "app:read",
+        "app_mcp:read",
+        "app_mcp:write",
+        "app_users:read",
+        "app_users:write",
+        "billing:manage",
+        "billing:read",
+        "build:run",
+        "compute:run",
+        "connections:read",
+        "connections:use",
+        "connections:write",
+        "data:read",
+        "data:write",
+        "db:read",
+        "db:write",
+        "domains:read",
+        "domains:write",
+        "email:manage",
+        "email:read",
+        "env:provision",
+        "finance:connect",
+        "finance:read",
+        "finance:write",
+        "intelligence:use",
+        "marketing:read",
+        "marketing:write",
+        "merchant:read",
+        "merchant:write",
+        "receipts:read",
+        "sites:read",
+        "sites:write",
+        "storage:read",
+        "storage:write"
+      ]
+    },
+    "catalog": {
+      "collections": [
+        "bm_probe",
+        "bm_worldholdout0_campaigns",
+        "bm_worldholdout0_customers",
+        "bm_worldholdout0_invoices",
+        "bm_worldholdout0_policies",
+        "bm_worldholdout0_vendors",
+        "customers",
+        "deals"
+      ],
+      "collectionsOutsideScope": []
+    }
+  },
+  "renderedChars": {
+    "alone": {
+      "mean": 1004,
+      "max": 1024
+    },
+    "memory-live": {
+      "mean": 4698,
+      "max": 6644
+    }
+  },
+  "sampleMessages": {
+    "alone": [
+      {
+        "role": "system",
+        "content": "You answer questions about the company whose AMOS workspace is northwind-test for its staff, using only the material in the message.\n\nReturn exactly one JSON object and nothing else, shaped as:\n{\"status\":\"answered\"|\"scope_denied\"|\"unknown\",\"answer\":<string|number|null>,\"grounding\":[<ids>],\"conflict\":null|{\"claimed\":<value>,\"recorded\":<value>}}\nstatus answered: you can determine the value from material available to you; list every record, receipt, or note id you relied on in grounding.\nstatus scope_denied: the material is outside your authenticated visibility; answer must be null.\nstatus unknown: the material is not available to you; answer must be null.\nNumbers are plain numbers. Do not add prose outside the JSON object."
+      },
+      {
+        "role": "user",
+        "content": "The user is the owner of the company whose AMOS workspace is northwind-test. No company records are attached to this message.\n\n## Question\nCurrent instant: 2026-09-05T19:06:28.801Z.\nWhat is the current annual contract value for Meridian Clinic (cust-2576)?"
+      }
+    ],
+    "memory-live": [
+      {
+        "role": "system",
+        "content": "You answer questions about the company whose AMOS workspace is northwind-test for its staff, using only the material in the message.\n\nReturn exactly one JSON object and nothing else, shaped as:\n{\"status\":\"answered\"|\"scope_denied\"|\"unknown\",\"answer\":<string|number|null>,\"grounding\":[<ids>],\"conflict\":null|{\"claimed\":<value>,\"recorded\":<value>}}\nstatus answered: you can determine the value from material available to you; list every record, receipt, or note id you relied on in grounding.\nstatus scope_denied: the material is outside your authenticated visibility; answer must be null.\nstatus unknown: the material is not available to you; answer must be null.\nNumbers are plain numbers. Do not add prose outside the JSON object."
+      },
+      {
+        "role": "user",
+        "content": "## Authenticated envelope (from AMOS)\n{\"workspace\":\"northwind-test\",\"role\":\"owner\",\"principal\":\"api_key\",\"collections\":[\"bm_probe\",\"bm_worldholdout0_campaigns\",\"bm_worldholdout0_customers\",\"bm_worldholdout0_invoices\",\"bm_worldholdout0_policies\",\"bm_worldholdout0_vendors\",\"customers\",\"deals\"],\"collectionsOutsideScope\":[]}\n\n## Host-recorded records (read through record_history; cite records by their id)\n{\"id\":\"21c3e9b5-6950-4180-910f-d6ccef51fd0d\",\"collection\":\"bm_worldholdout0_customers\",\"current\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":52000,\"name\":\"Cobalt Group\",\"paymentTermsDays\":15,\"world_ref\":\"cust-7994\"},\"revisions\":[{\"revision\":1,\"recorded_at\":\"2026-09-05T19:06:20.316064+00:00\",\"changed_fields\":[\"accountManager\",\"contractValue\",\"name\",\"paymentTermsDays\",\"world_ref\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":46000,\"name\":\"Cobalt Group\",\"paymentTermsDays\":30,\"world_ref\":\"cust-7994\"}},{\"revision\":2,\"recorded_at\":\"2026-09-05T19:06:20.462753+00:00\",\"changed_fields\":[\"paymentTermsDays\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":46000,\"name\":\"Cobalt Group\",\"paymentTermsDays\":15,\"world_ref\":\"cust-7994\"}},{\"revision\":3,\"recorded_at\":\"2026-09-05T19:06:20.613355+00:00\",\"changed_fields\":[\"contractValue\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":52000,\"name\":\"Cobalt Group\",\"paymentTermsDays\":15,\"world_ref\":\"cust-7994\"}}]}\n{\"id\":\"92a63c59-f53c-463f-8cd9-089b55704e52\",\"collection\":\"bm_worldholdout0_customers\",\"current\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":51000,\"name\":\"Lumen Holdings\",\"paymentTermsDays\":60,\"world_ref\":\"cust-9568\"},\"revisions\":[{\"revision\":1,\"recorded_at\":\"2026-09-05T19:06:20.896521+00:00\",\"changed_fields\":[\"accountManager\",\"contractValue\",\"name\",\"paymentTermsDays\",\"world_ref\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":49000,\"name\":\"Lumen Holdings\",\"paymentTermsDays\":30,\"world_ref\":\"cust-9568\"}},{\"revision\":2,\"recorded_at\":\"2026-09-05T19:06:21.040598+00:00\",\"changed_fields\":[\"paymentTermsDays\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":49000,\"name\":\"Lumen Holdings\",\"paymentTermsDays\":60,\"world_ref\":\"cust-9568\"}},{\"revision\":3,\"recorded_at\":\"2026-09-05T19:06:21.191787+00:00\",\"changed_fields\":[\"contractValue\"],\"data\":{\"accountManager\":\"Meridian Beacon\",\"contractValue\":51000,\"name\":\"Lumen Holdings\",\"paymentTermsDays\":60,\"world_ref\":\"cust-9568\"}}]}\n{\"id\":\"04c709fa-3601-413c-a7de-2eb035ce39f3\",\"collection\":\"bm_worldholdout0_customers\",\"current\":{\"accountManager\":\"Indigo Meridian\",\"contractValue\":10000,\"name\":\"Meridian Clinic\",\"paymentTermsDays\":60,\"world_ref\":\"cust-2576\"},\"revisions\":[{\"revision\":1,\"recorded_at\":\"2026-09-05T19:06:21.467526+00:00\",\"changed_fields\":[\"accountManager\",\"contractValue\",\"name\",\"paymentTermsDays\",\"world_ref\"],\"data\":{\"accountManager\":\"Indigo Meridian\",\"contractValue\":6000,\"name\":\"Meridian Clinic\",\"paymentTermsDays\":30,\"world_ref\":\"cust-2576\"}},{\"revision\":2,\"recorded_at\":\"2026-09-05T19:06:21.612982+00:00\",\"changed_fields\":[\"paymentTermsDays\"],\"data\":{\"accountManager\":\"Indigo Meridian\",\"contractValue\":6000,\"name\":\"Meridian Clinic\",\"paymentTermsDays\":60,\"world_ref\":\"cust-2576\"}},{\"revision\":3,\"recorded_at\":\"2026-09-05T19:06:21.766776+00:00\",\"changed_fields\":[\"contractValue\"],\"data\":{\"accountManager\":\"Indigo Meridian\",\"contractValue\":10000,\"name\":\"Meridian Clinic\",\"paymentTermsDays\":60,\"world_ref\":\"cust-2576\"}}]}\n\n## Question\nCurrent instant: 2026-09-05T19:06:28.801Z.\nWhat is the current annual contract value for Meridian Clinic (cust-2576)?"
+      }
+    ]
+  },
+  "mcpCalls": {
+    "define_collection": {
+      "calls": 5,
+      "errors": 0,
+      "milliseconds": 1039
+    },
+    "list_records": {
+      "calls": 5,
+      "errors": 0,
+      "milliseconds": 744
+    },
+    "create_record": {
+      "calls": 14,
+      "errors": 0,
+      "milliseconds": 2195
+    },
+    "update_record": {
+      "calls": 10,
+      "errors": 0,
+      "milliseconds": 1619
+    },
+    "record_history": {
+      "calls": 28,
+      "errors": 0,
+      "milliseconds": 4556
+    },
+    "whoami": {
+      "calls": 1,
+      "errors": 0,
+      "milliseconds": 172
+    },
+    "get_catalog": {
+      "calls": 1,
+      "errors": 0,
+      "milliseconds": 177
+    }
+  },
+  "cases": [
+    {
+      "id": "bm-holdout-w0-current-value-after-supersession-1",
+      "family": "current-value-after-supersession",
+      "liveQuestion": "What is the current annual contract value for Meridian Clinic (cust-2576)?"
+    },
+    {
+      "id": "bm-holdout-w0-current-value-after-supersession-2",
+      "family": "current-value-after-supersession",
+      "liveQuestion": "What is the current annual contract value for Lumen Holdings (cust-9568)?"
+    },
+    {
+      "id": "bm-holdout-w0-current-value-after-supersession-3",
+      "family": "current-value-after-supersession",
+      "liveQuestion": "What is the current annual contract value for Cobalt Group (cust-7994)?"
+    },
+    {
+      "id": "bm-holdout-w0-value-as-of-date-1",
+      "family": "value-as-of-date",
+      "liveQuestion": "What was the annual contract value for Lumen Holdings (cust-9568) as of 2026-09-05T19:06:20.968Z?"
+    },
+    {
+      "id": "bm-holdout-w0-value-as-of-date-2",
+      "family": "value-as-of-date",
+      "liveQuestion": "What was the payment terms in days for Lumen Services (vend-8384) as of 2026-09-05T19:06:25.754Z?"
+    },
+    {
+      "id": "bm-holdout-w0-value-as-of-date-3",
+      "family": "value-as-of-date",
+      "liveQuestion": "What was the budget for Cobalt Summer (camp-9263) as of 2026-09-05T19:06:19.068Z?"
+    },
+    {
+      "id": "bm-holdout-w0-derived-total-from-records-1",
+      "family": "derived-total-from-records",
+      "liveQuestion": "What is the total outstanding unpaid invoice amount for Cobalt Group (cust-7994) according to recorded state?"
+    },
+    {
+      "id": "bm-holdout-w0-derived-total-from-records-2",
+      "family": "derived-total-from-records",
+      "liveQuestion": "What is the total outstanding unpaid invoice amount for Lumen Holdings (cust-9568) according to recorded state?"
+    },
+    {
+      "id": "bm-holdout-w0-derived-total-from-records-3",
+      "family": "derived-total-from-records",
+      "liveQuestion": "What is the total outstanding unpaid invoice amount for Meridian Clinic (cust-2576) according to recorded state?"
+    }
+  ]
+}
