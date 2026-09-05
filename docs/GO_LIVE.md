@@ -45,6 +45,13 @@ still the lapsed 2026-08-29 value. PR #808 fixes the block, narrows the
 consent row to `strategy_learning`, and records the consenting owner; merging
 it redeploys. Until then no Mission reaches the gateway.
 
+A second defect surfaced on #808's integration tests: #804 and #805 both
+merged a migration numbered 20260907000023, so sqlx fails every fresh
+database (duplicate key on `_sqlx_migrations`, then `VersionMismatch`) and
+would have crash-looped the Platform at startup had the deploy succeeded.
+#808 renumbers the two organism migrations to 20260907000025 and 26; neither
+had been applied anywhere.
+
 ### Platform side as originally planned
 
 - Tenant: `amos-labs` (`426b4297-73f3-45df-936a-dee3c263fa1b`), the operator
