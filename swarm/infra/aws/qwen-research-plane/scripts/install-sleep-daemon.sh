@@ -72,9 +72,43 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 UNIT
+# The job runner syncs the replay store with S3 only around jobs. The daemon and
+# the consolidation run from the same host directory, so keep it converged
+# hourly in both directions (objects are immutable and content-addressed, so a
+# two-way sync never conflicts).
+cat > /usr/local/bin/amos-replay-sync <<'SYNC'
+#!/bin/bash
+set -euo pipefail
+source /etc/amos-research-runner.env
+aws s3 sync "s3://$AMOS_RESEARCH_ARTIFACT_BUCKET/replay/" /var/lib/amos-research/replay/ --region "$AMOS_AWS_REGION" --only-show-errors
+aws s3 sync /var/lib/amos-research/replay/ "s3://$AMOS_RESEARCH_ARTIFACT_BUCKET/replay/" --region "$AMOS_AWS_REGION" --only-show-errors
+aws s3 sync /var/lib/amos-research/sleep/ "s3://$AMOS_RESEARCH_ARTIFACT_BUCKET/sleep/state/" --region "$AMOS_AWS_REGION" --only-show-errors --exclude "consolidation/*/dataset/*"
+chmod -R a+rwX /var/lib/amos-research/replay 2>/dev/null || true
+SYNC
+chmod 0755 /usr/local/bin/amos-replay-sync
+cat > /etc/systemd/system/amos-replay-sync.service <<UNIT
+[Unit]
+Description=Converge the AMOS replay store and sleep state with S3
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/amos-replay-sync
+UNIT
+cat > /etc/systemd/system/amos-replay-sync.timer <<UNIT
+[Unit]
+Description=Hourly AMOS replay store sync
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+sed -i 's#^ExecStart=/usr/bin/docker run --name amos-consolidation#ExecStartPre=/usr/local/bin/amos-replay-sync\nExecStart=/usr/bin/docker run --name amos-consolidation#' /etc/systemd/system/amos-consolidation.service
 systemctl daemon-reload
 systemctl enable --now amos-sleep-cycle.service
 systemctl enable --now amos-consolidation.timer
+systemctl enable --now amos-replay-sync.timer
+systemctl start amos-replay-sync.service
 sleep 5
 systemctl is-active amos-sleep-cycle.service
 docker logs --tail 5 amos-sleep-cycle 2>&1 | cut -c1-300
