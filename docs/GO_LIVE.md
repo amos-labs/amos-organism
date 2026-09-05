@@ -67,9 +67,10 @@ had been applied anywhere.
   gateway and shadow would have seen nothing. With the extension, AMOS Labs
   Missions route through the gateway again and every turn produces a shadow
   pair.
-- Still required, and refused to the agent by the permission gate: the Platform
-  task role must be allowed to sign with the organism key. Add this statement
-  to the key policy of `alias/amos-organism-episode-signing`:
+- Done 2026-09-05 17:40 UTC by the operator (the permission gate refuses key
+  policy edits to the agent): the Platform task role may sign with the organism
+  key. The statement added to the key policy of
+  `alias/amos-organism-episode-signing`, verified present afterwards:
 
 ```
 {"Sid":"AllowPlatformEpisodeSigning","Effect":"Allow",
@@ -77,9 +78,9 @@ had been applied anywhere.
  "Action":["kms:Sign","kms:GetPublicKey","kms:DescribeKey"],"Resource":"*"}
 ```
 
-Without it, deliveries fail at signing and stay in the outbox (retry-safe, no
-Mission is affected); with it, the first completed AMOS Labs Mission after the
-deploy lands in the organism's event chain on the runner.
+With the grant in place, the first completed AMOS Labs Mission after the #808
+deploy lands in the organism's event chain on the runner. The only remaining
+Platform dependency is that deploy.
 
 ## Terraform to apply (research plane)
 
