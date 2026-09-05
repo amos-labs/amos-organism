@@ -17,6 +17,23 @@ Identities created for the intake:
 
 End-to-end proof: a fixture episode signed with the real key through `aws kms sign` was accepted (200, verified), redelivered idempotently (200, duplicate), and refused when the body was tampered (401).
 
+## First autonomous cycle
+
+The daemon slept at 10:19 UTC on 2026-09-05 after five idle minutes and
+finished its first cycle at 10:35: three standing orders, 189 verifier-graded
+evaluations, 59 harvested episodes written to the store.
+
+| order | model | pass | first-attempt |
+|---|---|---|---|
+| nightly holdout, implicit rulebook | production base | 47/48 | 33/48 |
+| nightly holdout, explicit rulebook | production base | 48/48 | 48/48 |
+| training-pool harvest, implicit | production base | 59/64 | 50/64 |
+
+The implicit first-attempt figure, 68.75%, reproduces the manual control from
+the day before exactly. The store converges with S3 hourly through
+`amos-replay-sync.timer`, so harvested episodes and the S3-only curriculum are
+one dataset by the time the weekly consolidation reads it.
+
 ## Platform side, to turn the feed on
 
 Set on the Platform task definition:
