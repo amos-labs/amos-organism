@@ -1,10 +1,14 @@
 import { createHash, createPublicKey, verify as verifySignature, type KeyObject } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { isPlatformMissionLearningEpisodeContract, type PlatformMissionLearningEpisodeContract } from "./contracts.ts";
+import {
+  isPlatformLearningContentManifestContract,
+  isPlatformMissionLearningEpisodeContract,
+  type PlatformLearningContentManifestContract,
+} from "./contracts.ts";
 import { digest } from "./digest.ts";
 import type { EventStore } from "./eventStore.ts";
 import type { HostGate, HostReceipt } from "./host.ts";
-import { PlatformEpisodeIntake } from "./platformEpisodeIntake.ts";
+import { ingestPlatformContentManifest, PlatformEpisodeIntake } from "./platformEpisodeIntake.ts";
 
 /**
  * Transport boundary for Platform Mission learning episodes.
@@ -137,54 +141,15 @@ export class PlatformEpisodeReceiver {
   }
 
   #receive(rawBody: Buffer, headers: PlatformEpisodeHeaders): PlatformEpisodeResponse {
-    if (this.#bearerToken !== null && headers.bearerToken !== this.#bearerToken) {
-      throw new PlatformEpisodeRejected(401, "bearer token mismatch");
-    }
-    if (rawBody.byteLength > PLATFORM_EPISODE_MAX_BODY_BYTES) {
-      throw new PlatformEpisodeRejected(413, `body exceeds ${PLATFORM_EPISODE_MAX_BODY_BYTES} bytes`);
-    }
-    if (headers.kmsKeyId !== this.#expectedKeyId) {
-      throw new PlatformEpisodeRejected(401, "unexpected KMS key id");
-    }
-    if (!this.#allowedAlgorithms.has(headers.signingAlgorithm)) {
-      throw new PlatformEpisodeRejected(401, `signing algorithm ${headers.signingAlgorithm} is not allowed`);
-    }
-    const algorithm = KMS_SIGNING_ALGORITHMS[headers.signingAlgorithm as KmsSigningAlgorithm];
-    if (this.#publicKey.asymmetricKeyType !== algorithm.keyType) {
-      throw new PlatformEpisodeRejected(401, "signing algorithm does not match the configured public key");
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawBody.toString("utf8"));
-    } catch {
-      throw new PlatformEpisodeRejected(400, "body is not JSON");
-    }
+    const { parsed, canonicalDigest } = this.#verifySigned(rawBody, headers);
+    if (isPlatformLearningContentManifestContract(parsed)) return this.#receiveManifest(parsed, headers, canonicalDigest);
     if (!isPlatformMissionLearningEpisodeContract(parsed)) {
-      throw new PlatformEpisodeRejected(400, "body is not a Platform Mission learning episode contract");
+      throw new PlatformEpisodeRejected(400, "body is neither a Platform Mission learning episode nor a learning content manifest");
     }
-    const episode = parsed as PlatformMissionLearningEpisodeContract;
+    const episode = parsed;
     if (episode.episodeId !== headers.idempotencyKey) {
       throw new PlatformEpisodeRejected(400, "idempotency key does not match the episode id");
     }
-    const rawDigest = createHash("sha256").update(rawBody).digest("hex");
-    const canonicalDigest = digest(episode);
-    if (rawDigest !== canonicalDigest) {
-      throw new PlatformEpisodeRejected(400, "body bytes are not the canonical episode encoding");
-    }
-
-    const signature = Buffer.from(headers.signatureBase64, "base64");
-    if (signature.byteLength === 0) throw new PlatformEpisodeRejected(401, "signature is empty");
-    const verified = verifySignature(
-      algorithm.hash,
-      rawBody,
-      algorithm.padding === "pss"
-        ? { key: this.#publicKey, padding: 6 /* RSA_PKCS1_PSS_PADDING */ }
-        : this.#publicKey,
-      signature,
-    );
-    if (!verified) throw new PlatformEpisodeRejected(401, "KMS signature does not verify");
-
     const receipt = this.#gate.mint({
       id: `platform-attestation:${headers.attestationReceiptId}`,
       missionId: episode.missionId,
@@ -207,16 +172,94 @@ export class PlatformEpisodeReceiver {
       },
     };
   }
+
+  /** Second message type: the content manifest. Idempotency key is `content-manifest:<episodeId>`. */
+  #receiveManifest(manifest: PlatformLearningContentManifestContract, headers: PlatformEpisodeHeaders, canonicalDigest: string): PlatformEpisodeResponse {
+    if (headers.idempotencyKey !== `content-manifest:${manifest.episodeId}`) {
+      throw new PlatformEpisodeRejected(400, "idempotency key must be content-manifest:<episodeId>");
+    }
+    const receipt = this.#gate.mint({
+      id: `platform-attestation:${headers.attestationReceiptId}`,
+      missionId: manifest.missionId,
+      kind: "platform-content-manifest-attested",
+      issuedAt: this.#now().toISOString(),
+      payloadDigest: canonicalDigest,
+      authority: "host",
+    });
+    const existing = this.#store.get(`platform-content-manifest:${manifest.episodeId}`);
+    const result = ingestPlatformContentManifest(this.#gate, this.#store, manifest, receipt);
+    return {
+      status: 200,
+      body: {
+        status: existing ? "duplicate" : "accepted",
+        messageType: "content-manifest",
+        episodeKnown: result.episodeKnown,
+        items: result.items,
+        completeItems: result.completeItems,
+        holdoutItems: result.holdoutItems,
+        eventId: result.event.id,
+        eventDigest: result.event.digest,
+        attestationReceiptId: headers.attestationReceiptId,
+        payloadDigest: canonicalDigest,
+      },
+    };
+  }
+
+  /** Shared checks for every signed Platform message: bearer, size, key id, algorithm, JSON, canonical bytes, signature. */
+  #verifySigned(rawBody: Buffer, headers: PlatformEpisodeHeaders): { parsed: unknown; canonicalDigest: string } {
+    if (this.#bearerToken !== null && headers.bearerToken !== this.#bearerToken) {
+      throw new PlatformEpisodeRejected(401, "bearer token mismatch");
+    }
+    if (rawBody.byteLength > PLATFORM_EPISODE_MAX_BODY_BYTES) {
+      throw new PlatformEpisodeRejected(413, `body exceeds ${PLATFORM_EPISODE_MAX_BODY_BYTES} bytes`);
+    }
+    if (headers.kmsKeyId !== this.#expectedKeyId) {
+      throw new PlatformEpisodeRejected(401, "unexpected KMS key id");
+    }
+    if (!this.#allowedAlgorithms.has(headers.signingAlgorithm)) {
+      throw new PlatformEpisodeRejected(401, `signing algorithm ${headers.signingAlgorithm} is not allowed`);
+    }
+    const algorithm = KMS_SIGNING_ALGORITHMS[headers.signingAlgorithm as KmsSigningAlgorithm];
+    if (this.#publicKey.asymmetricKeyType !== algorithm.keyType) {
+      throw new PlatformEpisodeRejected(401, "signing algorithm does not match the configured public key");
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      throw new PlatformEpisodeRejected(400, "body is not JSON");
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new PlatformEpisodeRejected(400, "body is not a Platform message object");
+    }
+    const rawDigest = createHash("sha256").update(rawBody).digest("hex");
+    const canonicalDigest = digest(parsed);
+    if (rawDigest !== canonicalDigest) {
+      throw new PlatformEpisodeRejected(400, "body bytes are not the canonical episode encoding");
+    }
+    const signature = Buffer.from(headers.signatureBase64, "base64");
+    if (signature.byteLength === 0) throw new PlatformEpisodeRejected(401, "signature is empty");
+    const verified = verifySignature(
+      algorithm.hash,
+      rawBody,
+      algorithm.padding === "pss"
+        ? { key: this.#publicKey, padding: 6 /* RSA_PKCS1_PSS_PADDING */ }
+        : this.#publicKey,
+      signature,
+    );
+    if (!verified) throw new PlatformEpisodeRejected(401, "KMS signature does not verify");
+    return { parsed, canonicalDigest };
+  }
 }
 
-/** Node HTTP listener: POST /v1/platform/episodes, GET /healthz. */
-export function createPlatformEpisodeRequestListener(receiver: PlatformEpisodeReceiver, path = "/v1/platform/episodes") {
+/** Node HTTP listener: POST /v1/platform/episodes (episodes and content manifests, routed by schema), POST /v1/platform/content-manifests (alias), GET /healthz. */
+export function createPlatformEpisodeRequestListener(receiver: PlatformEpisodeReceiver, path = "/v1/platform/episodes", manifestPath = "/v1/platform/content-manifests") {
   return (request: IncomingMessage, response: ServerResponse): void => {
     if (request.method === "GET" && request.url === "/healthz") {
       respond(response, 200, { status: "ok" });
       return;
     }
-    if (request.method !== "POST" || request.url !== path) {
+    if (request.method !== "POST" || (request.url !== path && request.url !== manifestPath)) {
       respond(response, 404, { status: "not-found" });
       return;
     }

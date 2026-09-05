@@ -1,6 +1,8 @@
 import {
   isPlatformMissionLearningEpisodeContract,
   type PlatformMissionLearningEpisodeContract,
+  isPlatformLearningContentManifestContract,
+  type PlatformLearningContentManifestContract,
 } from "./contracts.ts";
 import { digest, immutable } from "./digest.ts";
 import type { EventStore, OrganismEvent, OrganismEventProposal } from "./eventStore.ts";
@@ -72,6 +74,72 @@ export class PlatformEpisodeIntake {
     });
     return immutable({ classification, event });
   }
+}
+
+export interface PlatformContentManifestIntakeResult {
+  readonly event: OrganismEvent;
+  readonly episodeKnown: boolean;
+  readonly items: number;
+  readonly completeItems: number;
+  readonly holdoutItems: number;
+}
+
+/**
+ * Record a signed content manifest as a host event keyed by its episode id.
+ * Only references and digests are stored; no content. The episode may arrive
+ * after the manifest (delivery order is not guaranteed), so episodeKnown is a
+ * fact about this store at receipt time, not a precondition. Eligibility for
+ * training is decided later by the dataset compiler, never here.
+ */
+export function ingestPlatformContentManifest(
+  gate: HostGate,
+  store: EventStore,
+  manifest: PlatformLearningContentManifestContract,
+  receipt: HostReceipt,
+): PlatformContentManifestIntakeResult {
+  if (!isPlatformLearningContentManifestContract(manifest)) {
+    throw new TypeError("Invalid Platform learning content manifest contract");
+  }
+  requireHostReceipt(gate, receipt, ["platform-content-manifest-attested"], manifest.missionId);
+  if (receipt.payloadDigest !== digest(manifest)) {
+    throw new Error("Platform content manifest bytes do not match the host receipt");
+  }
+  const { contentSha256: _declared, ...body } = manifest;
+  if (digest(body) !== manifest.contentSha256) {
+    throw new Error("Platform content manifest contentSha256 does not match its body");
+  }
+  const episodeKnown = store.get(`platform-episode:${manifest.episodeId}`) !== undefined;
+  const holdout = new Set(manifest.evaluationExclusion);
+  const event = appendIdempotent(store, {
+    id: `platform-content-manifest:${manifest.episodeId}`,
+    type: "platform.content-manifest-received",
+    missionId: manifest.missionId,
+    occurredAt: receipt.issuedAt,
+    authority: "host",
+    hostReceiptId: receipt.id,
+    payload: {
+      episodeId: manifest.episodeId,
+      tenantId: manifest.tenantId,
+      manifestVersion: manifest.manifestVersion,
+      contentSha256: manifest.contentSha256,
+      redactionPolicyVersion: manifest.redactionPolicyVersion,
+      grantReceiptRef: manifest.grantReceiptRef,
+      rightsTags: [...manifest.rightsTags].sort(),
+      items: manifest.items.map((item) => ({ ...item, holdout: holdout.has(item.ref) })),
+      omitted: manifest.omitted,
+      acceptedAttemptBindings: manifest.acceptedAttemptBindings,
+      evaluationExclusion: [...manifest.evaluationExclusion].sort(),
+      episodeKnownAtReceipt: episodeKnown,
+      trainingEligibilityDecided: false,
+    },
+  });
+  return immutable({
+    event,
+    episodeKnown,
+    items: manifest.items.length,
+    completeItems: manifest.items.filter((item) => item.completeness === "complete").length,
+    holdoutItems: manifest.items.filter((item) => holdout.has(item.ref)).length,
+  });
 }
 
 function requireMatchingSourceIdentity(episode: PlatformMissionLearningEpisodeContract): void {
