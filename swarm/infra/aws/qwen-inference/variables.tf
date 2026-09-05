@@ -243,3 +243,9 @@ variable "max_loras" {
   type        = number
   default     = 4
 }
+
+variable "swarm_gateway_shadow_model" {
+  description = "Served model id (normally a loaded LoRA adapter) that shadows the gateway's final-stage request. The Mission always receives the primary answer; pairs are recorded to shadow.jsonl. Empty disables shadow mode."
+  type        = string
+  default     = ""
+}

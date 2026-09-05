@@ -56,7 +56,7 @@ Restart=on-failure
 RestartSec=10
 TimeoutStartSec=120
 ExecStartPre=-/usr/bin/docker rm -f amos-swarm-gateway
-ExecStart=/usr/bin/docker run --name amos-swarm-gateway --rm --network=host --env-file /etc/amos/swarm-gateway.env --read-only --cap-drop=ALL --security-opt=no-new-privileges --user=1000:1000 --tmpfs /tmp:rw,noexec,nosuid,size=64m -v /var/lib/amos-swarm-gateway:/var/lib/amos-swarm-gateway:rw ${swarm_gateway_image_uri} --backend-url http://127.0.0.1:8000/v1 --backend-model ${served_model_name} --backend-context-tokens ${swarm_gateway_backend_context} --context-safety-tokens ${swarm_gateway_context_safety} --host 0.0.0.0 --port ${swarm_gateway_port} --trace /var/lib/amos-swarm-gateway/traces.jsonl
+ExecStart=/usr/bin/docker run --name amos-swarm-gateway --rm --network=host --env-file /etc/amos/swarm-gateway.env --read-only --cap-drop=ALL --security-opt=no-new-privileges --user=1000:1000 --tmpfs /tmp:rw,noexec,nosuid,size=64m -v /var/lib/amos-swarm-gateway:/var/lib/amos-swarm-gateway:rw ${swarm_gateway_image_uri} --backend-url http://127.0.0.1:8000/v1 --backend-model ${served_model_name} --backend-context-tokens ${swarm_gateway_backend_context} --context-safety-tokens ${swarm_gateway_context_safety} --host 0.0.0.0 --port ${swarm_gateway_port} --trace /var/lib/amos-swarm-gateway/traces.jsonl%{ if swarm_gateway_shadow_model != "" } --shadow-model ${swarm_gateway_shadow_model} --shadow-trace /var/lib/amos-swarm-gateway/shadow.jsonl%{ endif }
 ExecStop=/usr/bin/docker stop --time 30 amos-swarm-gateway
 
 [Install]

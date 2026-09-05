@@ -519,6 +519,7 @@ resource "aws_ssm_document" "swarm_gateway" {
           swarm_gateway_context_safety  = var.swarm_gateway_context_safety_tokens
           swarm_gateway_image_uri       = var.swarm_gateway_image_uri
           swarm_gateway_port            = var.swarm_gateway_port
+          swarm_gateway_shadow_model    = var.swarm_gateway_shadow_model
         })]
       }
     }]
