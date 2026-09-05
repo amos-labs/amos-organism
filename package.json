@@ -38,6 +38,7 @@
     "research:swarm:grade-curriculum": "node swarm/scripts/gradeCurriculum.js",
     "research:swarm:consolidate-adapter": "node swarm/scripts/runAdapterConsolidation.js",
     "research:swarm:record-candidate": "node swarm/scripts/recordAdapterCandidateGates.js",
+    "research:swarm:shadow-diagnostics": "node swarm/scripts/reportShadowDiagnostics.js",
     "research:swarm:export-trace-bundle": "node swarm/scripts/exportOrganismTraceBundle.js",
     "research:swarm:import-trace-bundle": "node scripts/importTraceBundle.ts",
     "organism:serve-platform-intake": "node scripts/servePlatformEpisodeIntake.ts",
