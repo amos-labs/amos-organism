@@ -34,17 +34,34 @@ the day before exactly. The store converges with S3 hourly through
 `amos-replay-sync.timer`, so harvested episodes and the S3-only curriculum are
 one dataset by the time the weekly consolidation reads it.
 
-## Platform side, to turn the feed on
+## Platform side: done except one grant (2026-09-05)
 
-Set on the Platform task definition:
+- Tenant: `amos-labs` (`426b4297-73f3-45df-936a-dee3c263fa1b`), the operator
+  tenant, consents to organism learning for its own Missions. Platform PR #804
+  adds the idempotent consent row as a migration and wires the delivery worker
+  from deployment variables; migrations run at Platform startup.
+- Repository variables set on `amos-labs/amos-managed-platform`:
+  `AMOS_ORGANISM_EPISODE_ENDPOINT`, `AMOS_ORGANISM_KMS_KEY_ID`; secret
+  `AMOS_ORGANISM_BEARER_TOKEN`. The worker starts on the next deploy after
+  #804 merges.
+- `AMOS_MISSIONS_SWARM_CANARY_EXPIRES_AT` extended to 2026-09-19. It had
+  expired on 2026-08-29, which meant no Mission was routed through the swarm
+  gateway and shadow would have seen nothing. With the extension, AMOS Labs
+  Missions route through the gateway again and every turn produces a shadow
+  pair.
+- Still required, and refused to the agent by the permission gate: the Platform
+  task role must be allowed to sign with the organism key. Add this statement
+  to the key policy of `alias/amos-organism-episode-signing`:
 
 ```
-AMOS__ORGANISM__EPISODE_ENDPOINT=http://10.86.0.104:8787/v1/platform/episodes
-AMOS__ORGANISM__KMS_KEY_ID=arn:aws:kms:us-east-1:637423327454:key/b02b7322-9b96-4472-8a3e-228383f462a0
-AMOS__ORGANISM__BEARER_TOKEN=<value of bearer_token from the secret>
+{"Sid":"AllowPlatformEpisodeSigning","Effect":"Allow",
+ "Principal":{"AWS":"arn:aws:iam::637423327454:role/swarm-infrastructure-rails-task-role"},
+ "Action":["kms:Sign","kms:GetPublicKey","kms:DescribeKey"],"Resource":"*"}
 ```
 
-The Platform task role needs `kms:Sign` on that key (grant it in the key policy or the role). Network: the research-plane Terraform now opens port 8787 on the runner to `sg-0967e26d543a5ce47` (the Platform ECS task security group) once applied; both VPCs must route to each other, which the inference module already arranges for the Qwen endpoint. Then insert a consent row in `organism_learning_policies` for the first tenant. Until a consent row exists, no episode leaves the Platform.
+Without it, deliveries fail at signing and stay in the outbox (retry-safe, no
+Mission is affected); with it, the first completed AMOS Labs Mission after the
+deploy lands in the organism's event chain on the runner.
 
 ## Terraform to apply (research plane)
 
