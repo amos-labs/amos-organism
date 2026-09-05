@@ -1,0 +1,94 @@
+{
+  "schema": "amos.adapter-candidate",
+  "version": 1,
+  "id": "stage1-implicit-r32-s3",
+  "createdAt": "2026-09-05T15:30:00.000Z",
+  "training": {
+    "contractId": "stage1-20260904-r3-implicit-r32-s20260905",
+    "contractDigest": "6c711ed90fe66d85facc76636ad312217a7a9dc2dbda2c201cbe5630bde67879",
+    "rank": 32,
+    "seed": 20260905,
+    "resultDigest": "262dfc9b7a9f46b67a3a7dcd1aefc106de7ef33e6e8ffa06823171b9058a5635",
+    "treatments": [
+      "amos-stage1-implicit-curriculum:da875c95473e0985"
+    ]
+  },
+  "adapterUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-20260904-r3-implicit/runs/stage1-20260904-r3-implicit-r32-s20260905/adapter",
+  "baseModel": "amos-qwen38-27b-bf16@2ec19f85101ed0d9db0a93a4dee6710401bdab18e942144d7c0b00a52633e313",
+  "status": "qualifying",
+  "nextGate": "shadow",
+  "gates": [
+    {
+      "schema": "amos.adapter-candidate-gate",
+      "version": 1,
+      "id": "trained",
+      "status": "passed",
+      "evaluator": "disposable-trainer",
+      "receiptDigest": "262dfc9b7a9f46b67a3a7dcd1aefc106de7ef33e6e8ffa06823171b9058a5635",
+      "metrics": {
+        "trainableAdapterParameters": 233455616,
+        "holdoutSupervisedTokenAccuracy": 0.971856504408745,
+        "holdoutMeanLoss": 0.1230031763375005,
+        "adapterReloadExact": true,
+        "baseBitwiseUnchanged": true,
+        "datasetDigest": "da875c95473e09854ab96190ef19fa732543fd4e987ea7b4e98eecd54f7196a4"
+      },
+      "feedbackSignals": [],
+      "evaluatedAt": "2026-09-05T15:30:00.000Z"
+    },
+    {
+      "schema": "amos.adapter-candidate-gate",
+      "version": 1,
+      "id": "frozen-holdout",
+      "status": "passed",
+      "evaluator": "amos-executable-contract-verifier",
+      "receiptDigest": "baf5327ce84824115ca8b6774acb5b6c27fd2bcd514f0378ab5f8b8a33938020",
+      "metrics": {
+        "controlModel": "base-bf16",
+        "controlPassRate": 0.8958,
+        "scenarioCount": 96,
+        "passRateLift": 0.073,
+        "firstAttemptPassRateLift": 0.2708,
+        "pairedWins": 8,
+        "pairedLosses": 1,
+        "ties": 87,
+        "rulebook": "implicit",
+        "seed": "stage1-holdout-v2",
+        "pool": "holdout"
+      },
+      "feedbackSignals": [],
+      "evaluatedAt": "2026-09-05T12:21:54.278Z"
+    },
+    {
+      "schema": "amos.adapter-candidate-gate",
+      "version": 1,
+      "id": "sealed-holdout",
+      "status": "passed",
+      "evaluator": "amos-executable-contract-verifier",
+      "receiptDigest": "7440c0fb9fe1ff9d156b0d5ca928cf24400cbe7e1520720b66fe6670a0e61d95",
+      "metrics": {
+        "controlModel": "base-bf16",
+        "controlPassRate": 0.8438,
+        "scenarioCount": 96,
+        "passRateLift": 0.125,
+        "firstAttemptPassRateLift": 0.2396,
+        "pairedWins": 12,
+        "pairedLosses": 0,
+        "ties": 84,
+        "rulebook": "implicit",
+        "seed": "stage1-sealed-v1",
+        "pool": "holdout"
+      },
+      "feedbackSignals": [],
+      "evaluatedAt": "2026-09-05T15:22:45.810Z"
+    }
+  ],
+  "feedback": [],
+  "deployment": {
+    "shadowAllowed": true,
+    "canaryAllowed": false,
+    "productionAllowed": false,
+    "automaticallyDeployed": false
+  },
+  "digest": "8135114c211209bf6ae058a610cb126c968ddd961fc2a37c019f76586f3cb526"
+}
