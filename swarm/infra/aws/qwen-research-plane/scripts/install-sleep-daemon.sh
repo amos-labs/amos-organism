@@ -11,6 +11,8 @@ set -euo pipefail
 IMAGE="${1:?sleep image}"; METRICS_URL="${2:?qwen metrics url}"; ORDERS_URI="${3:?standing orders s3 uri}"
 TRAINER_IMAGE="${4:?trainer image}"; TRAINER_ID="${5:?trainer instance id}"
 source /etc/amos-research-runner.env
+# systemd does not expand shell defaults, so the model list is rendered literally.
+GRADING_MODELS="${6:-$AMOS_QWEN_SERVED_MODEL}"
 # The host has the AWS CLI but not boto3; the runner container is where boto3 lives.
 API_KEY="$(aws secretsmanager get-secret-value --region "$AMOS_AWS_REGION" --secret-id "$AMOS_QWEN_SECRET_ID" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["api_key"])')"
 install -d -m 0750 /var/lib/amos-research/sleep /var/lib/amos-research/replay
@@ -44,7 +46,7 @@ ExecStart=/usr/bin/docker run --name amos-sleep-cycle --rm --network=host --env-
   $IMAGE swarm/scripts/runSleepCycle.js --standing-orders /var/lib/amos-research/sleep/standing-orders.json \
   --store /var/lib/amos-research/replay --ledger /var/lib/amos-research/sleep/sleep-ledger.jsonl \
   --reports-dir /var/lib/amos-research/sleep/reports --metrics-url $METRICS_URL \
-  --quiet-seconds 300 --poll-seconds 30 --max-cycle-seconds 7200 --enable-grading --grading-model-ids \${AMOS_SLEEP_GRADING_MODELS:-$AMOS_QWEN_SERVED_MODEL} --daemon
+  --quiet-seconds 300 --poll-seconds 30 --max-cycle-seconds 7200 --enable-grading --grading-model-ids $GRADING_MODELS --daemon
 ExecStop=/usr/bin/docker stop --time 30 amos-sleep-cycle
 [Install]
 WantedBy=multi-user.target
