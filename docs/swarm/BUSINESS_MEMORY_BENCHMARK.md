@@ -153,7 +153,13 @@ bridge is translating cited Platform ids back to world ids before verification
   date. The expected value is unchanged; the question text carries the instant.
 - Arms: `alone` (no material) and `memory-live` (envelope, records, evidence).
 - Workers: the Hosted `/v1/chat/completions` route by default (whatever AMOS
-  routes to), plus any `--workers` spec from the synthetic runner. Hosted calls
+  routes to), plus any `--workers` spec from the synthetic runner.
+- Tiers: `--tiers routine,balanced,deep` runs one Hosted worker per tier,
+  pinned through the legacy `reasoning_effort` override (`none`, `medium`,
+  `high`; routing mode `legacy_override`), so each tier is graded under the
+  reasoning effort it really serves with. `auto` (default) leaves routing to
+  the classifier. The report carries `pinnedTier`; the grounding summary's
+  per-tier segments confirm what actually served. Hosted calls
   also land in `intelligence_grounding_events`, so the run captures the admin
   grounding summary before and after when `AMOS_ADMIN_KEY` is set.
 

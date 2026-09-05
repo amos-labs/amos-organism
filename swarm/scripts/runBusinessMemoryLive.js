@@ -12,6 +12,11 @@
  *     --pool holdout --world-index 0 --cases-per-family 3 \
  *     --output swarm/benchmarks/results/business-memory-live-<date>.json
  *
+ * Per-tier measurement (Codex quality priority): --tiers routine,balanced,deep
+ * pins the Hosted routing tier through the legacy reasoning_effort override so
+ * each tier is graded under its real configuration; "auto" leaves routing to
+ * the classifier. One report per tier.
+ *
  * Extra workers (same live context, other models) use the synthetic runner's
  * spec: --workers "qwen|amos-qwen38-27b-fp8|http://127.0.0.1:18080|qwen".
  * The Hosted worker is always included unless --no-hosted is given.
@@ -27,8 +32,10 @@ import { generateBusinessMemoryCases } from "../src/businessMemoryBenchmark.js";
 import { OpenAiResearchWorker } from "../src/openAiResearchWorker.js";
 import { AmosMcpClient } from "../src/amosMcpClient.js";
 import {
+  HOSTED_TIERS,
   LIVE_ARMS,
   LIVE_FAMILIES,
+  hostedTierReasoningEffort,
   liveCase,
   loadLiveSnapshot,
   renderLiveArmMessages,
@@ -49,6 +56,8 @@ const seed = option("--seed") || "amos-business-memory-v1";
 const arms = (option("--arms") || LIVE_ARMS.join(",")).split(",").map((value) => value.trim()).filter(Boolean);
 const maxOutputTokens = integerOption("--max-output-tokens", 600, 128, 8_192);
 const groundingDays = integerOption("--grounding-days", 1, 1, 30);
+const tiers = (option("--tiers") || "auto").split(",").map((value) => value.trim()).filter(Boolean);
+for (const tier of tiers) hostedTierReasoningEffort(tier);
 const outputPath = resolve(requiredOption("--output"));
 
 const apiKey = process.env[apiKeyEnv];
@@ -96,16 +105,21 @@ if (dryRun) {
 const groundingBefore = await groundingSummary();
 const workers = [];
 if (!noHosted) {
-  workers.push({ id: "hosted", worker: new OpenAiResearchWorker({
-    controlId: "business-memory-live-hosted",
-    model: "auto",
-    baseUrl,
-    apiKey,
-    dialect: "generic",
-    temperature: 0,
-    seed: 7,
-    allowRemote: true
-  }) });
+  for (const tier of tiers) {
+    const worker = new OpenAiResearchWorker({
+      controlId: `business-memory-live-hosted-${tier}`,
+      model: "auto",
+      baseUrl,
+      apiKey,
+      dialect: "generic",
+      reasoningEffort: hostedTierReasoningEffort(tier),
+      temperature: 0,
+      seed: 7,
+      allowRemote: true
+    });
+    worker.pinnedTier = tier;
+    workers.push({ id: tier === "auto" ? "hosted" : `hosted-${tier}`, worker });
+  }
 }
 for (const spec of parseWorkers(option("--workers") || "")) {
   const worker = new OpenAiResearchWorker({
@@ -165,6 +179,7 @@ console.log(JSON.stringify({
   cases: cases.length,
   models: reports.map(({ workerId, report }) => ({
     workerId,
+    pinnedTier: report.pinnedTier,
     arms: report.arms.map(({ arm, passed, cases: n, families }) => ({ arm, passed: `${passed}/${n}`, families })),
     paired: report.paired
   })),
