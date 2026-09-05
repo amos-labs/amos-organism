@@ -1,0 +1,92 @@
+{
+  "schema": "amos.learning-selection-snapshot",
+  "version": 1,
+  "id": "snapshot-fixture-populated-v1",
+  "generatedAt": "2026-09-05T20:00:00.000Z",
+  "sourceChainDigest": "b95b2cf6052d1fc32a3f795e05d225ee84da38e5eedc7843923d2a14c8ed98b0",
+  "procedureSnapshotSha256": "c5ed8b0de60435167c69457fe6a13d224449831aaeb0290eedff4452afa1156f",
+  "compatibleRuntimes": [
+    {
+      "modelId": "amos-qwen38-27b-fp8",
+      "adapterArtifactSha256": null,
+      "runtimeRevision": "e31eb568681d3a718b7aaa5ce646b6711494b186"
+    },
+    {
+      "modelId": "stage1-implicit-r32-s3",
+      "adapterArtifactSha256": "2a08c46b3c6bcc0ab6df79a0d71374481eb46360ebacd6950eac43cea20d0e32",
+      "runtimeRevision": "e31eb568681d3a718b7aaa5ce646b6711494b186"
+    }
+  ],
+  "permittedUseScope": [
+    "strategy_learning"
+  ],
+  "tokenBound": 2048,
+  "procedures": [
+    {
+      "id": "gene:recover-reserved-tool-boundary",
+      "version": 1,
+      "digest": "e1dec2f55e5b4494421ab3b426b1daffac96a72d62025f6727708900f0dc2858",
+      "guidance": "guide",
+      "applicability": {
+        "phases": [
+          "execute",
+          "recover"
+        ],
+        "artifactClasses": [
+          "tool-call"
+        ],
+        "failureModes": [
+          "authority-boundary"
+        ],
+        "toolFamilies": [
+          "finance"
+        ],
+        "roles": [
+          "planner"
+        ],
+        "tenantScope": "any"
+      },
+      "contentRef": "gene:recover-reserved-tool-boundary@e1dec2f55e5b4494421ab3b426b1daffac96a72d62025f6727708900f0dc2858",
+      "tokens": 180,
+      "evidence": {
+        "verifiedPasses": 7,
+        "verifiedFailures": 1,
+        "uncreditedAttempts": 2,
+        "meanVerifiedQuality": 0.91,
+        "lastVerifiedAt": "2026-09-05T10:35:00.000Z"
+      }
+    },
+    {
+      "id": "gene:replay-completed-effect",
+      "version": 2,
+      "digest": "f50342359d198b353a6aed2cff557c79f9d9c46b8d6fda6be7dbdc83a33ce53b",
+      "guidance": "avoid",
+      "applicability": {
+        "phases": [
+          "execute"
+        ],
+        "artifactClasses": [
+          "tool-call"
+        ],
+        "failureModes": [
+          "duplicate-effect"
+        ],
+        "toolFamilies": [],
+        "roles": [
+          "planner"
+        ],
+        "tenantScope": "any"
+      },
+      "contentRef": "gene:replay-completed-effect@f50342359d198b353a6aed2cff557c79f9d9c46b8d6fda6be7dbdc83a33ce53b",
+      "tokens": 96,
+      "evidence": {
+        "verifiedPasses": 0,
+        "verifiedFailures": 4,
+        "uncreditedAttempts": 0,
+        "meanVerifiedQuality": null,
+        "lastVerifiedAt": "2026-09-04T22:10:00.000Z"
+      }
+    }
+  ],
+  "digest": "9988df6847e1d77ece9b95e95f4f5ba93950472c522c160afef42f4a442e3d30"
+}

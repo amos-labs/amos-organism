@@ -6,6 +6,7 @@ export * from "./energyLedger.ts";
 export * from "./eventStore.ts";
 export * from "./fitnessLedger.ts";
 export * from "./host.ts";
+export * from "./learningSelectionSnapshot.ts";
 export * from "./organism.ts";
 export * from "./pheromoneField.ts";
 export * from "./platformEpisodeIntake.ts";

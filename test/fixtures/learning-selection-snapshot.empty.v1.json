@@ -1,0 +1,26 @@
+{
+  "schema": "amos.learning-selection-snapshot",
+  "version": 1,
+  "id": "snapshot-fixture-empty-v1",
+  "generatedAt": "2026-09-05T20:00:00.000Z",
+  "sourceChainDigest": "b95b2cf6052d1fc32a3f795e05d225ee84da38e5eedc7843923d2a14c8ed98b0",
+  "procedureSnapshotSha256": "3729e785172fb2d92b3a51f2d2f0efc409540291fd0497a569aaa2baefeadde3",
+  "compatibleRuntimes": [
+    {
+      "modelId": "amos-qwen38-27b-fp8",
+      "adapterArtifactSha256": null,
+      "runtimeRevision": "e31eb568681d3a718b7aaa5ce646b6711494b186"
+    },
+    {
+      "modelId": "stage1-implicit-r32-s3",
+      "adapterArtifactSha256": "2a08c46b3c6bcc0ab6df79a0d71374481eb46360ebacd6950eac43cea20d0e32",
+      "runtimeRevision": "e31eb568681d3a718b7aaa5ce646b6711494b186"
+    }
+  ],
+  "permittedUseScope": [
+    "strategy_learning"
+  ],
+  "tokenBound": 0,
+  "procedures": [],
+  "digest": "59736dd29b57d5001b06be63816827142fcccecffed7768466f37ee46068b747"
+}
