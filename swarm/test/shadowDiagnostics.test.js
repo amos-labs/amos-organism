@@ -14,7 +14,8 @@ function shadowRecord({ missionId = null, plannerAttempt = null, tenantId = null
     requestDigest: sha(`request-${missionId}-${plannerAttempt}-${completedAt}`),
     mission: missionId ? { tenantId, missionId, contractId: "contract-1", plannerAttempt, planDecision: "tool", contractSatisfied: true } : null,
     textCaptured: tenantId === "tenant-consented",
-    primary: { model: "base", text: null, textDigest: sha("p"), textLength: 10, inputEvidence: primaryInput ? evidence("integrator", primaryInput) : null },
+    inputEvidence: primaryInput ? evidence("integrator", primaryInput) : null,
+    primary: { model: "base", text: null, textDigest: sha("p"), textLength: 10 },
     shadow: shadowError ? { model: "adapter", text: null, textDigest: null, textLength: null, inputEvidence: evidence("shadow:integrator", shadowInput), error: shadowError } : { model: "adapter", text: null, textDigest: sha("s"), textLength: 10, inputEvidence: evidence("shadow:integrator", shadowInput), error: null },
     agreement: shadowError ? null : agreement,
     servedToMission: "primary"

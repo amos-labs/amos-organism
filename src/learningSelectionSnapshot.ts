@@ -42,6 +42,7 @@ export interface SnapshotProcedureEvidence {
 export interface SnapshotProcedure {
   readonly id: string;
   readonly version: number;
+  /** Kernel gene digest: lineage, not the consumable identity (see procedureContentSha256). */
   readonly digest: string;
   readonly guidance: ProcedureGuidance;
   readonly applicability: SnapshotProcedureApplicability;
@@ -83,13 +84,42 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$/;
 export const PROCEDURE_STATEMENT_MAX_CHARS = 600;
 
-/** Digest of the ordered procedure identities: the value a Mission treatment binds to. */
+/**
+ * Rendered-content identity of one procedure: everything a consumer can act on
+ * (statement, guidance, applicability, contentRef, version) plus the gene digest
+ * as lineage. Evidence counts are deliberately excluded: they change as
+ * outcomes accrue without changing what was offered.
+ */
+export function procedureContentSha256(procedure: SnapshotProcedure): string {
+  return digest({
+    schema: "amos.procedure-content",
+    version: 1,
+    id: procedure.id,
+    procedureVersion: procedure.version,
+    geneDigest: procedure.digest,
+    guidance: procedure.guidance,
+    statement: procedure.statement,
+    applicability: procedure.applicability,
+    contentRef: procedure.contentRef
+  });
+}
+
+/**
+ * Digest of the frozen procedure set: the value a comparison-v2 Mission treatment
+ * binds to as procedureSnapshotSha256. It covers each procedure's rendered
+ * content identity, so changing a statement, flipping guide/avoid or narrowing
+ * tenant applicability changes it; reordering does not. Duplicate ids are refused.
+ */
 export function procedureSnapshotSha256(procedures: readonly SnapshotProcedure[]): string {
   if (procedures.length === 0) return EMPTY_PROCEDURE_SNAPSHOT_SHA256;
+  const sorted = [...procedures].sort(byId);
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index]!.id === sorted[index - 1]!.id) throw new Error(`duplicate procedure id ${sorted[index]!.id}`);
+  }
   return digest({
     schema: PROCEDURE_SNAPSHOT_SCHEMA,
-    version: 1,
-    procedures: [...procedures].sort(byId).map((procedure) => ({ id: procedure.id, version: procedure.version, digest: procedure.digest }))
+    version: 2,
+    procedures: sorted.map((procedure) => ({ id: procedure.id, contentSha256: procedureContentSha256(procedure) }))
   });
 }
 

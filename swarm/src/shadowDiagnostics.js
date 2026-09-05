@@ -73,7 +73,8 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
     seen.add(key);
     const episodes = missionId ? (episodesByMission.get(missionId) ?? []) : [];
     const terminal = episodes.at(-1) ?? null;
-    const primaryInput = record.primary?.inputEvidence?.compiledInputSha256 ?? null;
+    // Primary request evidence is record.inputEvidence (SWARM_PLATFORM_MISSIONS.md); older records carried it on primary.
+    const primaryInput = record.inputEvidence?.compiledInputSha256 ?? record.primary?.inputEvidence?.compiledInputSha256 ?? null;
     const shadowInput = record.shadow?.inputEvidence?.compiledInputSha256 ?? null;
     rows.push({
       missionId,

@@ -5,7 +5,7 @@
   "generatedAt": "2026-09-05T20:00:00.000Z",
   "validUntil": "2026-09-12T20:00:00.000Z",
   "sourceChainDigest": "b95b2cf6052d1fc32a3f795e05d225ee84da38e5eedc7843923d2a14c8ed98b0",
-  "procedureSnapshotSha256": "c5ed8b0de60435167c69457fe6a13d224449831aaeb0290eedff4452afa1156f",
+  "procedureSnapshotSha256": "a01b99e1393543f0fb5b9438f96c1a839381b9ca05d539a725a89bb100a1ef62",
   "compatibleRuntimes": [
     {
       "modelId": "amos-qwen38-27b-fp8",
@@ -95,5 +95,5 @@
       }
     }
   ],
-  "digest": "556e2cf6dd508315732b86b0c2f61bee812d6ccd6c584bb6e94b80d2547f3074"
+  "digest": "750463cfff131c338c53312836d867640dfdbf76d0f1b107551848ababf65ed7"
 }

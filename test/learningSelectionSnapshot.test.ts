@@ -6,7 +6,9 @@ import {
   createLearningSelectionSnapshot,
   EMPTY_PROCEDURE_SNAPSHOT_SHA256,
   emptyLearningSelectionSnapshot,
+  procedureContentSha256,
   procedureFromStrategyGene,
+  procedureSnapshotSha256,
   validateLearningSelectionSnapshot,
 } from "../src/learningSelectionSnapshot.ts";
 import { digest } from "../src/digest.ts";
@@ -82,3 +84,22 @@ test("strategy genes map to procedures only with verified outcomes; all-fail bec
   const snapshot = emptyLearningSelectionSnapshot({ id: "s", generatedAt: new Date("2026-09-05T20:00:00Z"), validUntil: new Date("2026-09-06T20:00:00Z"), sourceChainDigest: digest({}), compatibleRuntimes: [{ modelId: "m", adapterArtifactSha256: null, runtimeRevision: "abc" }], permittedUseScope: ["strategy_learning"] });
   assert.equal(snapshot.tokenBound, 0);
 });
+
+test("procedureSnapshotSha256 binds rendered content and guidance, not only gene identity (Codex review)", () => {
+  const base = validateLearningSelectionSnapshot(fixture("learning-selection-snapshot.v1.json"));
+  const [first, second] = base.procedures;
+  const reworded = createLearningSelectionSnapshot({ ...base, procedures: [{ ...first!, statement: `${first!.statement} Also confirm the receipt.` }, second!] });
+  assert.notEqual(reworded.procedureSnapshotSha256, base.procedureSnapshotSha256, "statement change must change the treatment identity");
+  const flipped = createLearningSelectionSnapshot({ ...base, procedures: [{ ...first!, guidance: "avoid" }, second!] });
+  assert.notEqual(flipped.procedureSnapshotSha256, base.procedureSnapshotSha256, "guide→avoid must change the treatment identity");
+  const narrowed = createLearningSelectionSnapshot({ ...base, procedures: [first!, { ...second!, applicability: { ...second!.applicability, tenantIds: ["other-tenant"] } }] });
+  assert.notEqual(narrowed.procedureSnapshotSha256, base.procedureSnapshotSha256, "tenant applicability must change the treatment identity");
+  const moreEvidence = createLearningSelectionSnapshot({ ...base, procedures: [{ ...first!, evidence: { ...first!.evidence, verifiedPasses: first!.evidence.verifiedPasses + 1 } }, second!] });
+  assert.equal(moreEvidence.procedureSnapshotSha256, base.procedureSnapshotSha256, "evidence counts are not part of what was offered");
+  assert.notEqual(moreEvidence.digest, base.digest);
+  assert.equal(procedureSnapshotSha256([second!, first!]), base.procedureSnapshotSha256, "order-independent");
+  assert.throws(() => procedureSnapshotSha256([first!, { ...first!, statement: "dup" }]), /duplicate procedure id/);
+  assert.match(procedureContentSha256(first!), /^[a-f0-9]{64}$/);
+  assert.notEqual(procedureContentSha256(first!), first!.digest, "content identity is distinct from gene lineage");
+});
+
