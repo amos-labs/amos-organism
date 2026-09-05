@@ -13,7 +13,15 @@ IMAGE="${1:?sleep image}"; KEY_ARN="${2:?kms key arn}"; PUBKEY_URI="${3:?public 
 source /etc/amos-research-runner.env
 install -d -m 0750 /var/lib/amos-research/organism
 aws s3 cp "$PUBKEY_URI" /var/lib/amos-research/organism/platform-kms-public-key.der.b64 --only-show-errors
-TOKEN="$(aws secretsmanager get-secret-value --region "$AMOS_AWS_REGION" --secret-id "$SECRET_ID" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["bearer_token"])')"
+# The bearer token comes from Secrets Manager once the runner role may read it
+# (codified in Terraform as intake_bearer_secret_arn); until that apply, an
+# s3:// object in the research bucket carries the same JSON.
+if [[ "$SECRET_ID" == s3://* ]]; then
+  TOKEN="$(aws s3 cp "$SECRET_ID" - --only-show-errors | python3 -c 'import json,sys; print(json.load(sys.stdin)["bearer_token"])')"
+else
+  TOKEN="$(aws secretsmanager get-secret-value --region "$AMOS_AWS_REGION" --secret-id "$SECRET_ID" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["bearer_token"])')"
+fi
+[[ -n "$TOKEN" ]] || { echo "empty bearer token from $SECRET_ID"; exit 1; }
 chown -R 10002:10002 /var/lib/amos-research/organism
 umask 077
 printf 'AMOS_ORGANISM_INTAKE_BEARER_TOKEN=%s\n' "$TOKEN" > /etc/amos-intake.env
