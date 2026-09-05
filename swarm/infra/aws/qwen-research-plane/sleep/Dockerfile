@@ -1,14 +1,17 @@
 # Sleep-cycle daemon and consolidation runner image. Runs on the research
 # runner host beside the job runner; reads the shared replay store, talks to the
 # private Qwen endpoint, and calls AWS for consolidation.
-ARG NODE_IMAGE=node:22-bookworm-slim
+#
+# The full Node image is used deliberately: research hosts have HTTPS-only
+# egress and the slim image has no CA bundle for apt, so nothing here uses apt.
+ARG NODE_IMAGE=node:22-bookworm
 FROM ${NODE_IMAGE}
-ENV DEBIAN_FRONTEND=noninteractive NODE_ENV=production
-RUN sed -i 's|http://|https://|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true; \
-    apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip git python3 \
-    && curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip \
-    && unzip -q /tmp/awscli.zip -d /tmp && /tmp/aws/install && rm -rf /tmp/aws /tmp/awscli.zip \
-    && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production AWS_PAGER=""
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip \
+    && python3 -c "import zipfile; zipfile.ZipFile('/tmp/awscli.zip').extractall('/tmp')" \
+    && chmod +x /tmp/aws/install /tmp/aws/dist/aws /tmp/aws/dist/aws_completer \
+    && /tmp/aws/install && rm -rf /tmp/aws /tmp/awscli.zip \
+    && aws --version
 WORKDIR /opt/amos-organism
 COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
