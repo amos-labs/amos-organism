@@ -148,6 +148,21 @@ verifier once Platform episodes arrive; `deployment.shadowAllowed` is true,
 canary and promotion remain host decisions. Recorded with
 `node swarm/scripts/recordAdapterCandidateGates.js`.
 
+## Runner state (2026-09-05, 21:43 UTC)
+
+| unit | image | note |
+|---|---|---|
+| `amos-platform-intake.service` | sleep image `trainer@sha256:0a1663f5…` (main f1bc464) | accepts episodes and content manifests (#28); swapped with `update-runner-organism-image.sh` after an isolated import preflight; `/healthz` ok |
+| `amos-sleep-cycle.service` | same | nightly grading and harvest from standing orders |
+| `amos-consolidation.timer` | same | Sun 03:00 UTC |
+| `amos-replay-sync.timer` | host script | hourly |
+| `amos-snapshot-publish.timer` | same image | hourly (#29); publishes `learning-selection-snapshot.json[.digest]` to `s3://…/sleep/`; first digest `8ed02f7b…`, empty sentinel until genes are admitted |
+
+First real Mission: `6c7b5826-…` (AMOS Labs, started 21:12 UTC) produced four
+planner turns through the gateway before parking at `ask_user`; the adapter's
+shadow answer disagreed with the served base on all four (diagnostic only). No
+episode until it reaches a terminal state.
+
 ## Shadow records and tenant consent
 
 Routing every Mission to the swarm (not only the canary tenant) means the
