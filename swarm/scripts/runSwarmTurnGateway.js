@@ -15,6 +15,9 @@ const contextSafetyTokens = integerOption("--context-safety-tokens", 1_024, 128,
 const backendApiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY || null;
 const gatewayApiKey = process.env.AMOS_SWARM_GATEWAY_API_KEY || null;
 const tracePath = option("--trace") ? resolve(option("--trace")) : null;
+const shadowModel = option("--shadow-model") || process.env.AMOS_SWARM_SHADOW_MODEL || null;
+const shadowTracePath = option("--shadow-trace") ? resolve(option("--shadow-trace")) : null;
+if (shadowModel && !shadowTracePath) fail("--shadow-trace is required when --shadow-model is set");
 
 if (!backendBaseUrl) fail("--backend-url or AMOS_QWEN_RESEARCH_URL is required");
 if (!isLoopback(host) && !gatewayApiKey) {
@@ -27,7 +30,11 @@ const orchestrator = new SwarmTurnOrchestrator({
   backendApiKey,
   backendContextTokens,
   contextSafetyTokens,
-  onTrace: tracePath ? appendTrace : null
+  onTrace: tracePath ? appendTrace : null,
+  shadowModel,
+  onShadow: shadowTracePath
+    ? async (record) => { await mkdir(dirname(shadowTracePath), { recursive: true }); await appendFile(shadowTracePath, `${JSON.stringify(record)}\n`, "utf8"); }
+    : null
 });
 const server = createServer(async (request, response) => {
   try {
@@ -36,6 +43,7 @@ const server = createServer(async (request, response) => {
         ok: true,
         service: "amos-swarm-turn-gateway",
         model: backendModel,
+        shadowModel,
         protocols: {
           openAiChatCompletions: true,
           platformMissionWorker: AMOS_MISSION_WORKER_CONTRACT

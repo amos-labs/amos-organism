@@ -9,6 +9,7 @@ import {
 
 export const SWARM_TURN_GATEWAY_SCHEMA = "amos.swarm-turn-gateway-trace";
 export const SWARM_TURN_GATEWAY_VERSION = 1;
+export const SWARM_TURN_SHADOW_SCHEMA = "amos.swarm-turn-shadow";
 
 const DEFAULT_ROLES = Object.freeze([
   {
@@ -48,7 +49,10 @@ export class SwarmTurnOrchestrator {
     requestTimeoutMs = 900_000,
     now = () => new Date(),
     monotonicNow = () => performance.now(),
-    onTrace = null
+    onTrace = null,
+    shadowModel = null,
+    onShadow = null,
+    shadowTimeoutMs = 120_000
   }) {
     this.backendBaseUrl = normalizedBaseUrl(backendBaseUrl);
     this.backendModel = requiredText(backendModel, "backendModel", 500);
@@ -82,6 +86,64 @@ export class SwarmTurnOrchestrator {
       throw new Error("onTrace must be a function");
     }
     this.onTrace = onTrace;
+    // Shadow mode: the final-stage request is also sent to a second served model
+    // (typically a candidate adapter) and both answers are recorded side by side.
+    // The Mission always receives the primary answer; a shadow failure is logged,
+    // never surfaced.
+    this.shadowModel = optionalText(shadowModel, "shadowModel", 500);
+    if (onShadow !== null && typeof onShadow !== "function") throw new Error("onShadow must be a function");
+    this.onShadow = onShadow;
+    this.shadowTimeoutMs = boundedInteger(shadowTimeoutMs, 1_000, 3_600_000, "shadowTimeoutMs");
+    this.pendingShadows = new Set();
+  }
+
+  /** Await every in-flight shadow comparison (tests and graceful shutdown). */
+  async drainShadows() {
+    await Promise.allSettled([...this.pendingShadows]);
+  }
+
+  #shadow({ payload, stage, primary, request, mission }) {
+    if (!this.shadowModel || this.shadowModel === this.backendModel) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error("shadow timed out")), this.shadowTimeoutMs);
+    timer.unref?.();
+    const run = (async () => {
+      const startedAt = validDate(this.now(), "now").toISOString();
+      const started = this.monotonicNow();
+      let shadowResponse = null;
+      let error = null;
+      try {
+        shadowResponse = await this.#callBackend({ ...payload, model: this.shadowModel }, { stage: `shadow:${stage}`, signal: controller.signal });
+      } catch (caught) {
+        error = String(caught?.message ?? caught).slice(0, 500);
+      } finally {
+        clearTimeout(timer);
+      }
+      const recordBase = {
+        schema: SWARM_TURN_SHADOW_SCHEMA,
+        version: SWARM_TURN_GATEWAY_VERSION,
+        startedAt,
+        completedAt: validDate(this.now(), "now").toISOString(),
+        wallMilliseconds: Math.max(0, Math.round(this.monotonicNow() - started)),
+        stage,
+        requestDigest: digestResearchValue(redactedRequest(request)),
+        mission: mission ? { planDecision: mission.planDecision ?? null, contractSatisfied: mission.contractSatisfied ?? null } : null,
+        primary: { model: this.backendModel, text: messageText(primary.choices[0].message), usage: normalizedUsage(primary.usage) },
+        shadow: shadowResponse
+          ? { model: this.shadowModel, text: messageText(shadowResponse.choices[0].message), usage: normalizedUsage(shadowResponse.usage), error: null }
+          : { model: this.shadowModel, text: null, usage: null, error },
+        agreement: shadowResponse ? messageText(primary.choices[0].message).trim() === messageText(shadowResponse.choices[0].message).trim() : null,
+        servedToMission: "primary"
+      };
+      const record = { ...recordBase, digest: digestResearchValue(recordBase) };
+      try {
+        await this.onShadow?.(record);
+      } catch {
+        // A failing shadow sink must never affect the primary path.
+      }
+    })();
+    this.pendingShadows.add(run);
+    run.finally(() => this.pendingShadows.delete(run));
   }
 
   async complete(input, { signal = null } = {}) {
@@ -90,6 +152,7 @@ export class SwarmTurnOrchestrator {
     const startedAt = validDate(this.now(), "now").toISOString();
     const started = this.monotonicNow();
     const observations = [];
+    let finalStage = { payload: null, stage: null };
     const finish = async (response, contextBudget) => {
       let finalResponse = response;
       let mission = null;
@@ -135,13 +198,13 @@ export class SwarmTurnOrchestrator {
       };
       const trace = { ...traceBase, digest: digestResearchValue(traceBase) };
       await this.onTrace?.(structuredClone(trace));
+      if (finalStage.payload) this.#shadow({ payload: finalStage.payload, stage: finalStage.stage, primary: finalResponse, request, mission });
       return mergedCompletion(finalResponse, trace);
     };
     const candidateRequests = this.roles.map(async (role, index) => {
-      const response = await this.#callBackend(
-        candidatePayload(request, role, this.backendModel, this.internalMaxTokens, index),
-        { stage: `candidate:${role.id}`, signal }
-      );
+      const payload = candidatePayload(request, role, this.backendModel, this.internalMaxTokens, index);
+      if (index === 0) finalStage = { payload, stage: `candidate:${role.id}` };
+      const response = await this.#callBackend(payload, { stage: `candidate:${role.id}`, signal });
       return { role: role.id, response, message: assistantMessage(response) };
     });
     const candidateResults = await Promise.all(candidateRequests);
@@ -203,15 +266,14 @@ export class SwarmTurnOrchestrator {
       critique,
       integrationBudget.maximumEvidenceCharacters
     );
-    let integrationResponse = await this.#callBackend(
-      integrationPayload(
-        request,
-        evidence,
-        this.backendModel,
-        integrationOutputTokens
-      ),
-      { stage: "integrator", signal }
+    const integrationRequestPayload = integrationPayload(
+      request,
+      evidence,
+      this.backendModel,
+      integrationOutputTokens
     );
+    finalStage = { payload: integrationRequestPayload, stage: "integrator" };
+    let integrationResponse = await this.#callBackend(integrationRequestPayload, { stage: "integrator", signal });
     observations.push(observation("integrator", integrationResponse));
     if (requiresAnswerRecovery(integrationResponse)) {
       integrationResponse = await this.#callBackend(
