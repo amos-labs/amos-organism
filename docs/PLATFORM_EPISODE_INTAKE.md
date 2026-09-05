@@ -66,3 +66,19 @@ AMOS__ORGANISM__BEARER_TOKEN=<same token>
   without a live learning policy. This service cannot widen that.
 - Gene admission stays disabled on every event this path writes. Ingested
   episodes are experience, not procedures.
+
+## Compatibility fixture (shared with the Platform and Codex lanes)
+
+`test/fixtures/platform-episode-delivery.v1.json` records nine deliveries to
+the intake as exact body bytes plus the X-Amos headers and the outcome the
+reference receiver must produce: verified completed episode, duplicate
+redelivery, typed failure (negative experience), tampered bytes, non-canonical
+bytes, forged signature, wrong key id, disallowed algorithm, idempotency
+mismatch. Replay them in order against one receiver configured with
+`publicKeyDerBase64` (the KMS GetPublicKey SPKI DER form) and `keyId`. The
+producer side of the fixture is `platform-mission-episode.producer.json`,
+mirrored from the Platform's `build_episode_body`. Regenerate with
+`npm run organism:generate-episode-fixture`; the fixture-only signing keys
+live beside it and sign nothing outside tests. `test/platformEpisodeDeliveryFixture.test.ts`
+replays the fixture on every test run.
+
