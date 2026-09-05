@@ -121,6 +121,19 @@ base's; no new failure class on explicit traffic; no unacceptable latency
 regression. Then canary with the base as instant fallback and a host-receipted
 promotion through the adapter ledger.
 
+## Shadow records and tenant consent
+
+Routing every Mission to the swarm (not only the canary tenant) means the
+gateway sees customer content. The shadow record therefore keeps full answer
+text only for tenants listed in `--shadow-text-tenants` (Terraform
+`swarm_gateway_shadow_text_tenants`), which must mirror the Platform's
+`organism_learning_policies` consent rows. Every other tenant's pair is
+recorded as `textDigest`, `textLength` and `agreement` only, so agreement
+rate is measurable fleet-wide while Mission content from non-consenting
+tenants never lands in a research log. The tenant id comes from the Mission
+worker envelope (`mission.tenant_id`) that the Platform already sends.
+Current allowlist: the AMOS Labs operator tenant.
+
 ## Adapter governance
 
 Adapters move through `swarm/src/adapterCandidates.js`: trained, frozen holdout, sealed holdout, shadow, canary, promoted. The first three gates are recordable from grading comparisons; canary and promotion require a host receipt. No adapter is promoted today.

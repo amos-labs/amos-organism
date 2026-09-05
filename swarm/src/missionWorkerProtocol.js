@@ -34,6 +34,7 @@ export function detectMissionWorkerRequest(request) {
       : object(mission.recovery_feedback, "mission worker envelope.mission.recovery_feedback");
     return {
       contract: AMOS_MISSION_WORKER_CONTRACT,
+      tenantId: mission.tenant_id == null ? null : requiredText(mission.tenant_id, "tenant_id", 160),
       missionId: requiredText(mission.mission_id, "mission_id", 160),
       contractId: requiredText(mission.contract_id, "contract_id", 160),
       plannerAttempt: boundedInteger(mission.planner_attempt, 1, 1_000_000, "planner_attempt"),

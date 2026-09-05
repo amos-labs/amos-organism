@@ -17,6 +17,9 @@ const gatewayApiKey = process.env.AMOS_SWARM_GATEWAY_API_KEY || null;
 const tracePath = option("--trace") ? resolve(option("--trace")) : null;
 const shadowModel = option("--shadow-model") || process.env.AMOS_SWARM_SHADOW_MODEL || null;
 const shadowTracePath = option("--shadow-trace") ? resolve(option("--shadow-trace")) : null;
+// Tenants whose shadow pairs may keep full answer text (consenting tenants only); everyone else is digest-only.
+const shadowTextTenants = (option("--shadow-text-tenants") || process.env.AMOS_SWARM_SHADOW_TEXT_TENANTS || "")
+  .split(",").map((tenant) => tenant.trim()).filter(Boolean);
 if (shadowModel && !shadowTracePath) fail("--shadow-trace is required when --shadow-model is set");
 
 if (!backendBaseUrl) fail("--backend-url or AMOS_QWEN_RESEARCH_URL is required");
@@ -32,6 +35,7 @@ const orchestrator = new SwarmTurnOrchestrator({
   contextSafetyTokens,
   onTrace: tracePath ? appendTrace : null,
   shadowModel,
+  shadowTextTenants,
   onShadow: shadowTracePath
     ? async (record) => { await mkdir(dirname(shadowTracePath), { recursive: true }); await appendFile(shadowTracePath, `${JSON.stringify(record)}\n`, "utf8"); }
     : null
@@ -44,6 +48,7 @@ const server = createServer(async (request, response) => {
         service: "amos-swarm-turn-gateway",
         model: backendModel,
         shadowModel,
+        shadowTextTenants,
         protocols: {
           openAiChatCompletions: true,
           platformMissionWorker: AMOS_MISSION_WORKER_CONTRACT

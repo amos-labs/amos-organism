@@ -421,7 +421,14 @@ test("shadow mode sends the final-stage request to the shadow model and records 
   assert.equal(record.schema, "amos.swarm-turn-shadow");
   assert.equal(record.primary.model, "qwen-test");
   assert.equal(record.shadow.model, "adapter-test");
-  assert.ok(record.shadow.text.startsWith("shadow answer"));
+  // A plain chat request carries no consenting tenant: the pair is digest-only.
+  assert.equal(record.textCaptured, false);
+  assert.equal(record.textPolicy, "digest-only");
+  assert.equal(record.shadow.text, null);
+  assert.equal(record.primary.text, null);
+  assert.match(record.shadow.textDigest, /^[a-f0-9]{64}$/);
+  assert.match(record.primary.textDigest, /^[a-f0-9]{64}$/);
+  assert.ok(record.shadow.textLength > 0);
   assert.equal(record.servedToMission, "primary");
   assert.equal(record.agreement, false);
   const shadowCalls = calls.filter((payload) => payload.model === "adapter-test");
@@ -449,4 +456,79 @@ test("a failing shadow backend is recorded as an error and never affects the pri
   assert.equal(shadows.length, 1);
   assert.equal(shadows[0].shadow.text, null);
   assert.match(shadows[0].shadow.error, /503/);
+});
+
+test("shadow pairs keep full answer text only for tenants on the consent allowlist", async () => {
+  const validPlan = {
+    decision: "tool",
+    summary: "Run the next bounded prospecting batch",
+    verb: "run_prospecting_batch",
+    args: { campaign_id: "campaign-1", batch_size: 25 },
+    checkpoint: { next_offset: 25 }
+  };
+  const envelope = (tenantId) => ({
+    contract: "amos-mission-worker:2026-09-06",
+    mission: {
+      tenant_id: tenantId,
+      mission_id: "mission-9",
+      contract_id: "contract-9",
+      objective: "Find the next qualified contacts",
+      completion_condition: { kind: "metric_threshold", target: 500 },
+      verification_policy: { schema_version: "1", requirements: [{ id: "completion_condition" }] },
+      allowed_operations: [{ operation: "run_prospecting_batch" }],
+      budgets: { max_tool_calls: 20 },
+      checkpoint: {},
+      recent_steps: [],
+      operation_schemas: {},
+      open_decision_answer: null,
+      recovery_feedback: null,
+      planner_attempt: 1
+    },
+    output_schema: { tool: { decision: "tool", summary: "...", verb: "...", args: {}, checkpoint: {} } }
+  });
+  const run = async (tenantId, shadowTextTenants) => {
+    const shadows = [];
+    const fetchImpl = async (_url, init) => {
+      const payload = JSON.parse(init.body);
+      return new Response(JSON.stringify({
+        id: "response",
+        model: payload.model,
+        choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(validPlan) } }],
+        usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const gateway = new SwarmTurnOrchestrator({
+      backendBaseUrl: "http://127.0.0.1:18080",
+      backendModel: "qwen-test",
+      fetchImpl,
+      shadowModel: "adapter-test",
+      shadowTextTenants,
+      onShadow: (record) => { shadows.push(record); }
+    });
+    await gateway.complete({ model: "amos-swarm", messages: [{ role: "user", content: JSON.stringify(envelope(tenantId)) }], max_tokens: 512 });
+    await gateway.drainShadows();
+    assert.equal(shadows.length, 1);
+    return shadows[0];
+  };
+
+  const consenting = await run("tenant-consented", ["tenant-consented", "tenant-other"]);
+  assert.equal(consenting.textCaptured, true);
+  assert.equal(consenting.textPolicy, "consenting-tenant");
+  assert.equal(consenting.mission.tenantId, "tenant-consented");
+  assert.equal(consenting.mission.missionId, "mission-9");
+  assert.deepEqual(JSON.parse(consenting.primary.text), validPlan);
+  assert.deepEqual(JSON.parse(consenting.shadow.text), validPlan);
+  assert.equal(consenting.agreement, true);
+
+  const stranger = await run("tenant-customer", ["tenant-consented"]);
+  assert.equal(stranger.textCaptured, false);
+  assert.equal(stranger.mission.tenantId, "tenant-customer");
+  assert.equal(stranger.primary.text, null);
+  assert.equal(stranger.shadow.text, null);
+  assert.equal(stranger.primary.textDigest, consenting.primary.textDigest, "digests still allow agreement analysis");
+  assert.equal(stranger.agreement, true);
+
+  const nobody = await run("tenant-customer", []);
+  assert.equal(nobody.textCaptured, false);
+  assert.throws(() => new SwarmTurnOrchestrator({ backendBaseUrl: "http://127.0.0.1:18080", backendModel: "qwen-test", shadowTextTenants: "tenant-1" }), /array/);
 });
