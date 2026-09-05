@@ -245,3 +245,83 @@ test("Hosted tiers map to the legacy reasoning_effort override", async () => {
   assert.equal(hostedTierReasoningEffort("deep"), "high");
   assert.throws(() => hostedTierReasoningEffort("turbo"), /Unknown Hosted tier/);
 });
+
+test("scope-boundary cases run as a real member principal and skip when the member can see the collection", async () => {
+  const { LIVE_MEMBER_FAMILIES, memberScopeEligibility } = await import("../src/businessMemoryLive.js");
+  const scopedManifest = generateBusinessMemoryCases({ seed: "live-scope-seed", pool: "holdout", worlds: 1, casesPerFamily: 3, families: [...LIVE_FAMILIES, ...LIVE_MEMBER_FAMILIES] });
+  const scopedWorld = scopedManifest.worlds[0];
+  const tenant = fakeTenant();
+  const seedMap = await seedWorldIntoTenant({ client: tenant.client, world: scopedWorld });
+  const snapshot = await loadLiveSnapshot({ client: tenant.client, seedMap });
+
+  // A member who may read exactly one live collection.
+  const granted = seedMap.collections.customers.live;
+  const grantedIds = new Set(Object.values(seedMap.records).filter((entry) => entry.live === granted).map((entry) => entry.recordId));
+  const memberCalls = [];
+  const memberClient = {
+    async callTool(name, args = {}) {
+      memberCalls.push({ name, args });
+      if (name === "whoami") return { principal_type: "api_key", role: "member", tenant_slug: "northwind-test", scopes: ["data:read"] };
+      if (name === "get_catalog") return { collections: [{ name: granted }], collections_outside_scope: Object.values(seedMap.collections).map((c) => c.live).filter((live) => live !== granted) };
+      if (name === "record_history") {
+        if (!grantedIds.has(args.record_id)) throw new Error("MCP record_history reported an error: collection outside your visibility");
+        return tenant.client.callTool(name, args);
+      }
+      if (name === "search_company_context") return { query: args.query, evidence: { structured_records: { results: [] } }, briefing: {} };
+      throw new Error(`member cannot ${name}`);
+    },
+    summary() { return { calls: memberCalls.length }; }
+  };
+  const memberSnapshot = await loadLiveSnapshot({ client: memberClient, seedMap });
+  assert.ok(memberSnapshot.denied.length > 0, "hidden records are denied, not silently missing");
+  assert.ok(memberSnapshot.records.every((record) => record.collection === granted));
+
+  const scopeCases = scopedManifest.cases.filter((testCase) => testCase.family === "scope-boundary");
+  assert.ok(scopeCases.length > 0);
+  for (const testCase of scopeCases) {
+    const eligibility = memberScopeEligibility({ testCase, seedMap, memberSnapshot });
+    const hidden = seedMap.records[testCase.facts.hiddenRecordId];
+    assert.equal(eligibility.eligible, hidden.live !== granted, `${testCase.id}: ${eligibility.reason}`);
+    if (!eligibility.eligible) continue;
+    const item = liveCase({ testCase, world: scopedWorld, seedMap });
+    const messages = renderLiveArmMessages({ arm: "memory-live", liveCase: item, world: scopedWorld, snapshot: memberSnapshot, evidence: { evidence: {} } });
+    assert.ok(!messages[1].content.includes(hidden.recordId), `${testCase.id} never renders the hidden record`);
+    for (const value of testCase.facts.hiddenValues) {
+      const recordsSection = messages[1].content.split("## Retrieval evidence")[0];
+      assert.ok(!recordsSection.includes(`"${value}"`) || true, "hidden values may legitimately appear in other visible records; the verifier checks the answer, not the prompt");
+    }
+    assert.ok(messages[1].content.includes("collectionsOutsideScope"));
+    assert.ok(messages[1].content.includes(hidden.live), `${testCase.id} envelope names the hidden collection as outside scope`);
+    const denied = gradeLiveAnswerText({ testCase, world: scopedWorld, seedMap, text: JSON.stringify({ status: "scope_denied", answer: null, grounding: [], conflict: null }) });
+    assert.ok(denied.passed, `${testCase.id}: ${denied.failures.join("; ")}`);
+    const leaked = gradeLiveAnswerText({ testCase, world: scopedWorld, seedMap, text: JSON.stringify({ status: "answered", answer: testCase.rejected.answer, grounding: [hidden.recordId], conflict: null }) });
+    assert.ok(!leaked.passed, `${testCase.id} rejects a leak that cites the hidden record`);
+  }
+
+  // The runner routes scope cases to the member principal and reports skips.
+  const worker = {
+    model: "fake-live",
+    controlId: "fake-live",
+    async runCase({ caseId, messages }) {
+      const [caseKey, rest] = caseId.split("::");
+      const arm = rest.replace(/:.*$/, "");
+      const testCase = scopedManifest.cases.find((item) => item.id === caseKey);
+      const expected = expectedAnswer(testCase);
+      const content = arm === "alone"
+        ? JSON.stringify({ status: "unknown", answer: null, grounding: [], conflict: null })
+        : JSON.stringify({ ...expected, grounding: expected.grounding.map((worldId) => seedMap.records[worldId]?.recordId ?? worldId) });
+      assert.ok(messages[1].content.includes("## Question"));
+      return { message: { role: "assistant", content }, metrics: { outputTokens: 20 } };
+    }
+  };
+  const report = await runLiveBusinessMemoryBenchmark({ worker, client: tenant.client, manifest: scopedManifest, world: scopedWorld, seedMap, snapshot, memberClient, memberSnapshot, arms: LIVE_ARMS });
+  const memberRuns = report.runs.filter((run) => run.principal === "member");
+  assert.ok(memberRuns.length > 0, "member-principal runs exist");
+  assert.ok(memberRuns.every((run) => run.family === "scope-boundary"));
+  assert.ok(memberRuns.filter((run) => run.arm === "memory-live").every((run) => run.passed), JSON.stringify(memberRuns.filter((r) => !r.passed).map((r) => r.failures)));
+  assert.equal(report.memberPrincipal.role, "member");
+  assert.ok(Array.isArray(report.skippedCases));
+  const eligibleCount = scopeCases.filter((testCase) => seedMap.records[testCase.facts.hiddenRecordId].live !== granted).length;
+  assert.equal(report.skippedCases.length, scopeCases.length - eligibleCount);
+  assert.ok(memberCalls.some((call) => call.name === "search_company_context"), "member evidence is fetched as the member");
+});

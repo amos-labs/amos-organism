@@ -12,6 +12,11 @@
  *     --pool holdout --world-index 0 --cases-per-family 3 \
  *     --output swarm/benchmarks/results/business-memory-live-<date>.json
  *
+ * Scope family as a real member principal: set AMOS_NORTHWIND_MEMBER_KEY (or
+ * --member-key-env) to a role-capped member key granted exactly one benchmark
+ * collection; scope-boundary cases then run as that principal, and cases whose
+ * hidden collection the member can read are reported as skipped.
+ *
  * Per-tier measurement (Codex quality priority): --tiers routine,balanced,deep
  * pins the Hosted routing tier through the legacy reasoning_effort override so
  * each tier is graded under its real configuration; "auto" leaves routing to
@@ -35,6 +40,7 @@ import {
   HOSTED_TIERS,
   LIVE_ARMS,
   LIVE_FAMILIES,
+  LIVE_MEMBER_FAMILIES,
   hostedTierReasoningEffort,
   liveCase,
   loadLiveSnapshot,
@@ -62,20 +68,27 @@ const outputPath = resolve(requiredOption("--output"));
 
 const apiKey = process.env[apiKeyEnv];
 if (!apiKey) throw new Error(`${apiKeyEnv} must be set in the environment`);
+const memberKeyEnv = option("--member-key-env") || "AMOS_NORTHWIND_MEMBER_KEY";
+const memberKey = process.env[memberKeyEnv] || null;
 const adminKey = process.env[adminKeyEnv] || null;
 
-const manifest = generateBusinessMemoryCases({ seed, pool, worlds: worldIndex + 1, casesPerFamily, families: LIVE_FAMILIES });
+const families = memberKey ? [...LIVE_FAMILIES, ...LIVE_MEMBER_FAMILIES] : [...LIVE_FAMILIES];
+const manifest = generateBusinessMemoryCases({ seed, pool, worlds: worldIndex + 1, casesPerFamily, families });
 const world = manifest.worlds[worldIndex];
 const client = new AmosMcpClient({ baseUrl, apiKey });
 
 const seedEvents = [];
 const seedMap = await seedWorldIntoTenant({ client, world, onEvent: (event) => { seedEvents.push(event); process.stderr.write(`${JSON.stringify(event)}\n`); } });
 const snapshot = await loadLiveSnapshot({ client, seedMap });
-const cases = manifest.cases.filter((testCase) => testCase.worldId === world.id);
+const memberClient = memberKey ? new AmosMcpClient({ baseUrl, apiKey: memberKey }) : null;
+const memberSnapshot = memberClient ? await loadLiveSnapshot({ client: memberClient, seedMap }) : null;
+if (memberSnapshot) process.stderr.write(`${JSON.stringify({ member: memberSnapshot.identity, visible: memberSnapshot.catalog.collections, denied: memberSnapshot.denied.length })}\n`);
+const cases = manifest.cases.filter((testCase) => testCase.worldId === world.id && (LIVE_FAMILIES.includes(testCase.family) || memberClient));
 
 if (dryRun) {
+  const dryCases = cases.filter((testCase) => LIVE_FAMILIES.includes(testCase.family));
   const rendered = Object.fromEntries(arms.map((arm) => {
-    const sizes = cases.map((testCase) => renderLiveArmMessages({ arm, liveCase: liveCase({ testCase, world, seedMap }), world, snapshot })
+    const sizes = dryCases.map((testCase) => renderLiveArmMessages({ arm, liveCase: liveCase({ testCase, world, seedMap }), world, snapshot })
       .reduce((total, message) => total + message.content.length, 0));
     return [arm, { mean: Math.round(sizes.reduce((a, b) => a + b, 0) / sizes.length), max: Math.max(...sizes) }];
   }));
@@ -147,6 +160,8 @@ for (const { id, worker } of workers) {
     world,
     seedMap,
     snapshot,
+    memberClient,
+    memberSnapshot,
     arms,
     maxOutputTokens,
     onCase: (run) => process.stderr.write(`${JSON.stringify({ worker: id, arm: run.arm, caseId: run.caseId, passed: run.passed, failures: run.failures.slice(0, 2) })}\n`)
