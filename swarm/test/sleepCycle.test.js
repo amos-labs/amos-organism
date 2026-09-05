@@ -9,6 +9,7 @@ import { DEFAULT_ORGANISM_POLICY } from "../src/swarmOrganismSimulator.js";
 import {
   SLEEP_CYCLE_RECORD_SCHEMA,
   createSleepWorkItem,
+  createStandingSleepWorkItem,
   decideSleepState,
   normalizeSleepPolicy,
   parseVllmMetrics,
@@ -177,6 +178,7 @@ test("a sleep cycle drains artifact replays, advances candidates, and claims no 
   assert.equal(record.totals.hostContractReplays, 6);
   assert.equal(record.totals.verifiedEvaluations, 0);
   assert.equal(record.totals.modelCalls, 0);
+  assert.equal(record.totals.candidateGatesAdvanced, 1);
   assert.equal(record.authority, "research");
   assert.deepEqual(
     [record.vesting.fitness, record.vesting.geneAdmission, record.vesting.adapterPromotion],
@@ -398,4 +400,23 @@ test("sleep queues round-trip through the accepted source schemas", () => {
   assert.equal(queue.nextActions[0].kind, "organism-artifact-replay");
   assert.throws(() => candidatesFromSourceQueue({ ...queue, automaticallyPromoted: true }), /pre-promoted/);
   assert.throws(() => candidatesFromSourceQueue({ schema: "amos.other", version: 1 }), /Unsupported/);
+});
+
+test("successful standing orders are evaluations, not candidate gate advances, including old ledger records", async () => {
+  const item = createStandingSleepWorkItem({ kind: "curriculum-grading", orderId: "nightly", payload: { pool: "holdout" } });
+  const { record } = await runSleepCycle({
+    id: "standing-order-metric", policy: POLICY, items: [item], observeLoad: idle, now: () => at(0),
+    executors: { "curriculum-grading": async () => ({ status: "passed", receiptDigest: "a".repeat(64), evaluations: { verified: 48, modelCalls: 48 } }) }
+  });
+  assert.equal(record.totals.passed, 1);
+  assert.equal(record.totals.verifiedEvaluations, 48);
+  assert.equal(record.totals.candidateGatesAdvanced, 0);
+  const { digest, ...body } = record;
+  const legacyBody = { ...body, totals: { ...body.totals, candidateGatesAdvanced: 1 } };
+  const legacy = { ...legacyBody, digest: digestResearchValue(legacyBody) };
+  const snapshot = JSON.stringify(legacy);
+  const summary = summarizeSleepLedger([legacy], { now: at(1000) });
+  assert.equal(summary.candidateGatesAdvanced, 0);
+  assert.equal(summary.verifiedEvaluations, 48);
+  assert.equal(JSON.stringify(legacy), snapshot);
 });

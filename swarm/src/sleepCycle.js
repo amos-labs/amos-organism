@@ -336,7 +336,7 @@ export async function runSleepCycle({
     hostContractReplays: sum(tasks.map(({ evaluations }) => evaluations.hostContract)),
     verifiedEvaluations: sum(tasks.map(({ evaluations }) => evaluations.verified)),
     modelCalls: sum(tasks.map(({ evaluations }) => evaluations.modelCalls)),
-    candidateGatesAdvanced: tasks.filter(({ status }) => status === "passed").length
+    candidateGatesAdvanced: countAdvancedCandidates(tasks)
   };
   const recordBase = {
     schema: SLEEP_CYCLE_RECORD_SCHEMA,
@@ -415,13 +415,22 @@ export function summarizeSleepLedger(records, { now = new Date(), windowMillisec
     verifiedEvaluations: verified,
     verifiedEvaluationsPerDay: roundTo(verified * perDayScale, 2),
     modelCalls: sum(inWindow.map(({ totals }) => totals.modelCalls)),
-    candidateGatesAdvanced: sum(inWindow.map(({ totals }) => totals.candidateGatesAdvanced)),
+    // Older records counted every successful standing order as a candidate
+    // advance. Derive the metric from their evidence without rewriting them.
+    candidateGatesAdvanced: sum(inWindow.map(({ tasks }) => countAdvancedCandidates(tasks))),
     errored: sum(inWindow.map(({ totals }) => totals.errored)),
     sleepMilliseconds: sum(inWindow.map(({ durationMilliseconds }) => durationMilliseconds)),
     reasons,
     latestCycleDigest: validated.at(-1)?.digest ?? null
   };
   return { ...summaryBase, digest: digestResearchValue(summaryBase) };
+}
+
+function countAdvancedCandidates(tasks) {
+  return tasks.filter(({ status, item, candidate }) => status === "passed" &&
+    CANDIDATE_WORK_KINDS.includes(item?.kind) && candidate?.id === item.candidateId &&
+    /^[a-f0-9]{64}$/.test(candidate?.digest || "") && candidate.digest !== item.candidateDigest &&
+    candidate.nextGate !== item.gate).length;
 }
 
 function normalizeExecutorResult(input, item) {
