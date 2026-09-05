@@ -11,7 +11,8 @@ set -euo pipefail
 IMAGE="${1:?sleep image}"; METRICS_URL="${2:?qwen metrics url}"; ORDERS_URI="${3:?standing orders s3 uri}"
 TRAINER_IMAGE="${4:?trainer image}"; TRAINER_ID="${5:?trainer instance id}"
 source /etc/amos-research-runner.env
-API_KEY="$(python3 -c 'import boto3,json,sys; print(json.loads(boto3.client("secretsmanager", region_name=sys.argv[1]).get_secret_value(SecretId=sys.argv[2])["SecretString"])["api_key"])' "$AMOS_AWS_REGION" "$AMOS_QWEN_SECRET_ID")"
+# The host has the AWS CLI but not boto3; the runner container is where boto3 lives.
+API_KEY="$(aws secretsmanager get-secret-value --region "$AMOS_AWS_REGION" --secret-id "$AMOS_QWEN_SECRET_ID" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["api_key"])')"
 install -d -m 0750 /var/lib/amos-research/sleep /var/lib/amos-research/replay
 aws s3 cp "$ORDERS_URI" /var/lib/amos-research/sleep/standing-orders.json --only-show-errors
 chown -R 10002:10002 /var/lib/amos-research/sleep
