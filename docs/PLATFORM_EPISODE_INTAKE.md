@@ -82,3 +82,29 @@ mirrored from the Platform's `build_episode_body`. Regenerate with
 live beside it and sign nothing outside tests. `test/platformEpisodeDeliveryFixture.test.ts`
 replays the fixture on every test run.
 
+## Content manifests (second signed message type)
+
+When a tenant holds `training_content` (Platform `docs/LEARNING-CONTENT-EXPORT.md`,
+revision 2), the Platform delivers one `amos.platform-learning-content-manifest`
+(schemaVersion 1, manifestVersion 1) per terminal Mission, signed exactly like
+the episode and keyed by the same episode id. The receiver routes by the body's
+`schema`, so the manifest may be POSTed to `/v1/platform/episodes` or to the
+alias `/v1/platform/content-manifests`. Rules:
+
+- The idempotency header (`idempotency-key`) must be `content-manifest:<episodeId>` (the episode
+  itself uses the bare episode id), so the two messages never collide in the
+  delivery worker or the event chain.
+- `contentSha256` must equal the canonical digest of the manifest without that
+  field; the signature covers the whole body as usual.
+- The manifest may arrive before or after its episode; `episodeKnown` in the
+  response reports whether the episode event already exists. Nothing is
+  inferred from a manifest alone.
+- What is stored: the host event `platform.content-manifest-received`
+  (`platform-content-manifest:<episodeId>`) with references, digests,
+  completeness, redaction flags, dispositions, accepted-attempt bindings and
+  holdout tags. Never content. `trainingEligibilityDecided` is false: the
+  dataset compiler decides later, fetching bytes through the Platform's export
+  verb under the live grant.
+- Items whose ref appears in `evaluationExclusion` are tagged `holdout` at
+  receipt so no compiler can miss them.
+

@@ -7,6 +7,7 @@ export type HostReceiptKind =
   | "gene-approved"
   | "trace-imported"
   | "platform-episode-attested"
+  | "platform-content-manifest-attested"
   | "transition-observed"
   | "gene-expressed"
   | "candidate-evaluated";
