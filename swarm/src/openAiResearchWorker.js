@@ -4,6 +4,25 @@ import { digestResearchValue } from "./experimentProtocol.js";
 export const OPENAI_RESEARCH_OBSERVATION_SCHEMA = "amos.openai-research-observation";
 export const OPENAI_RESEARCH_OBSERVATION_VERSION = 1;
 
+const TRANSPORT_RETRY_ATTEMPTS = 4;
+const TRANSPORT_RETRY_BASE_MS = 750;
+
+function isTransportError(error) {
+  const code = String(error?.cause?.code ?? error?.code ?? "");
+  const message = String(error?.message ?? "");
+  return /UND_ERR_SOCKET|ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/.test(code)
+    || /fetch failed|other side closed|socket hang up/i.test(message)
+    || /other side closed|socket hang up/i.test(String(error?.cause?.message ?? ""));
+}
+
+function sleep(milliseconds, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error("aborted"));
+    const timer = setTimeout(resolve, milliseconds);
+    signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new Error("aborted")); }, { once: true });
+  });
+}
+
 export class OpenAiResearchWorker {
   constructor({
     controlId,
@@ -146,23 +165,34 @@ export class OpenAiResearchWorker {
     const timeoutSignal = AbortSignal.timeout(this.requestTimeoutMs);
     const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
     let response;
-    try {
-      response = await this.fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers: {
-          accept: "application/json",
-          ...(body ? { "content-type": "application/json" } : {}),
-          ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
-          ...headers
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-        signal: combinedSignal
-      });
-    } catch (error) {
-      if (combinedSignal.aborted) {
-        throw new Error(`Research request timed out or was aborted after ${this.requestTimeoutMs}ms`);
+    // Transport failures (a dropped tunnel socket, a reset) are retried a few
+    // times with backoff. HTTP errors and aborts are not: those carry meaning.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        response = await this.fetch(`${this.baseUrl}${path}`, {
+          method,
+          headers: {
+            accept: "application/json",
+            ...(body ? { "content-type": "application/json" } : {}),
+            ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+            ...headers
+          },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          signal: combinedSignal
+        });
+        if (response.status >= 502 && response.status <= 504 && attempt < TRANSPORT_RETRY_ATTEMPTS) {
+          await response.text().catch(() => "");
+          await sleep(TRANSPORT_RETRY_BASE_MS * attempt, combinedSignal);
+          continue;
+        }
+        break;
+      } catch (error) {
+        if (combinedSignal.aborted) {
+          throw new Error(`Research request timed out or was aborted after ${this.requestTimeoutMs}ms`);
+        }
+        if (attempt >= TRANSPORT_RETRY_ATTEMPTS || !isTransportError(error)) throw error;
+        await sleep(TRANSPORT_RETRY_BASE_MS * attempt, combinedSignal);
       }
-      throw error;
     }
     const text = await response.text();
     let payload;

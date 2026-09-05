@@ -276,6 +276,18 @@ resource "aws_security_group" "runner" {
   }
 }
 
+# Platform Mission learning episodes arrive at the organism intake on the runner
+# host. Only the Platform's ECS tasks may reach it, and only when configured.
+resource "aws_vpc_security_group_ingress_rule" "intake_from_platform" {
+  count                        = var.platform_ecs_security_group_id != "" ? 1 : 0
+  security_group_id            = aws_security_group.runner.id
+  referenced_security_group_id = var.platform_ecs_security_group_id
+  from_port                    = var.intake_port
+  to_port                      = var.intake_port
+  ip_protocol                  = "tcp"
+  description                  = "Signed Platform Mission learning episodes to the organism intake"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "qwen_from_runner" {
   security_group_id            = data.aws_security_group.inference.id
   referenced_security_group_id = aws_security_group.runner.id
@@ -370,6 +382,21 @@ resource "aws_iam_role_policy" "runner" {
         Effect   = "Allow"
         Action   = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
         Resource = [aws_ecr_repository.runner.arn]
+      },
+      {
+        Sid      = "ReadIntakeBearerSecret"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = var.intake_bearer_secret_arn != "" ? [var.intake_bearer_secret_arn] : ["arn:aws:secretsmanager:${var.aws_region}:*:secret:amos-organism/platform-intake-bearer-*"]
+      },
+      {
+        Sid    = "BuildAndPushTrainerImages"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:DescribeImages"
+        ]
+        Resource = [aws_ecr_repository.trainer.arn]
       }
     ]
   })
@@ -412,7 +439,10 @@ resource "aws_instance" "runner" {
     delete_on_termination = true
   }
 
-  user_data_replace_on_change = true
+  # The runner is a live host: it carries the sleep daemon, the Platform-episode
+  # intake, and the replay-sync timer beside the job runner. Bootstrap drift must
+  # not destroy it; replace deliberately with `terraform taint` when intended.
+  user_data_replace_on_change = false
   user_data = templatefile("${path.module}/templates/runner-user-data.sh.tftpl", {
     api_base          = "http://${data.aws_instance.inference.private_ip}:8000/v1"
     api_key_secret_id = data.aws_secretsmanager_secret.inference_api_key.id
@@ -594,7 +624,9 @@ resource "aws_instance" "trainer" {
     delete_on_termination = true
   }
 
-  user_data_replace_on_change = true
+  # Jobs are dispatched over SSM Run Command; the boot script only matters on first
+  # boot. Never replace the trainer (and its cached 52 GB checkpoint) for a template edit.
+  user_data_replace_on_change = false
   user_data = templatefile("${path.module}/templates/trainer-user-data.sh.tftpl", {
     aws_region                 = var.aws_region
     ecr_registry               = split("/", aws_ecr_repository.trainer.repository_url)[0]

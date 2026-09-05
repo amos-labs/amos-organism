@@ -94,3 +94,23 @@ function response(payload) {
     }
   };
 }
+
+
+test("transport failures are retried and HTTP errors are not", async () => {
+  let calls = 0;
+  const flaky = async () => {
+    calls += 1;
+    if (calls === 1) { const error = new TypeError("fetch failed"); error.cause = Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }); throw error; }
+    return new Response(JSON.stringify({ data: [{ id: "m" }] }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const worker = new OpenAiResearchWorker({ controlId: "retry", model: "m", baseUrl: "http://127.0.0.1:1", apiKey: "k", fetchImpl: flaky, requestTimeoutMs: 5_000 });
+  const payload = await worker.request("/v1/models", { method: "GET" });
+  assert.equal(calls, 2);
+  assert.deepEqual(payload, { data: [{ id: "m" }] });
+
+  let httpCalls = 0;
+  const denied = async () => { httpCalls += 1; return new Response(JSON.stringify({ error: { message: "nope" } }), { status: 401 }); };
+  const unauthorized = new OpenAiResearchWorker({ controlId: "retry2", model: "m", baseUrl: "http://127.0.0.1:1", apiKey: "k", fetchImpl: denied, requestTimeoutMs: 5_000 });
+  await assert.rejects(unauthorized.request("/v1/models", { method: "GET" }));
+  assert.equal(httpCalls, 1);
+});

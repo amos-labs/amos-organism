@@ -42,3 +42,8 @@ output "trainer_contract_parameter" {
   description = "SSM parameter the trainer reads at boot for its training contract URI"
   value       = aws_ssm_parameter.trainer_contract.name
 }
+
+output "runner_private_ip" {
+  description = "Private address of the runner host; the organism intake listens here on intake_port"
+  value       = one(aws_instance.runner[*].private_ip)
+}

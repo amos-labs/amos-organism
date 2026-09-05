@@ -385,3 +385,68 @@ test("the swarm gateway implements the Platform Mission worker contract and self
   assert.equal(traces[0].mission.plannerAttempt, 2);
   assert.equal(traces[0].mission.recoveryKind, "usage_accounting");
 });
+
+test("shadow mode sends the final-stage request to the shadow model and records the pair without touching the primary answer", async () => {
+  const calls = [];
+  const shadows = [];
+  const fetchImpl = async (_url, init) => {
+    const payload = JSON.parse(init.body);
+    calls.push(payload);
+    const index = calls.length;
+    const content = payload.model === "adapter-test" ? `shadow answer ${index}` : `response ${index}`;
+    return new Response(JSON.stringify({
+      id: `response-${index}`,
+      model: payload.model,
+      choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content } }],
+      usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const gateway = new SwarmTurnOrchestrator({
+    backendBaseUrl: "http://127.0.0.1:18080",
+    backendModel: "qwen-test",
+    fetchImpl,
+    shadowModel: "adapter-test",
+    onShadow: (record) => { shadows.push(record); },
+    now: () => new Date("2026-09-05T12:00:00.000Z")
+  });
+  const completion = await gateway.complete({
+    model: "amos-swarm",
+    messages: [{ role: "user", content: "Reconcile the vendor statements." }],
+    max_tokens: 256
+  });
+  await gateway.drainShadows();
+  assert.ok(!completion.choices[0].message.content.includes("shadow"), "the Mission receives the primary answer");
+  assert.equal(shadows.length, 1);
+  const [record] = shadows;
+  assert.equal(record.schema, "amos.swarm-turn-shadow");
+  assert.equal(record.primary.model, "qwen-test");
+  assert.equal(record.shadow.model, "adapter-test");
+  assert.ok(record.shadow.text.startsWith("shadow answer"));
+  assert.equal(record.servedToMission, "primary");
+  assert.equal(record.agreement, false);
+  const shadowCalls = calls.filter((payload) => payload.model === "adapter-test");
+  assert.equal(shadowCalls.length, 1);
+  assert.equal(shadowCalls[0].messages.length, calls.find((payload) => payload.model === "qwen-test" && payload.messages.length === shadowCalls[0].messages.length).messages.length, "the shadow gets the very same final-stage prompt");
+});
+
+test("a failing shadow backend is recorded as an error and never affects the primary completion", async () => {
+  let calls = 0;
+  const shadows = [];
+  const fetchImpl = async (_url, init) => {
+    const payload = JSON.parse(init.body);
+    calls += 1;
+    if (payload.model === "adapter-test") return new Response("upstream exploded", { status: 503 });
+    return new Response(JSON.stringify({
+      id: `r${calls}`, model: payload.model,
+      choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: `response ${calls}` } }],
+      usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const gateway = new SwarmTurnOrchestrator({ backendBaseUrl: "http://127.0.0.1:18080", backendModel: "qwen-test", fetchImpl, shadowModel: "adapter-test", onShadow: (record) => { shadows.push(record); } });
+  const completion = await gateway.complete({ model: "amos-swarm", messages: [{ role: "user", content: "hello" }] });
+  await gateway.drainShadows();
+  assert.ok(completion.choices[0].message.content.startsWith("response"));
+  assert.equal(shadows.length, 1);
+  assert.equal(shadows[0].shadow.text, null);
+  assert.match(shadows[0].shadow.error, /503/);
+});

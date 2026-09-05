@@ -129,3 +129,21 @@ variable "trainer_contract_uri" {
     error_message = "trainer_contract_uri must be empty or a bounded s3:// JSON object URI."
   }
 }
+
+variable "platform_ecs_security_group_id" {
+  description = "Security group of the Platform ECS tasks allowed to deliver signed Mission learning episodes to the organism intake. Empty disables the rule."
+  type        = string
+  default     = ""
+}
+
+variable "intake_port" {
+  description = "Port the organism Platform-episode intake listens on, on the runner host."
+  type        = number
+  default     = 8787
+}
+
+variable "intake_bearer_secret_arn" {
+  description = "Secrets Manager ARN of the bearer token shared by the Platform delivery worker and the organism intake."
+  type        = string
+  default     = ""
+}
