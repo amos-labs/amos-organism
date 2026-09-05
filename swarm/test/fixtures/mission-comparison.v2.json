@@ -1,0 +1,478 @@
+{
+  "version": 2,
+  "baseline": {
+    "model": {
+      "modelId": "amos-qwen38-27b-fp8",
+      "baseArtifactSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "adapter": null
+    },
+    "procedureSnapshotSha256": "3729e785172fb2d92b3a51f2d2f0efc409540291fd0497a569aaa2baefeadde3",
+    "runtimeRevision": "5555555555555555555555555555555555555555",
+    "promptCompilerSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "schedulerPolicySha256": "7777777777777777777777777777777777777777777777777777777777777777",
+    "inferenceConfigSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "encoderSha256": null,
+    "schema": "amos.mission-treatment",
+    "version": 1,
+    "digest": "e56265937ab13b32f3e5bbdc4d15d0713aa2a4997df59e48aa34616336aa73d6"
+  },
+  "candidate": {
+    "model": {
+      "modelId": "amos-qwen38-27b-fp8",
+      "baseArtifactSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "adapter": {
+        "artifactSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "uri": "s3://bucket/stage1/run/runs/contract/adapter",
+        "trainingContractSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "procedureSnapshotSha256": "3729e785172fb2d92b3a51f2d2f0efc409540291fd0497a569aaa2baefeadde3",
+    "runtimeRevision": "5555555555555555555555555555555555555555",
+    "promptCompilerSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "schedulerPolicySha256": "7777777777777777777777777777777777777777777777777777777777777777",
+    "inferenceConfigSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "encoderSha256": null,
+    "schema": "amos.mission-treatment",
+    "version": 1,
+    "digest": "f351a378287ef343cddd19402ac6971f42dc10113b8f2c7373431de5039561d1"
+  },
+  "pairs": [
+    {
+      "id": "case-0",
+      "family": "execution",
+      "taskSha256": "348f395f0f556ba583679822761b1a7b90ceff39877574ce58d76c478c89318b",
+      "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+      "baseline": {
+        "mission": {
+          "mission_id": "fixture-amos-qwen38-27b-fp8-0",
+          "objective": "Fixture task 0: produce the verified inventory",
+          "completion_condition": {
+            "minimumCount": 5
+          },
+          "status": "failed",
+          "started_at": "2026-09-05T10:00:00Z",
+          "finished_at": "2026-09-05T10:01:00Z",
+          "contract": {
+            "contract_sha256": "ee4680dd956ed7c4de78daf16281fdd49d4cb65f6fda5b7baa4c3ff752bdef18",
+            "allowed_operations": [
+              "inventory.read"
+            ],
+            "budgets": {
+              "max_tool_calls": 5,
+              "max_cost_microusd": 10000,
+              "max_wall_time_seconds": 600,
+              "used_tool_calls": 1
+            },
+            "decision_policy": {
+              "authority": "platform"
+            },
+            "checkpoint_policy": {
+              "required": true
+            },
+            "verification_policy": {
+              "schema_version": "1",
+              "minimum_coverage": 1,
+              "requirements": [
+                {
+                  "id": "inventory",
+                  "checker_id": "platform.metric_threshold",
+                  "checker_version": "1",
+                  "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "minimum_authority": "deterministic",
+                  "config": {
+                    "metric": "count",
+                    "target": 5
+                  }
+                }
+              ]
+            }
+          },
+          "verification": [
+            {
+              "checker_run_id": "fixture-amos-qwen38-27b-fp8-0-check",
+              "requirement_id": "inventory",
+              "checker_id": "platform.metric_threshold",
+              "checker_version": "1",
+              "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "result_sha256": "5ee6c0c4331b57a8a83c3b7c64a7f9a40470324b442dbe819df48988a8e63050",
+              "authority": "deterministic",
+              "verdict": "fail",
+              "coverage": 1,
+              "unknown_requirements": [],
+              "evidence_refs": [
+                "fixture-inventory-receipt"
+              ],
+              "created_at": "2026-09-05T10:00:59Z"
+            }
+          ]
+        },
+        "measurement": {
+          "source": "platform-mission-harness",
+          "accountingComplete": true,
+          "missionSha256": "29e4d0a3cfb048b9a611afecfe3edee375495280877ec8515657fb1fd15e841a",
+          "taskSha256": "348f395f0f556ba583679822761b1a7b90ceff39877574ce58d76c478c89318b",
+          "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+          "context": {
+            "toolCatalogSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "memorySnapshotSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "environmentSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "executionPolicySha256": "4444444444444444444444444444444444444444444444444444444444444444",
+            "runSeed": 42
+          },
+          "costMicrousd": 100,
+          "wallTimeMs": 60000,
+          "unauthorizedEffects": 0,
+          "duplicateEffects": 0,
+          "budgetExceeded": false,
+          "digest": "6a5461743b129d9aae6bcb27ddebc355fb2e3a24de6a7561365caa812de6fe6d",
+          "treatmentSha256": "e56265937ab13b32f3e5bbdc4d15d0713aa2a4997df59e48aa34616336aa73d6",
+          "compiledInputSha256": "1959e941a14861df758f1d8361b41c51e0e2e630452aadd2ace77c1ea728694e",
+          "recoveryEvidence": {
+            "version": 1,
+            "coverage": "complete",
+            "unexpectedCorrections": 0,
+            "requiredRecoveries": 0,
+            "evidenceRefs": [
+              "fixture://fixture-amos-qwen38-27b-fp8-0/complete-host-trace"
+            ]
+          },
+          "protocolSha256": "345e77470c189924aa811db48c1115617367d3dcde21e50cb67b2f4a6a14202b"
+        }
+      },
+      "candidate": {
+        "mission": {
+          "mission_id": "fixture-implicit-r32-s3-0",
+          "objective": "Fixture task 0: produce the verified inventory",
+          "completion_condition": {
+            "minimumCount": 5
+          },
+          "status": "completed",
+          "started_at": "2026-09-05T10:00:00Z",
+          "finished_at": "2026-09-05T10:01:00Z",
+          "contract": {
+            "contract_sha256": "1191a42a1063f2e89d3122fe9ad8ad0a97e56aa989117cae1c1ae3fe940c180c",
+            "allowed_operations": [
+              "inventory.read"
+            ],
+            "budgets": {
+              "max_tool_calls": 5,
+              "max_cost_microusd": 10000,
+              "max_wall_time_seconds": 600,
+              "used_tool_calls": 1
+            },
+            "decision_policy": {
+              "authority": "platform"
+            },
+            "checkpoint_policy": {
+              "required": true
+            },
+            "verification_policy": {
+              "schema_version": "1",
+              "minimum_coverage": 1,
+              "requirements": [
+                {
+                  "id": "inventory",
+                  "checker_id": "platform.metric_threshold",
+                  "checker_version": "1",
+                  "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "minimum_authority": "deterministic",
+                  "config": {
+                    "metric": "count",
+                    "target": 5
+                  }
+                }
+              ]
+            }
+          },
+          "verification": [
+            {
+              "checker_run_id": "fixture-implicit-r32-s3-0-check",
+              "requirement_id": "inventory",
+              "checker_id": "platform.metric_threshold",
+              "checker_version": "1",
+              "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "result_sha256": "230f22f9bba20500b9e2ba72a97ebc78aa2e466ee21c22a098b87cea81fce118",
+              "authority": "deterministic",
+              "verdict": "pass",
+              "coverage": 1,
+              "unknown_requirements": [],
+              "evidence_refs": [
+                "fixture-inventory-receipt"
+              ],
+              "created_at": "2026-09-05T10:00:59Z"
+            }
+          ]
+        },
+        "measurement": {
+          "source": "platform-mission-harness",
+          "accountingComplete": true,
+          "missionSha256": "874ed3f06104a28a17ab83f47aae9dc4947bfbb17768624e64e12cad0744b9a7",
+          "taskSha256": "348f395f0f556ba583679822761b1a7b90ceff39877574ce58d76c478c89318b",
+          "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+          "context": {
+            "toolCatalogSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "memorySnapshotSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "environmentSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "executionPolicySha256": "4444444444444444444444444444444444444444444444444444444444444444",
+            "runSeed": 42
+          },
+          "costMicrousd": 100,
+          "wallTimeMs": 60000,
+          "unauthorizedEffects": 0,
+          "duplicateEffects": 0,
+          "budgetExceeded": false,
+          "digest": "4181dba3505b8474ff6d2e75148cba3570f490eb7deedb4578b0b7fd237c13c1",
+          "treatmentSha256": "f351a378287ef343cddd19402ac6971f42dc10113b8f2c7373431de5039561d1",
+          "compiledInputSha256": "1959e941a14861df758f1d8361b41c51e0e2e630452aadd2ace77c1ea728694e",
+          "recoveryEvidence": {
+            "version": 1,
+            "coverage": "complete",
+            "unexpectedCorrections": 0,
+            "requiredRecoveries": 0,
+            "evidenceRefs": [
+              "fixture://fixture-implicit-r32-s3-0/complete-host-trace"
+            ]
+          },
+          "protocolSha256": "345e77470c189924aa811db48c1115617367d3dcde21e50cb67b2f4a6a14202b"
+        }
+      }
+    },
+    {
+      "id": "case-1",
+      "family": "retrieval",
+      "taskSha256": "8dad4f9df5e73173fcc01fe0c52827ad2180b5d51b2ffc03ad6a68603a63cc35",
+      "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+      "baseline": {
+        "mission": {
+          "mission_id": "fixture-amos-qwen38-27b-fp8-1",
+          "objective": "Fixture task 1: produce the verified inventory",
+          "completion_condition": {
+            "minimumCount": 5
+          },
+          "status": "failed",
+          "started_at": "2026-09-05T10:00:00Z",
+          "finished_at": "2026-09-05T10:01:00Z",
+          "contract": {
+            "contract_sha256": "b83f1876a316b92936e278a4b598996a0301e7382b722c2f6b97353c8def1223",
+            "allowed_operations": [
+              "inventory.read"
+            ],
+            "budgets": {
+              "max_tool_calls": 5,
+              "max_cost_microusd": 10000,
+              "max_wall_time_seconds": 600,
+              "used_tool_calls": 1
+            },
+            "decision_policy": {
+              "authority": "platform"
+            },
+            "checkpoint_policy": {
+              "required": true
+            },
+            "verification_policy": {
+              "schema_version": "1",
+              "minimum_coverage": 1,
+              "requirements": [
+                {
+                  "id": "inventory",
+                  "checker_id": "platform.metric_threshold",
+                  "checker_version": "1",
+                  "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "minimum_authority": "deterministic",
+                  "config": {
+                    "metric": "count",
+                    "target": 5
+                  }
+                }
+              ]
+            }
+          },
+          "verification": [
+            {
+              "checker_run_id": "fixture-amos-qwen38-27b-fp8-1-check",
+              "requirement_id": "inventory",
+              "checker_id": "platform.metric_threshold",
+              "checker_version": "1",
+              "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "result_sha256": "5cbad37eff1746fdf246777307a3f7eecf87aca7217346dc9a15354a161fdcc9",
+              "authority": "deterministic",
+              "verdict": "fail",
+              "coverage": 1,
+              "unknown_requirements": [],
+              "evidence_refs": [
+                "fixture-inventory-receipt"
+              ],
+              "created_at": "2026-09-05T10:00:59Z"
+            }
+          ]
+        },
+        "measurement": {
+          "source": "platform-mission-harness",
+          "accountingComplete": true,
+          "missionSha256": "721336cab1e7add4ea6a8a6e4c7fb4180f6d1f4304b1f72349c0d23f52eb23db",
+          "taskSha256": "8dad4f9df5e73173fcc01fe0c52827ad2180b5d51b2ffc03ad6a68603a63cc35",
+          "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+          "context": {
+            "toolCatalogSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "memorySnapshotSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "environmentSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "executionPolicySha256": "4444444444444444444444444444444444444444444444444444444444444444",
+            "runSeed": 42
+          },
+          "costMicrousd": 100,
+          "wallTimeMs": 60000,
+          "unauthorizedEffects": 0,
+          "duplicateEffects": 0,
+          "budgetExceeded": false,
+          "digest": "619023ad0e6fcc457952120de6e5e59a3e40d67eeea53bff4ddf2cb8da4a6280",
+          "treatmentSha256": "e56265937ab13b32f3e5bbdc4d15d0713aa2a4997df59e48aa34616336aa73d6",
+          "compiledInputSha256": "43294bfb9b37c105f2fa1ebbae81df6d3f737c403d99535ac711b4ec3437dfbd",
+          "recoveryEvidence": {
+            "version": 1,
+            "coverage": "complete",
+            "unexpectedCorrections": 0,
+            "requiredRecoveries": 0,
+            "evidenceRefs": [
+              "fixture://fixture-amos-qwen38-27b-fp8-1/complete-host-trace"
+            ]
+          },
+          "protocolSha256": "345e77470c189924aa811db48c1115617367d3dcde21e50cb67b2f4a6a14202b"
+        }
+      },
+      "candidate": {
+        "mission": {
+          "mission_id": "fixture-implicit-r32-s3-1",
+          "objective": "Fixture task 1: produce the verified inventory",
+          "completion_condition": {
+            "minimumCount": 5
+          },
+          "status": "completed",
+          "started_at": "2026-09-05T10:00:00Z",
+          "finished_at": "2026-09-05T10:01:00Z",
+          "contract": {
+            "contract_sha256": "cbc3369ff4b579c1e71b7fa32cf0574ad563eb2ed8d7dc90e4ce87b4f586af1a",
+            "allowed_operations": [
+              "inventory.read"
+            ],
+            "budgets": {
+              "max_tool_calls": 5,
+              "max_cost_microusd": 10000,
+              "max_wall_time_seconds": 600,
+              "used_tool_calls": 1
+            },
+            "decision_policy": {
+              "authority": "platform"
+            },
+            "checkpoint_policy": {
+              "required": true
+            },
+            "verification_policy": {
+              "schema_version": "1",
+              "minimum_coverage": 1,
+              "requirements": [
+                {
+                  "id": "inventory",
+                  "checker_id": "platform.metric_threshold",
+                  "checker_version": "1",
+                  "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "minimum_authority": "deterministic",
+                  "config": {
+                    "metric": "count",
+                    "target": 5
+                  }
+                }
+              ]
+            }
+          },
+          "verification": [
+            {
+              "checker_run_id": "fixture-implicit-r32-s3-1-check",
+              "requirement_id": "inventory",
+              "checker_id": "platform.metric_threshold",
+              "checker_version": "1",
+              "definition_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "result_sha256": "94fa0df59e4fb384f279d6fdbcbbb2c841af4d2e6a9dce64ee12fe9490d6b246",
+              "authority": "deterministic",
+              "verdict": "pass",
+              "coverage": 1,
+              "unknown_requirements": [],
+              "evidence_refs": [
+                "fixture-inventory-receipt"
+              ],
+              "created_at": "2026-09-05T10:00:59Z"
+            }
+          ]
+        },
+        "measurement": {
+          "source": "platform-mission-harness",
+          "accountingComplete": true,
+          "missionSha256": "3477453877685821bf31016b6be752001a52ed6017d66e8862f793d2074534f9",
+          "taskSha256": "8dad4f9df5e73173fcc01fe0c52827ad2180b5d51b2ffc03ad6a68603a63cc35",
+          "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1",
+          "context": {
+            "toolCatalogSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "memorySnapshotSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "environmentSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "executionPolicySha256": "4444444444444444444444444444444444444444444444444444444444444444",
+            "runSeed": 42
+          },
+          "costMicrousd": 100,
+          "wallTimeMs": 60000,
+          "unauthorizedEffects": 0,
+          "duplicateEffects": 0,
+          "budgetExceeded": false,
+          "digest": "d24b8867d00cbd0d9a0d6e91e14ee0c6ae726cb2c46c7683792d4077c89a931d",
+          "treatmentSha256": "f351a378287ef343cddd19402ac6971f42dc10113b8f2c7373431de5039561d1",
+          "compiledInputSha256": "43294bfb9b37c105f2fa1ebbae81df6d3f737c403d99535ac711b4ec3437dfbd",
+          "recoveryEvidence": {
+            "version": 1,
+            "coverage": "complete",
+            "unexpectedCorrections": 0,
+            "requiredRecoveries": 0,
+            "evidenceRefs": [
+              "fixture://fixture-implicit-r32-s3-1/complete-host-trace"
+            ]
+          },
+          "protocolSha256": "345e77470c189924aa811db48c1115617367d3dcde21e50cb67b2f4a6a14202b"
+        }
+      }
+    }
+  ],
+  "protocol": {
+    "id": "fixture-v2",
+    "registeredAt": "2026-09-05T09:00:00Z",
+    "registrationRef": "fixture://preregistration-before-execution",
+    "baselineTreatmentSha256": "e56265937ab13b32f3e5bbdc4d15d0713aa2a4997df59e48aa34616336aa73d6",
+    "candidateTreatmentSha256": "f351a378287ef343cddd19402ac6971f42dc10113b8f2c7373431de5039561d1",
+    "changedDimensions": [
+      "weights"
+    ],
+    "primaryMetric": "verified-first-attempt-completion",
+    "confidenceMethod": "paired-bonferroni-clopper-pearson",
+    "confidenceLevel": 0.95,
+    "minimumLift": 0,
+    "limits": {
+      "minimumPairs": 200,
+      "maximumCostRatio": 1.1,
+      "maximumLatencyRatio": 1.2
+    },
+    "tasks": [
+      {
+        "id": "case-0",
+        "family": "execution",
+        "taskSha256": "348f395f0f556ba583679822761b1a7b90ceff39877574ce58d76c478c89318b",
+        "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1"
+      },
+      {
+        "id": "case-1",
+        "family": "retrieval",
+        "taskSha256": "8dad4f9df5e73173fcc01fe0c52827ad2180b5d51b2ffc03ad6a68603a63cc35",
+        "conditionsSha256": "56983958c8d913444e6830a5baae3877594525fec5dd925bd3d08c3fce09c5d1"
+      }
+    ],
+    "schema": "amos.mission-comparison-protocol",
+    "version": 1,
+    "taskSetSha256": "5144a82768c54ab0b2636479358b3a93d71792342e5fbec3cec343abb693ec33",
+    "digest": "345e77470c189924aa811db48c1115617367d3dcde21e50cb67b2f4a6a14202b"
+  }
+}

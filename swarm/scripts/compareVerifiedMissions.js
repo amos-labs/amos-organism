@@ -10,4 +10,4 @@ const report = compareVerifiedMissions(JSON.parse(bytes));
 const serialized = JSON.stringify(report, null, 2) + "\n";
 try { await writeFile(output, serialized, { flag: "wx", mode: 0o600 }); }
 catch (error) { if (error.code !== "EEXIST" || await readFile(output, "utf8") !== serialized) throw error; }
-console.log(JSON.stringify({ passed: report.passed, metrics: report.metrics, checks: report.checks, digest: report.digest, automaticallyPromoted: false }));
+console.log(JSON.stringify({ schema: report.schema, version: report.version, passed: report.passed, metrics: report.metrics, checks: report.checks, digest: report.digest, automaticallyPromoted: false }));
