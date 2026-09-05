@@ -172,6 +172,38 @@ outcomes from each executed arm. Gateway-internal correction stages must be
 included when assessing recovery coverage, rather than hidden behind a valid
 final response.
 
+### Gateway-turn recovery accounting
+
+New traces carry `recoveryEvidence`; the returned OpenAI-compatible response
+exposes the bound summary at `amos_swarm.gatewayRecoveryEvidence`. Its schema is
+`amos.swarm-recovery-evidence` v1, with `scope: "gateway-turn"`, `coverage`,
+`unexpectedCorrections`, `requiredRecoveries`, and `corrections`. The returned
+summary additionally includes `traceDigest`, `requestDigest`, Mission identity
+and planner attempt when present, `evidenceRefs`, and its own canonical `digest`.
+It contains no prompt or answer text.
+
+Ordinary candidate, critic and integrator calls are planned work. Explicit
+`critic:recovery`, `integrator:recovery`, and `mission:contract-recovery` calls
+count as unexpected corrections, each bound to input/request/output digests.
+No current gateway repair path is a contract-declared required recovery, so its
+required count is zero only when its own coverage is complete.
+
+Consumers can replay `gatewayRecoveryEvidenceFromTrace(trace)` from
+`swarm/src/gatewayRecoveryEvidence.js` and compare its digest with the returned
+summary. It verifies the trace digest and recomputes the counts from stage
+records. The host still authenticates the trace. Old traces without explicit
+recovery accounting remain unknown; unsupported or missing stage provenance
+makes coverage partial, never an inferred zero.
+
+Platform must preserve this metadata with the originating attempt and combine
+it with its own host transitions across all attempts. Do not pass gateway-only
+or Platform-only coverage directly to comparison-v2 as whole-Mission coverage.
+Failed or missing gateway turns do not have a complete returned summary; that
+absence remains an accounting gap until authoritative evidence fills it.
+Deduplicate by trace identity and observed event origin, not by adding overlapping
+aggregate counters. Shadow-only calls are outside primary-turn accounting and
+cannot receive the primary Mission's verdict.
+
 The adapter shadow gate now reconstructs its decision from
 [paired verified mission comparisons](VERIFIED_MISSION_COMPARISON.md).
 Unexecuted alternate answers from the shadow gateway remain diagnostics; they

@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { digestResearchValue } from "./experimentProtocol.js";
+import { gatewayRecoveryEvidenceFromTrace, gatewayRecoverySummary } from "./gatewayRecoveryEvidence.js";
 import {
   detectMissionWorkerRequest,
   missionPlanRecoveryPayload,
@@ -223,6 +224,7 @@ export class SwarmTurnOrchestrator {
         inputEvidence: finalCall.evidence,
         mission,
         stages: observations,
+        recoveryEvidence: gatewayRecoverySummary(observations),
         usage: aggregateUsage(observations)
       };
       const trace = { ...traceBase, digest: digestResearchValue(traceBase) };
@@ -570,6 +572,7 @@ function mergedCompletion(response, trace) {
     schema: trace.schema,
     version: trace.version,
     traceDigest: trace.digest,
+    gatewayRecoveryEvidence: gatewayRecoveryEvidenceFromTrace(trace),
     mode: trace.contextBudget.mode,
     stageCount: trace.stages.length,
     wallMilliseconds: trace.wallMilliseconds
