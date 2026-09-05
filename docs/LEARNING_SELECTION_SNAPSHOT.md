@@ -65,10 +65,15 @@ one verified outcome, sets `sourceChainDigest` to the chain head, and writes the
 snapshot plus a `.digest` sidecar atomically (temp file, then rename). A chain
 with no admitted genes publishes the empty snapshot; today's production chain
 holds only Platform episodes, so that is what production will see until genes
-are admitted. Scheduling it on the runner (hourly, copied to
-`s3://amos-qwen-research-plane-…/sleep/learning-selection-snapshot.json`) is
-the next infrastructure step; the Platform reads the path it is configured
-with.
+are admitted. On the research runner, `swarm/infra/aws/qwen-research-plane/scripts/install-snapshot-publisher.sh <sleep-image> <runtime-pin>...`
+installs `amos-snapshot-publish.timer` (hourly, `Persistent=true`), which runs
+the publisher in the sleep image over the intake's event chain and copies the
+snapshot and its `.digest` to
+`s3://$AMOS_RESEARCH_ARTIFACT_BUCKET/sleep/learning-selection-snapshot.json[.digest]`.
+`update-runner-organism-image.sh <image@sha256>` swaps the sleep/intake image
+in every organism unit after an isolated import preflight and fails closed if
+the intake does not answer `/healthz`. The Platform reads whichever path or
+object it is configured with.
 
 ## Not yet
 
