@@ -1,5 +1,7 @@
 import { digestResearchValue } from "./experimentProtocol.js";
 import { assessPlatformMissionVerification } from "./platformMissionEpisode.js";
+import { validateMissionTreatment, validateMissionComparisonProtocol, validateTreatmentContrast } from "./missionComparisonProtocol.js";
+import { pairedCompletionInterval } from "./pairedCompletionInterval.js";
 
 const SCHEMA = "amos.verified-mission-comparison";
 const DEFAULT_LIMITS = Object.freeze({ minimumPairs: 200, maximumCostRatio: 1.1, maximumLatencyRatio: 1.2 });
@@ -9,6 +11,12 @@ const DEFAULT_LIMITS = Object.freeze({ minimumPairs: 200, maximumCostRatio: 1.1,
  * deliberately insufficient: both arms need independently executed Missions.
  */
 export function compareVerifiedMissions(input) {
+  if (input?.version === 2) return compareVerifiedMissionsV2(input);
+  if (input?.version !== undefined && input.version !== 1) throw Error("Unsupported Mission comparison version");
+  return compareVerifiedMissionsV1(input);
+}
+
+function compareVerifiedMissionsV1(input) {
   const source = structuredClone(input);
   object(source, "comparison input");
   const baseline = model(source.baseline, false);
@@ -73,7 +81,7 @@ export function compareVerifiedMissions(input) {
 
 export function validateVerifiedMissionComparison(input) {
   const report = structuredClone(input);
-  if (report?.schema !== SCHEMA || report?.version !== 1) throw Error("Expected a verified mission comparison");
+  if (report?.schema !== SCHEMA || ![1, 2].includes(report?.version)) throw Error("Expected a verified mission comparison");
   const { digest, ...body } = report;
   if (digestResearchValue(body) !== digest) throw Error("Mission comparison digest mismatch");
   const rebuilt = compareVerifiedMissions(report);
@@ -81,11 +89,17 @@ export function validateVerifiedMissionComparison(input) {
   return rebuilt;
 }
 
-export function missionComparisonBindings(mission, context) {
+export function missionComparisonBindings(mission, context, version = 1) {
   text(mission.objective, "mission objective", 20000); object(mission.completion_condition, "completion condition");
   object(context, "execution context");
   for (const field of ["toolCatalogSha256", "memorySnapshotSha256", "environmentSha256", "executionPolicySha256"]) sha(context[field], field);
-  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(context.runtimeRevision || "")) throw Error("Pin the mission runtime revision");
+  if (version === 1) {
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(context.runtimeRevision || "")) throw Error("Pin the mission runtime revision");
+  } else if (version === 2) {
+    const fields = ["toolCatalogSha256", "memorySnapshotSha256", "environmentSha256", "executionPolicySha256", "runSeed"];
+    if (Object.keys(context).length !== fields.length || fields.some(f => !Object.hasOwn(context, f))) throw Error("V2 context binds business memory and run seed; runtime belongs to treatment");
+    integer(context.runSeed, "runSeed", 0, 2 ** 32 - 1);
+  } else throw Error("Unsupported Mission binding version");
   const c = mission.contract;
   if (!Array.isArray(c?.allowed_operations)) throw Error("Missing allowed operations");
   object(c.budgets, "contract budgets"); object(c.decision_policy, "decision policy"); object(c.checkpoint_policy, "checkpoint policy");
@@ -97,7 +111,7 @@ export function missionComparisonBindings(mission, context) {
   };
 }
 
-function execution(run, expectedModel, pair, missionIds) {
+function execution(run, expectedModel, pair, missionIds, protocol = null) {
   object(run, "mission run"); object(run.mission, "mission export"); object(run.measurement, "execution measurement");
   const m = run.mission, evidence = run.measurement;
   if (!['completed', 'failed', 'cancelled'].includes(m.status)) throw Error("Comparison requires terminal missions");
@@ -108,14 +122,20 @@ function execution(run, expectedModel, pair, missionIds) {
   const { digest, ...measurement } = evidence;
   if (digestResearchValue(measurement) !== digest) throw Error("Execution measurement digest mismatch");
   if (evidence.source !== "platform-mission-harness" || evidence.accountingComplete !== true) throw Error("Complete host execution accounting is required");
-  const bindings = missionComparisonBindings(m, evidence.context);
+  const bindings = missionComparisonBindings(m, evidence.context, protocol ? 2 : 1);
   if (bindings.taskSha256 !== pair.taskSha256 || bindings.conditionsSha256 !== pair.conditionsSha256) throw Error("Exported task or execution conditions changed");
-  if (evidence.missionSha256 !== digestResearchValue(m) || evidence.modelId !== expectedModel.modelId || evidence.artifactSha256 !== expectedModel.artifactSha256 || evidence.taskSha256 !== pair.taskSha256 || evidence.conditionsSha256 !== pair.conditionsSha256) throw Error("Measurement does not bind the expected mission, model and conditions");
-  for (const field of ["costMicrousd", "recoveries", "unauthorizedEffects", "duplicateEffects"]) integer(evidence[field], field, 0, Number.MAX_SAFE_INTEGER);
+  if (evidence.missionSha256 !== digestResearchValue(m) || evidence.taskSha256 !== pair.taskSha256 || evidence.conditionsSha256 !== pair.conditionsSha256) throw Error("Measurement does not bind the expected mission and conditions");
+  if (protocol) {
+    if (evidence.treatmentSha256 !== expectedModel.digest || evidence.protocolSha256 !== protocol.digest) throw Error("Measurement does not bind the expected treatment and protocol");
+    sha(evidence.compiledInputSha256, "compiledInputSha256");
+    if (Object.hasOwn(evidence, "recoveries")) throw Error("V2 requires typed recoveryEvidence, not a legacy recoveries counter");
+  } else if (evidence.modelId !== expectedModel.modelId || evidence.artifactSha256 !== expectedModel.artifactSha256) throw Error("Measurement does not bind the expected model");
+  for (const field of ["costMicrousd", "unauthorizedEffects", "duplicateEffects", ...(protocol ? [] : ["recoveries"])]) integer(evidence[field], field, 0, Number.MAX_SAFE_INTEGER);
   integer(evidence.wallTimeMs, "wallTimeMs", 1, Number.MAX_SAFE_INTEGER);
   if (typeof evidence.budgetExceeded !== "boolean") throw Error("Budget outcome must be explicit");
   const start = Date.parse(m.started_at), end = Date.parse(m.finished_at);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || Math.abs(end - start - evidence.wallTimeMs) > 1) throw Error("Wall time must match the exported mission timestamps");
+  if (protocol && Date.parse(protocol.registeredAt) >= start) throw Error("Protocol must be registered before either Mission starts");
   const requirements = m.contract?.verification_policy?.requirements;
   if (!Array.isArray(requirements) || requirements.length === 0 || requirements.length > 1000) throw Error("Missing checker requirements");
   const ids = new Set();
@@ -138,10 +158,124 @@ function execution(run, expectedModel, pair, missionIds) {
   const budget = m.contract.budgets;
   integer(budget.used_tool_calls, "used_tool_calls", 0, Number.MAX_SAFE_INTEGER);
   const budgetExceeded = evidence.budgetExceeded || evidence.costMicrousd > budget.max_cost_microusd || evidence.wallTimeMs > budget.max_wall_time_seconds * 1000 || budget.used_tool_calls > budget.max_tool_calls;
-  return { passed: m.status === "completed" && assessment.status === "complete", incompleteChecks: assessment.status === "invalid_policy" || assessment.pending.length > 0 || m.status === "cancelled" || (m.status === "failed" && assessment.status === "complete"),
+  const result = { passed: m.status === "completed" && assessment.status === "complete", incompleteChecks: assessment.status === "invalid_policy" || assessment.pending.length > 0 || m.status === "cancelled" || (m.status === "failed" && assessment.status === "complete"),
     costMicrousd: evidence.costMicrousd, wallTimeMs: evidence.wallTimeMs, recoveries: evidence.recoveries,
     unauthorizedEffects: evidence.unauthorizedEffects, duplicateEffects: evidence.duplicateEffects, budgetExceeded };
+  if (protocol) {
+    const recovery = recoveryEvidence(evidence.recoveryEvidence);
+    const complete = recovery.coverage === "complete";
+    result.recoveries = complete ? sum([recovery.unexpectedCorrections, recovery.requiredRecoveries]) : null;
+    result.recoveryCoverage = recovery.coverage;
+    result.unexpectedCorrections = complete ? recovery.unexpectedCorrections : null;
+    result.requiredRecoveries = complete ? recovery.requiredRecoveries : null;
+    result.firstAttemptPass = complete && !result.incompleteChecks ? result.passed && recovery.unexpectedCorrections === 0 : null;
+  }
+  return result;
 }
+
+function compareVerifiedMissionsV2(input) {
+  const source = structuredClone(input);
+  if (source.schema !== undefined && source.schema !== SCHEMA) throw Error("Expected a verified mission comparison");
+  const baseline = validateMissionTreatment(source.baseline), candidate = validateMissionTreatment(source.candidate);
+  const protocol = validateMissionComparisonProtocol(source.protocol), limits = protocol.limits;
+  validateTreatmentContrast(baseline, candidate, protocol);
+  if (source.limits !== undefined && digestResearchValue(source.limits) !== digestResearchValue(limits)) throw Error("Limits must match the preregistered protocol");
+  if (!Array.isArray(source.pairs) || source.pairs.length < 1 || source.pairs.length > 10000) throw Error("Expected 1..10000 mission pairs");
+  const registered = new Map(protocol.tasks.map(t => [t.id, t]));
+  const ids = new Set(), tasks = new Set(), missions = new Set();
+  const rows = source.pairs.map(pair => {
+    object(pair, "mission pair");
+    const { id, family, taskSha256, conditionsSha256 } = pair;
+    const task = registered.get(id);
+    if (!task || digestResearchValue(task) !== digestResearchValue({ id, family, taskSha256, conditionsSha256 })) throw Error("Mission pair does not match a preregistered task and conditions");
+    if (ids.has(id) || tasks.has(taskSha256)) throw Error("Repeated tasks cannot inflate independent mission counts");
+    ids.add(id); tasks.add(taskSha256);
+    const base = execution(pair.baseline, baseline, pair, missions, protocol);
+    const learned = execution(pair.candidate, candidate, pair, missions, protocol);
+    if (digestResearchValue(pair.baseline.mission.contract.verification_policy) !== digestResearchValue(pair.candidate.mission.contract.verification_policy)) throw Error("Paired missions need identical checker policies");
+    if (protocol.changedDimensions.length === 1 && protocol.changedDimensions[0] === "weights" && pair.baseline.measurement.compiledInputSha256 !== pair.candidate.measurement.compiledInputSha256) throw Error("Weights-only comparisons require identical compiled inputs");
+    return { id, family, baseline: base, candidate: learned };
+  });
+  const totals = arm => ({
+    verifiedPasses: rows.filter(r => r[arm].passed).length,
+    incompleteChecks: rows.filter(r => r[arm].incompleteChecks).length,
+    firstAttemptPasses: rows.filter(r => r[arm].firstAttemptPass === true).length,
+    firstAttemptUnknown: rows.filter(r => r[arm].firstAttemptPass === null).length,
+    costMicrousd: sum(rows.map(r => r[arm].costMicrousd)),
+    wallTimeMs: sum(rows.map(r => r[arm].wallTimeMs)),
+    p95WallTimeMs: percentile(rows.map(r => r[arm].wallTimeMs), 0.95),
+    recoveries: knownSum(rows.map(r => r[arm].recoveries)),
+    unexpectedCorrections: knownSum(rows.map(r => r[arm].unexpectedCorrections)),
+    requiredRecoveries: knownSum(rows.map(r => r[arm].requiredRecoveries)),
+    unauthorizedEffects: sum(rows.map(r => r[arm].unauthorizedEffects)),
+    duplicateEffects: sum(rows.map(r => r[arm].duplicateEffects)),
+    budgetViolations: rows.filter(r => r[arm].budgetExceeded).length
+  });
+  const observed = rows.filter(r => r.baseline.firstAttemptPass !== null && r.candidate.firstAttemptPass !== null);
+  const wins = observed.filter(r => r.candidate.firstAttemptPass && !r.baseline.firstAttemptPass).length;
+  const losses = observed.filter(r => !r.candidate.firstAttemptPass && r.baseline.firstAttemptPass).length;
+  const fullPrimaryCoverage = observed.length === rows.length;
+  const primary = {
+    metric: protocol.primaryMetric, pairs: rows.length, observedPairs: observed.length, unknownPairs: rows.length - observed.length,
+    pairedWins: wins, pairedLosses: losses, ties: observed.length - wins - losses,
+    lift: fullPrimaryCoverage ? (wins - losses) / rows.length : null,
+    confidenceInterval: fullPrimaryCoverage ? pairedCompletionInterval(wins, losses, rows.length) : null
+  };
+  const metrics = {
+    pairs: rows.length, registeredPairs: protocol.tasks.length, baseline: totals("baseline"), candidate: totals("candidate"), primary,
+    pairedWins: rows.filter(r => r.candidate.passed && !r.baseline.passed).length,
+    pairedLosses: rows.filter(r => !r.candidate.passed && r.baseline.passed).length,
+    perFamily: Object.fromEntries([...new Set(protocol.tasks.map(t => t.family))].sort().map(family => {
+      const group = rows.filter(r => r.family === family);
+      return [family, { pairs: group.length, baselinePasses: group.filter(r => r.baseline.passed).length, candidatePasses: group.filter(r => r.candidate.passed).length,
+        baselineFirstAttemptPasses: group.filter(r => r.baseline.firstAttemptPass === true).length,
+        candidateFirstAttemptPasses: group.filter(r => r.candidate.firstAttemptPass === true).length }];
+    }))
+  };
+  const b = metrics.baseline, c = metrics.candidate;
+  const completeRecovery = rows.every(r => r.baseline.recoveryCoverage === "complete" && r.candidate.recoveryCoverage === "complete");
+  const checks = {
+    enoughIndependentMissions: rows.length >= limits.minimumPairs,
+    completePreregisteredBatch: rows.length === protocol.tasks.length,
+    verifiedCompletionImproves: metrics.pairedWins > metrics.pairedLosses,
+    noFamilyRegression: Object.values(metrics.perFamily).every(f => f.candidatePasses >= f.baselinePasses),
+    completeCheckerCoverage: b.incompleteChecks === 0 && c.incompleteChecks === 0,
+    completeRecoveryCoverage: completeRecovery,
+    primaryImprovesWithConfidence: primary.confidenceInterval !== null && primary.confidenceInterval.lower > protocol.minimumLift,
+    noFirstAttemptRegression: fullPrimaryCoverage && c.firstAttemptPasses >= b.firstAttemptPasses,
+    noFamilyFirstAttemptRegression: fullPrimaryCoverage && Object.values(metrics.perFamily).every(f => f.candidateFirstAttemptPasses >= f.baselineFirstAttemptPasses),
+    noAdditionalRecovery: completeRecovery && c.recoveries <= b.recoveries,
+    noAdditionalUnexpectedCorrection: completeRecovery && c.unexpectedCorrections <= b.unexpectedCorrections,
+    withinCostLimit: c.costMicrousd <= b.costMicrousd * limits.maximumCostRatio,
+    withinLatencyLimit: c.wallTimeMs <= b.wallTimeMs * limits.maximumLatencyRatio,
+    withinTailLatencyLimit: c.p95WallTimeMs <= b.p95WallTimeMs * limits.maximumLatencyRatio,
+    noUnauthorizedOrDuplicateEffects: c.unauthorizedEffects === 0 && c.duplicateEffects === 0,
+    noBudgetViolations: c.budgetViolations === 0
+  };
+  const report = { schema: SCHEMA, version: 2, baseline, candidate, protocol, limits, pairs: source.pairs, metrics, checks,
+    passed: Object.values(checks).every(Boolean),
+    interpretation: { executionEvidenceExternallyProvided: true, cryptographicAttestation: false, automaticPromotion: false,
+      unexecutedShadowAnswersAreEvidence: false, registrationAndSealHistoryRequireHostVerification: true,
+      unknownRecoveryIsZero: false, ledgerAdmission: "requires-reviewed-v2-integration" }
+  };
+  return { ...report, digest: digestResearchValue(report) };
+}
+
+function recoveryEvidence(input) {
+  if (input === undefined || input === null) return { version: 1, coverage: "unknown", unexpectedCorrections: null, requiredRecoveries: null, evidenceRefs: [] };
+  object(input, "recoveryEvidence");
+  const fields = ["version", "coverage", "unexpectedCorrections", "requiredRecoveries", "evidenceRefs"];
+  if (Object.keys(input).length !== fields.length || fields.some(f => !Object.hasOwn(input, f)) || input.version !== 1 || !["complete", "partial", "unknown"].includes(input.coverage)) throw Error("Invalid recovery evidence schema or coverage");
+  for (const field of ["unexpectedCorrections", "requiredRecoveries"]) {
+    if (input.coverage === "unknown" && input[field] !== null) throw Error("Unknown recovery counts must be null");
+    if (input.coverage === "complete" || input[field] !== null) integer(input[field], field, 0, Number.MAX_SAFE_INTEGER);
+  }
+  if (!Array.isArray(input.evidenceRefs) || input.evidenceRefs.length > 10000 || (input.coverage === "complete" && input.evidenceRefs.length === 0)) throw Error("Complete recovery coverage requires host evidence references");
+  for (const ref of input.evidenceRefs) text(ref, "recovery evidence reference", 2000);
+  return input;
+}
+
+function knownSum(values) { return values.some(v => v === null) ? null : sum(values); }
 function model(input, adapter) {
   object(input, "model"); text(input.modelId, "modelId"); sha(input.artifactSha256, "model artifact");
   if (adapter && !/^s3:\/\/[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]\/\S+$/.test(input.adapterUri || "")) throw Error("Candidate adapter URI is required");

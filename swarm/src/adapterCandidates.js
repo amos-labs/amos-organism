@@ -104,6 +104,7 @@ export function recordAdapterGate(candidateInput, gateInput) {
 /** Build shadow evidence from paired executions, never unexecuted shadow prose. */
 export function shadowGateFromMissionComparison(input) {
   const comparison = validateVerifiedMissionComparison(input);
+  if (comparison.version !== 1) throw new Error("Comparison v2 ledger admission requires a separately reviewed integration; v1 gate semantics are unchanged");
   if (!comparison.checks.enoughIndependentMissions || !comparison.checks.completeCheckerCoverage) {
     throw new Error("Mission comparison is not ready: collect enough independently checked missions before recording a gate");
   }
