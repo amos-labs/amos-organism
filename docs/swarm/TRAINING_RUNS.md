@@ -190,6 +190,24 @@ scenarios. The wider and sealed holdouts decide whether it is real. Note the
 recovery contract now names the allowed repair verbs, so recovery is easier for
 every model than in the earlier runs.
 
+**Wider holdout, fresh seed, parser on (2026-09-05).** 96 implicit-rulebook
+scenarios the adapters and the earlier reports never saw:
+
+| model | pass | first-attempt | paired W / L vs base |
+|---|---|---|---|
+| base bf16 | 86/96 | 63/96 | – |
+| implicit adapter, seed 1 | 90/96 | 84/96 | 7 / 3 |
+| implicit adapter, seed 2 | 92/96 | 87/96 | 7 / 1 |
+| implicit adapter, seed 3 | 93/96 | 89/96 | 8 / 1 |
+
+First-attempt pass rises 22 to 27 points for every seed, final pass 4 to 7
+points, and each seed wins far more paired scenarios than it loses. On the
+explicit holdout with the parser on, all four models score 47 or 48 of 48 with
+no paired wins or losses, so the adapters cost nothing on rule-in-the-prompt
+work. This is the result to quote: consistent across three seeds, on a fresh
+holdout, with the base handicap removed. The sealed set is graded once, below,
+and is not used for selection.
+
 Original caveat: the first grading server ran without Qwen's reasoning parser, so thinking
 text landed in answers for every model. Absolute numbers understate all five
 models equally; the pairing is fair. The serve script now enables the parser.
