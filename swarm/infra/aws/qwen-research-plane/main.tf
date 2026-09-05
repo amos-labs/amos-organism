@@ -390,6 +390,15 @@ resource "aws_iam_role_policy" "runner" {
         Resource = var.intake_bearer_secret_arn != "" ? [var.intake_bearer_secret_arn] : ["arn:aws:secretsmanager:${var.aws_region}:*:secret:amos-organism/platform-intake-bearer-*"]
       },
       {
+        Sid    = "BuildAndPushGatewayImages"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:DescribeImages"
+        ]
+        Resource = var.gateway_repository_arn != "" ? [var.gateway_repository_arn] : ["arn:aws:ecr:${var.aws_region}:*:repository/amos-qwen-research/swarm-mission-gateway"]
+      },
+      {
         Sid    = "BuildAndPushTrainerImages"
         Effect = "Allow"
         Action = [

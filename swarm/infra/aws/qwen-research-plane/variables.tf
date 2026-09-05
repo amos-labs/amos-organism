@@ -147,3 +147,9 @@ variable "intake_bearer_secret_arn" {
   type        = string
   default     = ""
 }
+
+variable "gateway_repository_arn" {
+  description = "ECR repository ARN of the swarm Mission gateway image, which the runner host builds from merged main. Empty falls back to the repository's conventional name."
+  type        = string
+  default     = ""
+}
