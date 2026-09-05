@@ -41,6 +41,7 @@
     "research:swarm:export-trace-bundle": "node swarm/scripts/exportOrganismTraceBundle.js",
     "research:swarm:import-trace-bundle": "node scripts/importTraceBundle.ts",
     "organism:serve-platform-intake": "node scripts/servePlatformEpisodeIntake.ts",
+    "organism:generate-episode-fixture": "node scripts/generatePlatformEpisodeDeliveryFixture.ts",
     "research:swarm:qualify-evolution": "python3 swarm/scripts/qualifySwarmCandidateEvolution.py",
     "research:swarm:hrr-v2": "node swarm/scripts/benchmarkHolographicWorldV2.js",
     "research:swarm:hrr-dual": "node swarm/scripts/benchmarkDualChannelHolographicWorld.js",

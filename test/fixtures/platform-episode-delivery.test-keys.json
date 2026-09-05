@@ -1,0 +1,5 @@
+{
+  "purpose": "FIXTURE-ONLY P-256 keys for test/fixtures/platform-episode-delivery.v1.json; they sign nothing outside tests",
+  "signer": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkksT7PoGc2crvF9S\nLEc8wDpeUmRD1cwLQZ7ic9KERZmhRANCAAStLSn4jYQ0CdFz9Eq4hS3u2qzEhMAF\n9AMVgd6aeCWDJAYhN9mR/Uo5/JjhDYthzl5WDUxVwC9KniO0ETdT1Aa9\n-----END PRIVATE KEY-----\n",
+  "impostor": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgNwEJwCptQEm0JMXi\nncDh72YmgULCkq3W8uPjVrLFyuWhRANCAASGyaKLxL5AQgGfwUnis0O4Cox2aj2a\nHXezA+AxY00qZbtYVmUcMFpZi7BUI1xuvy0lTumZWQCGV/BetWXBkfvZ\n-----END PRIVATE KEY-----\n"
+}
