@@ -249,3 +249,9 @@ variable "swarm_gateway_shadow_model" {
   type        = string
   default     = ""
 }
+
+variable "swarm_gateway_shadow_text_tenants" {
+  description = "Tenant ids whose shadow pairs may keep full answer text (tenants with an organism learning consent row). Every other tenant's pair is recorded as digests, lengths and agreement only."
+  type        = list(string)
+  default     = []
+}

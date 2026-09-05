@@ -520,6 +520,7 @@ resource "aws_ssm_document" "swarm_gateway" {
           swarm_gateway_image_uri       = var.swarm_gateway_image_uri
           swarm_gateway_port            = var.swarm_gateway_port
           swarm_gateway_shadow_model    = var.swarm_gateway_shadow_model
+          swarm_gateway_shadow_text_tenants = join(",", var.swarm_gateway_shadow_text_tenants)
         })]
       }
     }]

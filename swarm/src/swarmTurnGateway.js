@@ -52,7 +52,8 @@ export class SwarmTurnOrchestrator {
     onTrace = null,
     shadowModel = null,
     onShadow = null,
-    shadowTimeoutMs = 120_000
+    shadowTimeoutMs = 120_000,
+    shadowTextTenants = []
   }) {
     this.backendBaseUrl = normalizedBaseUrl(backendBaseUrl);
     this.backendModel = requiredText(backendModel, "backendModel", 500);
@@ -94,6 +95,12 @@ export class SwarmTurnOrchestrator {
     if (onShadow !== null && typeof onShadow !== "function") throw new Error("onShadow must be a function");
     this.onShadow = onShadow;
     this.shadowTimeoutMs = boundedInteger(shadowTimeoutMs, 1_000, 3_600_000, "shadowTimeoutMs");
+    // Shadow records keep the full answer text only for tenants that have
+    // consented to organism learning (the Platform's organism_learning_policies).
+    // Every other tenant's pair is recorded as digests, lengths and agreement,
+    // so Mission content from non-consenting tenants never lands in a research log.
+    if (!Array.isArray(shadowTextTenants)) throw new Error("shadowTextTenants must be an array of tenant ids");
+    this.shadowTextTenants = new Set(shadowTextTenants.map((tenant) => requiredText(tenant, "shadowTextTenants[]", 160)));
     this.pendingShadows = new Set();
   }
 
@@ -119,6 +126,14 @@ export class SwarmTurnOrchestrator {
       } finally {
         clearTimeout(timer);
       }
+      const tenantId = mission?.tenantId ?? null;
+      const textCaptured = tenantId !== null && this.shadowTextTenants.has(tenantId);
+      const answer = (response) => {
+        const text = messageText(response.choices[0].message);
+        return { text: textCaptured ? text : null, textDigest: digestResearchValue(text), textLength: text.length };
+      };
+      const primaryAnswer = answer(primary);
+      const shadowAnswer = shadowResponse ? answer(shadowResponse) : null;
       const recordBase = {
         schema: SWARM_TURN_SHADOW_SCHEMA,
         version: SWARM_TURN_GATEWAY_VERSION,
@@ -127,11 +142,15 @@ export class SwarmTurnOrchestrator {
         wallMilliseconds: Math.max(0, Math.round(this.monotonicNow() - started)),
         stage,
         requestDigest: digestResearchValue(redactedRequest(request)),
-        mission: mission ? { planDecision: mission.planDecision ?? null, contractSatisfied: mission.contractSatisfied ?? null } : null,
-        primary: { model: this.backendModel, text: messageText(primary.choices[0].message), usage: normalizedUsage(primary.usage) },
-        shadow: shadowResponse
-          ? { model: this.shadowModel, text: messageText(shadowResponse.choices[0].message), usage: normalizedUsage(shadowResponse.usage), error: null }
-          : { model: this.shadowModel, text: null, usage: null, error },
+        mission: mission
+          ? { tenantId, missionId: mission.missionId ?? null, contractId: mission.contractId ?? null, plannerAttempt: mission.plannerAttempt ?? null, planDecision: mission.planDecision ?? null, contractSatisfied: mission.contractSatisfied ?? null }
+          : null,
+        textCaptured,
+        textPolicy: textCaptured ? "consenting-tenant" : "digest-only",
+        primary: { model: this.backendModel, ...primaryAnswer, usage: normalizedUsage(primary.usage) },
+        shadow: shadowAnswer
+          ? { model: this.shadowModel, ...shadowAnswer, usage: normalizedUsage(shadowResponse.usage), error: null }
+          : { model: this.shadowModel, text: null, textDigest: null, textLength: null, usage: null, error },
         agreement: shadowResponse ? messageText(primary.choices[0].message).trim() === messageText(shadowResponse.choices[0].message).trim() : null,
         servedToMission: "primary"
       };

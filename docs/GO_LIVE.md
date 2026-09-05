@@ -34,7 +34,25 @@ the day before exactly. The store converges with S3 hourly through
 `amos-replay-sync.timer`, so harvested episodes and the S3-only curriculum are
 one dataset by the time the weekly consolidation reads it.
 
-## Platform side: done except one grant (2026-09-05)
+## Platform side: waiting on PR #808 (2026-09-05, 16:00 UTC)
+
+Status: #804 merged, but its production deploy (run 33974383950) failed at
+"Update task definition with new image": the comment lines #804 placed
+inside the ECS render action's `environment-variables` block are parsed as
+`NAME=value`. Production is still on task definition 359, so the
+`AMOS__ORGANISM__*` variables are not live and the swarm canary expiry is
+still the lapsed 2026-08-29 value. PR #808 fixes the block, narrows the
+consent row to `strategy_learning`, and records the consenting owner; merging
+it redeploys. Until then no Mission reaches the gateway.
+
+A second defect surfaced on #808's integration tests: #804 and #805 both
+merged a migration numbered 20260907000023, so sqlx fails every fresh
+database (duplicate key on `_sqlx_migrations`, then `VersionMismatch`) and
+would have crash-looped the Platform at startup had the deploy succeeded.
+#808 renumbers the two organism migrations to 20260907000025 and 26; neither
+had been applied anywhere.
+
+### Platform side as originally planned
 
 - Tenant: `amos-labs` (`426b4297-73f3-45df-936a-dee3c263fa1b`), the operator
   tenant, consents to organism learning for its own Missions. Platform PR #804
@@ -49,9 +67,10 @@ one dataset by the time the weekly consolidation reads it.
   gateway and shadow would have seen nothing. With the extension, AMOS Labs
   Missions route through the gateway again and every turn produces a shadow
   pair.
-- Still required, and refused to the agent by the permission gate: the Platform
-  task role must be allowed to sign with the organism key. Add this statement
-  to the key policy of `alias/amos-organism-episode-signing`:
+- Done 2026-09-05 17:40 UTC by the operator (the permission gate refuses key
+  policy edits to the agent): the Platform task role may sign with the organism
+  key. The statement added to the key policy of
+  `alias/amos-organism-episode-signing`, verified present afterwards:
 
 ```
 {"Sid":"AllowPlatformEpisodeSigning","Effect":"Allow",
@@ -59,9 +78,9 @@ one dataset by the time the weekly consolidation reads it.
  "Action":["kms:Sign","kms:GetPublicKey","kms:DescribeKey"],"Resource":"*"}
 ```
 
-Without it, deliveries fail at signing and stay in the outbox (retry-safe, no
-Mission is affected); with it, the first completed AMOS Labs Mission after the
-deploy lands in the organism's event chain on the runner.
+With the grant in place, the first completed AMOS Labs Mission after the #808
+deploy lands in the organism's event chain on the runner. The only remaining
+Platform dependency is that deploy.
 
 ## Terraform to apply (research plane)
 
@@ -102,7 +121,7 @@ Executed 13:00 to 13:25 UTC after the operator allowed the production actions:
 | Adapter staged under the pinned model prefix | `…/adapters/stage1-implicit-r32-s3/` in the inference model bucket |
 | LoRA enabled on the cell in place | vLLM restarted while idle, back in 6 minutes, unit backed up as `amos-qwen.service.pre-lora.bak`; speculative decoding and LoRA coexist on the pinned image |
 | Adapter loaded at runtime | served model ids: `amos-qwen38-27b-fp8`, `stage1-implicit-r32-s3` |
-| Shadow-capable gateway image | built from merged main on the runner, `swarm-mission-gateway@sha256:885b8478…` |
+| Shadow-capable gateway image | built from merged main on the runner, `swarm-mission-gateway@sha256:885b8478…`; replaced 16:45 UTC by `@sha256:866cf4c8…` (tenant-gated shadow text, built from `codex/live-status` e58db75) with `--shadow-text-tenants 426b4297-…`; health reports `shadowTextTenants`, vLLM stayed up |
 | Gateway reinstalled with shadow | install document re-run over SSM; vLLM untouched; health reports `shadowModel: stage1-implicit-r32-s3`; pairs in `/var/lib/amos-swarm-gateway/shadow.jsonl` |
 | Research-plane Terraform | applied: 2 added, 4 changed, 0 destroyed; runner and trainer were stopped and started in place to take the new boot script, all runner units returned |
 | Nightly grading | daemon reinstalled with `amos-qwen38-27b-fp8,stage1-implicit-r32-s3`; tomorrow's orders compare base and adapter on the production cell |
@@ -120,6 +139,27 @@ where the adapter's answer passes the Mission verifier at least as often as the
 base's; no new failure class on explicit traffic; no unacceptable latency
 regression. Then canary with the base as instant fallback and a host-receipted
 promotion through the adapter ledger.
+
+Ledger status (2026-09-05): `swarm/benchmarks/results/adapter-candidate-stage1-implicit-r32-s3.json`
+records seed 3 through `trained` (reload-exact, base bitwise unchanged),
+`frozen-holdout` (96 scenarios, paired 8/1) and `sealed-holdout` (96
+scenarios, paired 12/0). Next gate is `shadow`, evaluated by the Mission
+verifier once Platform episodes arrive; `deployment.shadowAllowed` is true,
+canary and promotion remain host decisions. Recorded with
+`node swarm/scripts/recordAdapterCandidateGates.js`.
+
+## Shadow records and tenant consent
+
+Routing every Mission to the swarm (not only the canary tenant) means the
+gateway sees customer content. The shadow record therefore keeps full answer
+text only for tenants listed in `--shadow-text-tenants` (Terraform
+`swarm_gateway_shadow_text_tenants`), which must mirror the Platform's
+`organism_learning_policies` consent rows. Every other tenant's pair is
+recorded as `textDigest`, `textLength` and `agreement` only, so agreement
+rate is measurable fleet-wide while Mission content from non-consenting
+tenants never lands in a research log. The tenant id comes from the Mission
+worker envelope (`mission.tenant_id`) that the Platform already sends.
+Current allowlist: the AMOS Labs operator tenant.
 
 ## Adapter governance
 

@@ -208,6 +208,21 @@ work. This is the result to quote: consistent across three seeds, on a fresh
 holdout, with the base handicap removed. The sealed set is graded once, below,
 and is not used for selection.
 
+**Sealed holdout, graded once, 2026-09-05.** 96 implicit-rulebook scenarios
+from a seed used for nothing else, before or after:
+
+| model | pass | first-attempt | paired W / L vs base |
+|---|---|---|---|
+| base bf16 | 81/96 | 61/96 | – |
+| implicit adapter, seed 1 | 90/96 | 83/96 | 12 / 3 |
+| implicit adapter, seed 2 | 91/96 | 83/96 | 10 / 0 |
+| implicit adapter, seed 3 | 93/96 | 84/96 | 12 / 0 |
+
+First-attempt pass rises 23 to 24 points for every seed; two seeds never lose a
+paired scenario. On the 96-scenario explicit holdout all four models score 95
+to 96 of 96 with no paired wins or losses. This sealed pass is the evidence the
+adapter ledger records for the sealed-holdout gate; it is not reused.
+
 Original caveat: the first grading server ran without Qwen's reasoning parser, so thinking
 text landed in answers for every model. Absolute numbers understate all five
 models equally; the pairing is fair. The serve script now enables the parser.

@@ -139,9 +139,19 @@ adapters cost nothing on rule-in-the-prompt work. Recovery: the contract now
 names the allowed repair verbs (the mapping stays in the rulebook), which made
 recovery easier for every model than in the earliest runs.
 
-**Sealed holdout (96 implicit scenarios, a seed never used for selection):**
-PENDING at the time of writing; graded once, appended to
-`swarm/benchmarks/results/` when it lands.
+**Sealed holdout (96 implicit scenarios, a seed never used for selection, graded once):**
+
+| model | pass | first-attempt | paired W / L vs base |
+|---|---|---|---|
+| base bf16 | 81/96 | 61/96 | – |
+| implicit adapter, seed 1 | 90/96 | 83/96 | 12 / 3 |
+| implicit adapter, seed 2 | 91/96 | 83/96 | 10 / 0 |
+| implicit adapter, seed 3 | 93/96 | 84/96 | 12 / 0 |
+
+The sealed result reproduces the wider holdout within two points on every
+row. Explicit wide holdout (96): all four models 95–96/96, no paired wins or
+losses. Report files: `curriculum-grading-stage1-adapters-implicit-SEALED-96-2026-09-05.json`,
+`curriculum-grading-stage1-adapters-explicit-holdout-v2-96-2026-09-05.json`.
 
 ### 3.4 First autonomous cycle
 
@@ -198,9 +208,18 @@ the production cell.
   stage-zero proof showed the load works; the shadow log shows whether the
   behaviour holds.
 - Governance: the adapter reached production shadow through hand-run steps
-  (recorded in `docs/GO_LIVE.md`) rather than through the adapter ledger's
-  gates. The ledger exists; the shadow and canary receipts should be recorded
-  in it before any promotion.
+  before the ledger caught up. It has since been recorded through the
+  `trained`, `frozen-holdout` and `sealed-holdout` gates
+  (`swarm/benchmarks/results/adapter-candidate-stage1-implicit-r32-s3.json`,
+  next gate `shadow`); canary and promotion still need host receipts.
+- Tenant data in shadow logs: once the Platform routes all Missions to the
+  swarm, shadow pairs keep full answer text only for consenting tenants
+  (`--shadow-text-tenants`); other tenants' pairs are digests, lengths and
+  agreement only. Live on the cell since 16:45 UTC. A reviewer should confirm
+  the allowlist mirrors `organism_learning_policies`.
+- Platform deploy: #804's deploy failed (comment lines inside the ECS env
+  block); PR #808 carries the fix. Until it merges no Mission reaches the
+  gateway, so the shadow log holds only the install smoke test.
 
 ## 7. Files to inspect
 
