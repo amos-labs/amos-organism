@@ -712,3 +712,55 @@ resource "aws_s3_bucket_policy" "research" {
 
   depends_on = [aws_s3_bucket_public_access_block.research]
 }
+
+# The sleep-cycle consolidation timer drives the disposable trainer from the
+# runner: start it, hand it the contract pointer, run the job over SSM, and
+# watch it stop itself. Without these the weekly timer can plan but never
+# execute (observed 2026-09-06 03:35 UTC: UnauthorizedOperation on StartInstances).
+resource "aws_iam_role_policy" "runner_trainer_control" {
+  count = var.trainer_enabled ? 1 : 0
+  name  = "${local.name}-runner-trainer-control"
+  role  = aws_iam_role.runner.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ControlTrainerInstance"
+        Effect   = "Allow"
+        Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+        Resource = [aws_instance.trainer[0].arn]
+      },
+      {
+        Sid      = "ObserveInstances"
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeInstances", "ec2:DescribeInstanceStatus", "ssm:DescribeInstanceInformation", "ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
+        Resource = "*"
+      },
+      {
+        Sid      = "DriveTrainerJobs"
+        Effect   = "Allow"
+        Action   = ["ssm:SendCommand"]
+        Resource = [aws_instance.trainer[0].arn, "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"]
+      },
+      {
+        Sid      = "WriteTrainingContractPointer"
+        Effect   = "Allow"
+        Action   = ["ssm:PutParameter"]
+        Resource = [aws_ssm_parameter.trainer_contract.arn]
+      },
+      # The trainer's root volume is encrypted with the research key; EC2 creates a
+      # KMS grant on the caller's behalf when starting such an instance. Without
+      # this the start is accepted and the instance immediately stops with
+      # Client.InvalidKMSKey (observed 2026-09-06 03:57 UTC).
+      {
+        Sid      = "StartEncryptedTrainerVolume"
+        Effect   = "Allow"
+        Action   = ["kms:CreateGrant", "kms:DescribeKey", "kms:GenerateDataKeyWithoutPlaintext", "kms:ReEncryptFrom", "kms:ReEncryptTo"]
+        Resource = [data.aws_kms_alias.inference.target_key_arn]
+        Condition = {
+          Bool = { "kms:GrantIsForAWSResource" = "true" }
+        }
+      }
+    ]
+  })
+}
