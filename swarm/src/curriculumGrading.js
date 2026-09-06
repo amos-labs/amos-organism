@@ -18,7 +18,12 @@ export const CURRICULUM_GRADING_REPORT_SCHEMA = "amos.curriculum-grading-report"
 export const CURRICULUM_GRADING_COMPARISON_SCHEMA = "amos.curriculum-grading-comparison";
 export const CURRICULUM_GRADING_VERSION = 1;
 
-export const BALANCED_ARM_ORDER_VERSION = 1;
+export const BALANCED_ARM_ORDER_VERSION = 2;
+// Fixed, non-evaluation warm-up request sent through the real worker before each
+// arm's turn in a block. It is never scored and never shown a scenario.
+export const CURRICULUM_WARMUP_PROMPT = "Reply with the single word ready.";
+export const CURRICULUM_WARMUP_DIGEST = digestResearchValue({ curriculumWarmup: CURRICULUM_WARMUP_PROMPT, version: 1 });
+export const CURRICULUM_WARMUP_MAX_OUTPUT_TOKENS = 16;
 
 export async function runCurriculumGrading({
   worker,
@@ -52,19 +57,23 @@ export async function runCurriculumGrading({
  * The scenario list is cut into blocks of `blockSize`; inside every block the
  * arms run one after another in a rotation of a seeded base order, so each
  * model takes every position (first, second, ...) equally often when the block
- * count is a multiple of the arm count. This removes the fixed-order confound
- * of sequential grading (server warm-up, cache state, thermal drift) from the
- * latency comparison. Before each arm's turn in a block the worker's probe is
- * called once as a discarded warm-up request. Every model still grades every
- * scenario with the same protocol, so the per-model reports keep the schema of
- * `runCurriculumGrading` and stay comparable with `compareCurriculumGrading`.
+ * count is a multiple of the arm count. This balances position effects (server
+ * warm-up, cache state, drift) across arms; it does not remove them. Before each
+ * arm's turn in a block one fixed, bounded, non-evaluation inference request is
+ * sent through the real worker (`warmup.mode === "inference"`); its count, wall
+ * time and tokens are recorded per arm, separately from scored attempts. A
+ * warm-up that cannot be executed aborts the run instead of being reported as
+ * done. `warmup.mode === "none"` declares truthfully that no warm-up ran. Every
+ * model still grades every scenario with the same protocol, so the per-model
+ * reports keep the schema of `runCurriculumGrading` and stay comparable with
+ * `compareCurriculumGrading`.
  */
 export async function runBalancedCurriculumGrading({
   workers,
   scenarios,
   orderSeed,
   blockSize = null,
-  warmupPerBlock = true,
+  warmup = { mode: "inference", maxOutputTokens: CURRICULUM_WARMUP_MAX_OUTPUT_TOKENS },
   maxOutputTokens = 1_200,
   repairAttempts = 1,
   now = () => new Date(),
@@ -83,6 +92,7 @@ export async function runBalancedCurriculumGrading({
   if (!Number.isInteger(size) || size < 1 || size > scenarios.length) {
     throw new Error("blockSize must be an integer from 1 to the scenario count");
   }
+  const warmupPlan = validateWarmup(warmup);
   const blocks = [];
   for (let offset = 0; offset < scenarios.length; offset += size) blocks.push(scenarios.slice(offset, offset + size));
   const baseOrder = seededArmOrder(workers.length, orderSeed);
@@ -90,13 +100,20 @@ export async function runBalancedCurriculumGrading({
   const startedAt = now().toISOString();
   const runsByArm = workers.map(() => new Array(scenarios.length));
   const positions = workers.map(() => new Array(workers.length).fill(0));
+  const warmups = workers.map(() => ({ requests: 0, wallMilliseconds: 0, promptTokens: 0, outputTokens: 0 }));
   let offset = 0;
   for (const [blockIndex, block] of blocks.entries()) {
     for (const [position, arm] of schedule[blockIndex].entries()) {
       if (signal?.aborted) break;
       const worker = workers[arm];
       positions[arm][position] += 1;
-      if (warmupPerBlock && typeof worker.probe === "function") await worker.probe();
+      if (warmupPlan.mode === "inference") {
+        const executed = await executeWarmup({ worker, blockIndex, maxOutputTokens: warmupPlan.maxOutputTokens, signal });
+        warmups[arm].requests += 1;
+        warmups[arm].wallMilliseconds += executed.wallMilliseconds;
+        warmups[arm].promptTokens += executed.promptTokens;
+        warmups[arm].outputTokens += executed.outputTokens;
+      }
       const runs = await gradeScenarios({
         worker,
         scenarios: block,
@@ -129,8 +146,9 @@ export async function runBalancedCurriculumGrading({
       blocks: blocks.length,
       arms: modelIds.length,
       balanced,
-      warmupPerBlock,
-      positions: positions[arm]
+      positions: positions[arm],
+      // Executed warm-up work for this arm, kept apart from scored attempts and counted in the run budget.
+      warmup: { ...warmupPlan, ...warmups[arm] }
     }
   }));
   const scheduleBase = {
@@ -140,10 +158,45 @@ export async function runBalancedCurriculumGrading({
     blockSize: size,
     blocks: blocks.length,
     balanced,
-    warmupPerBlock,
+    warmup: warmupPlan,
     order: schedule.map((order) => order.map((arm) => modelIds[arm]))
   };
   return { reports, schedule: { ...scheduleBase, digest: digestResearchValue(scheduleBase) } };
+}
+
+function validateWarmup(warmup) {
+  if (!warmup || typeof warmup !== "object") throw new Error("warmup must be an object with a mode");
+  if (warmup.mode === "none") return { mode: "none" };
+  if (warmup.mode !== "inference") throw new Error("warmup.mode must be inference or none");
+  const maxOutputTokens = warmup.maxOutputTokens ?? CURRICULUM_WARMUP_MAX_OUTPUT_TOKENS;
+  if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > 256) {
+    throw new Error("warmup.maxOutputTokens must be an integer from 1 to 256");
+  }
+  return { mode: "inference", prompt: CURRICULUM_WARMUP_PROMPT, promptDigest: CURRICULUM_WARMUP_DIGEST, maxOutputTokens, requestsPerArmPerBlock: 1 };
+}
+
+// One bounded inference request through the real worker. Failure propagates: a
+// warm-up that did not happen is never reported as done.
+async function executeWarmup({ worker, blockIndex, maxOutputTokens, signal }) {
+  const observation = await worker.runCase({
+    caseId: `curriculum-warmup-block-${blockIndex + 1}`,
+    messages: [{ role: "user", content: CURRICULUM_WARMUP_PROMPT }],
+    dataManifestDigest: CURRICULUM_WARMUP_DIGEST,
+    repetition: 1,
+    maxOutputTokens,
+    reasoningEffortOverride: "none",
+    promptSessionId: `curriculum-warmup-${worker.model}`,
+    signal
+  });
+  if (!observation || typeof observation !== "object" || !observation.message) {
+    throw new Error(`Warm-up request for ${worker.model} returned no message`);
+  }
+  const metrics = observation.metrics ?? {};
+  return {
+    wallMilliseconds: Number.isFinite(metrics.wallMilliseconds) ? metrics.wallMilliseconds : 0,
+    promptTokens: Number.isFinite(metrics.promptTokens) ? metrics.promptTokens : 0,
+    outputTokens: Number.isFinite(metrics.outputTokens) ? metrics.outputTokens : 0
+  };
 }
 
 function validateGradingInputs({ worker, scenarios, repairAttempts, concurrency }) {

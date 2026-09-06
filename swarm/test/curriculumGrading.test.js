@@ -6,7 +6,10 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { digestResearchValue } from "../src/experimentProtocol.js";
 import { generateCurriculumScenarios } from "../src/amosCurriculumGenerator.js";
+import { OpenAiResearchWorker } from "../src/openAiResearchWorker.js";
 import {
+  CURRICULUM_WARMUP_DIGEST,
+  CURRICULUM_WARMUP_PROMPT,
   compareCurriculumGrading,
   gradingMessages,
   runBalancedCurriculumGrading,
@@ -199,20 +202,28 @@ test("standing orders become sleep work when due and are tracked through the led
   assert.throws(() => createStandingSleepWorkItem({ kind: "organism-artifact-replay", orderId: "x", payload: {} }), /Unsupported standing/);
 });
 
-test("balanced arm order rotates models per block, warms each arm, and yields comparable reports", async () => {
-  const calls = [];
-  const probes = [];
-  const makeWorker = (model, behavior) => {
-    const worker = fakeWorker({ model, scenariosById: byId, behavior });
-    const inner = worker.runCase.bind(worker);
-    worker.runCase = async (request) => { calls.push(model); return inner(request); };
-    worker.probe = async () => { probes.push(model); };
-    return worker;
+// Fake worker that also answers the fixed warm-up request (real workers do so over HTTP).
+function warmableFakeWorker({ model, behavior, calls = null }) {
+  const worker = fakeWorker({ model, scenariosById: byId, behavior });
+  const inner = worker.runCase.bind(worker);
+  worker.runCase = async (request) => {
+    calls?.push({ model, caseId: request.caseId });
+    if (request.caseId.startsWith("curriculum-warmup-block-")) {
+      assert.equal(request.dataManifestDigest, CURRICULUM_WARMUP_DIGEST);
+      assert.equal(request.messages[0].content, CURRICULUM_WARMUP_PROMPT);
+      return { message: { role: "assistant", content: "ready" }, metrics: { wallMilliseconds: 7, promptTokens: 9, outputTokens: 1 } };
+    }
+    return inner(request);
   };
+  return worker;
+}
+
+test("balanced arm order rotates models per block, executes a real warm-up per arm per block, and yields comparable reports", async () => {
+  const calls = [];
   const workers = [
-    makeWorker("fake-base", () => "pass"),
-    makeWorker("fake-a", (scenario) => (scenario.index % 2 ? "pass" : "fail")),
-    makeWorker("fake-b", () => "recover")
+    warmableFakeWorker({ model: "fake-base", behavior: () => "pass", calls }),
+    warmableFakeWorker({ model: "fake-a", behavior: (scenario) => (scenario.index % 2 ? "pass" : "fail"), calls }),
+    warmableFakeWorker({ model: "fake-b", behavior: () => "recover", calls })
   ];
   // 16 scenarios in blocks of 4 → 4 blocks; positions cannot balance exactly for 3 arms and the report says so.
   const { reports, schedule } = await runBalancedCurriculumGrading({
@@ -226,42 +237,123 @@ test("balanced arm order rotates models per block, warms each arm, and yields co
   assert.equal(reports.length, 3);
   assert.equal(schedule.blocks, 4);
   assert.equal(schedule.balanced, false);
-  assert.equal(schedule.order.length, 4);
+  assert.equal(schedule.warmup.mode, "inference");
+  assert.match(schedule.warmup.promptDigest, /^[a-f0-9]{64}$/);
   // Every block runs every arm exactly once, in a rotation of the same base order.
   for (const order of schedule.order) assert.deepEqual([...order].sort(), ["fake-a", "fake-b", "fake-base"]);
   assert.notDeepEqual(schedule.order[0], schedule.order[1]);
   assert.deepEqual(schedule.order[0], schedule.order[3]);
-  // One warm-up probe per arm per block, in schedule order.
-  assert.deepEqual(probes, schedule.order.flat());
-  // Arms alternate inside the run instead of one model finishing before the next starts.
-  const firstBaseCall = calls.indexOf("fake-base");
-  const lastBaseCall = calls.lastIndexOf("fake-base");
-  assert.ok(calls.slice(firstBaseCall, lastBaseCall).some((model) => model !== "fake-base"));
-  // Each report still covers every scenario in scenario order with the sequential schema.
+  // Each arm's turn in a block starts with exactly one executed warm-up request, before any scored attempt.
+  const turns = [];
+  for (const call of calls) {
+    const last = turns.at(-1);
+    if (!last || last.model !== call.model) turns.push({ model: call.model, caseIds: [call.caseId] });
+    else last.caseIds.push(call.caseId);
+  }
+  assert.equal(turns.length, 12);
+  assert.deepEqual(turns.map(({ model }) => model), schedule.order.flat());
+  for (const turn of turns) {
+    assert.match(turn.caseIds[0], /^curriculum-warmup-block-\d+$/);
+    assert.equal(turn.caseIds.slice(1).filter((id) => id.startsWith("curriculum-warmup")).length, 0);
+  }
+  // Each report still covers every scenario in scenario order with the sequential schema, plus executed warm-up accounting.
   for (const report of reports) {
     assert.equal(report.scenarioCount, 16);
     assert.deepEqual(report.runs.map(({ scenarioId }) => scenarioId), trainingScenarios.map(({ id }) => id));
     assert.equal(report.armOrder.mode, "balanced");
     assert.equal(report.armOrder.orderSeed, "prereg-v4-order");
     assert.equal(report.armOrder.positions.reduce((sum, count) => sum + count, 0), 4);
+    assert.deepEqual(report.armOrder.warmup, {
+      mode: "inference", prompt: CURRICULUM_WARMUP_PROMPT, promptDigest: CURRICULUM_WARMUP_DIGEST, maxOutputTokens: 16, requestsPerArmPerBlock: 1,
+      requests: 4, wallMilliseconds: 28, promptTokens: 36, outputTokens: 4
+    });
+    // Warm-ups never enter the scored runs.
+    assert.equal(report.runs.filter(({ scenarioId }) => scenarioId.startsWith("curriculum-warmup")).length, 0);
   }
   const comparison = compareCurriculumGrading(reports);
   assert.equal(comparison.candidates[0].modelId, "fake-a");
   assert.equal(comparison.candidates[0].pairedLosses, 8);
   assert.equal(comparison.candidates[1].pairedLosses, 0);
-  // Same order seed → same schedule; different seed → a different base order or rotation is allowed but deterministic.
+  // Same order seed → same schedule digest.
   const again = await runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "prereg-v4-order", blockSize: 4, concurrency: 2 });
   assert.equal(again.schedule.digest, schedule.digest);
   await assert.rejects(runBalancedCurriculumGrading({ workers: [workers[0]], scenarios: trainingScenarios, orderSeed: "x" }), /at least two/);
   await assert.rejects(runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "" }), /orderSeed/);
+  await assert.rejects(runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "x", warmup: { mode: "probe" } }), /warmup.mode/);
+});
+
+test("a warm-up that cannot be executed aborts balanced grading instead of being reported", async () => {
+  const failing = fakeWorker({ model: "fake-base", scenariosById: byId, behavior: () => "pass" });
+  // The plain fake worker rejects unknown case ids, exactly like a backend that refuses the warm-up request.
+  const other = warmableFakeWorker({ model: "fake-a", behavior: () => "pass" });
+  await assert.rejects(runBalancedCurriculumGrading({ workers: [failing, other], scenarios: trainingScenarios, orderSeed: "x", blockSize: 8 }), /no scenario for curriculum-warmup/);
+  // Declared "none" runs without warm-up and says so.
+  const { reports, schedule } = await runBalancedCurriculumGrading({ workers: [failing, fakeWorker({ model: "fake-a", scenariosById: byId, behavior: () => "pass" })], scenarios: trainingScenarios, orderSeed: "x", blockSize: 8, warmup: { mode: "none" } });
+  assert.deepEqual(schedule.warmup, { mode: "none" });
+  for (const report of reports) assert.deepEqual(report.armOrder.warmup, { mode: "none", requests: 0, wallMilliseconds: 0, promptTokens: 0, outputTokens: 0 });
 });
 
 test("balanced schedule is exactly balanced when the block count is a multiple of the arm count", async () => {
-  const workers = ["fake-base", "fake-a"].map((model) => fakeWorker({ model, scenariosById: byId, behavior: () => "pass" }));
+  const workers = ["fake-base", "fake-a"].map((model) => warmableFakeWorker({ model, behavior: () => "pass" }));
   const { reports, schedule } = await runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "even", blockSize: 4 });
   assert.equal(schedule.balanced, true);
   for (const report of reports) assert.deepEqual(report.armOrder.positions, [2, 2]);
   const sequential = await runCurriculumGrading({ worker: workers[0], scenarios: trainingScenarios });
   assert.deepEqual(sequential.armOrder, { mode: "sequential" });
   assert.deepEqual(reports[0].runs.map(({ passed }) => passed), sequential.runs.map(({ passed }) => passed));
+});
+
+test("with the real HTTP worker a chat-completions warm-up precedes scoring in every block-arm; GET /models is not a warm-up", async () => {
+  const requests = [];
+  const makeWorker = (model) => new OpenAiResearchWorker({
+    controlId: `grading-${model}`,
+    model,
+    baseUrl: "http://127.0.0.1:18080",
+    apiKey: "test-key",
+    dialect: "qwen",
+    reasoningEffort: "medium",
+    requestTimeoutMs: 5_000,
+    fetchImpl: async (url, options) => {
+      const body = options.body ? JSON.parse(options.body) : null;
+      requests.push({ url: String(url), model: body?.model ?? null, body });
+      if (String(url).endsWith("/v1/models")) {
+        return new Response(JSON.stringify({ data: [{ id: "real-base" }, { id: "real-a" }] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({
+        choices: [{ message: { role: "assistant", content: body.max_tokens === 16 ? "ready" : "not an answer" } }],
+        usage: { prompt_tokens: 12, completion_tokens: 3 }
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+  });
+  const workers = [makeWorker("real-base"), makeWorker("real-a")];
+  for (const worker of workers) await worker.probe();
+  const scenarios = trainingScenarios.slice(0, 4);
+  const { reports, schedule } = await runBalancedCurriculumGrading({ workers, scenarios, orderSeed: "http", blockSize: 2, repairAttempts: 0 });
+  assert.equal(schedule.blocks, 2);
+  const completions = requests.filter(({ url }) => url.endsWith("/v1/chat/completions"));
+  const isWarmup = ({ body }) => body.max_tokens === 16 && body.messages.length === 1 && body.messages[0].content === CURRICULUM_WARMUP_PROMPT;
+  // Two GET /models probes happened but are not warm-ups; each of the 4 block-arms begins with exactly one warm-up POST.
+  assert.equal(requests.filter(({ url }) => url.endsWith("/v1/models")).length, 2);
+  // A block-arm turn starts at each warm-up POST (with two arms the rotation makes the same arm run back to back across a block boundary).
+  const turns = [];
+  for (const request of completions) {
+    if (isWarmup(request) || turns.length === 0) turns.push({ model: request.model, requests: [request] });
+    else turns.at(-1).requests.push(request);
+  }
+  assert.equal(turns.length, 4);
+  assert.deepEqual(turns.map(({ model }) => model), schedule.order.flat());
+  for (const turn of turns) {
+    assert.equal(isWarmup(turn.requests[0]), true);
+    assert.ok(turn.requests.slice(1).every((request) => request.model === turn.model));
+    assert.equal(turn.requests.slice(1).some(isWarmup), false);
+    assert.ok(turn.requests.length > 1, "scored attempts follow the warm-up");
+    // Warm-up disables reasoning and is bounded; scored attempts keep the protocol's settings.
+    assert.equal(turn.requests[0].body.chat_template_kwargs.enable_thinking, false);
+    assert.equal(turn.requests[1].body.max_tokens > 16, true);
+  }
+  for (const report of reports) {
+    assert.equal(report.armOrder.warmup.requests, 2);
+    assert.equal(report.armOrder.warmup.outputTokens, 6);
+    assert.equal(report.scenarioCount, 4);
+  }
 });
