@@ -18,6 +18,8 @@ export const CURRICULUM_GRADING_REPORT_SCHEMA = "amos.curriculum-grading-report"
 export const CURRICULUM_GRADING_COMPARISON_SCHEMA = "amos.curriculum-grading-comparison";
 export const CURRICULUM_GRADING_VERSION = 1;
 
+export const BALANCED_ARM_ORDER_VERSION = 1;
+
 export async function runCurriculumGrading({
   worker,
   scenarios,
@@ -28,6 +30,123 @@ export async function runCurriculumGrading({
   onScenario = null,
   concurrency = 1
 }) {
+  validateGradingInputs({ worker, scenarios, repairAttempts, concurrency });
+  const startedAt = now().toISOString();
+  const runs = await gradeScenarios({ worker, scenarios, maxOutputTokens, repairAttempts, concurrency, signal, onScenario });
+  return buildGradingReport({
+    worker,
+    runs,
+    startedAt,
+    finishedAt: now().toISOString(),
+    repairAttempts,
+    maxOutputTokens,
+    concurrency,
+    aborted: signal?.aborted === true,
+    armOrder: { mode: "sequential" }
+  });
+}
+
+/**
+ * Grade several served models on the same scenarios with a balanced arm order.
+ *
+ * The scenario list is cut into blocks of `blockSize`; inside every block the
+ * arms run one after another in a rotation of a seeded base order, so each
+ * model takes every position (first, second, ...) equally often when the block
+ * count is a multiple of the arm count. This removes the fixed-order confound
+ * of sequential grading (server warm-up, cache state, thermal drift) from the
+ * latency comparison. Before each arm's turn in a block the worker's probe is
+ * called once as a discarded warm-up request. Every model still grades every
+ * scenario with the same protocol, so the per-model reports keep the schema of
+ * `runCurriculumGrading` and stay comparable with `compareCurriculumGrading`.
+ */
+export async function runBalancedCurriculumGrading({
+  workers,
+  scenarios,
+  orderSeed,
+  blockSize = null,
+  warmupPerBlock = true,
+  maxOutputTokens = 1_200,
+  repairAttempts = 1,
+  now = () => new Date(),
+  signal = null,
+  onScenario = null,
+  concurrency = 1
+}) {
+  if (!Array.isArray(workers) || workers.length < 2) {
+    throw new Error("Balanced grading needs at least two workers");
+  }
+  for (const worker of workers) validateGradingInputs({ worker, scenarios, repairAttempts, concurrency });
+  const modelIds = workers.map((worker) => worker.model);
+  if (new Set(modelIds).size !== modelIds.length) throw new Error("Balanced grading needs distinct model ids");
+  if (typeof orderSeed !== "string" || orderSeed.length === 0) throw new Error("Balanced grading needs an orderSeed");
+  const size = blockSize ?? concurrency;
+  if (!Number.isInteger(size) || size < 1 || size > scenarios.length) {
+    throw new Error("blockSize must be an integer from 1 to the scenario count");
+  }
+  const blocks = [];
+  for (let offset = 0; offset < scenarios.length; offset += size) blocks.push(scenarios.slice(offset, offset + size));
+  const baseOrder = seededArmOrder(workers.length, orderSeed);
+  const schedule = blocks.map((_, index) => rotate(baseOrder, index % workers.length));
+  const startedAt = now().toISOString();
+  const runsByArm = workers.map(() => new Array(scenarios.length));
+  const positions = workers.map(() => new Array(workers.length).fill(0));
+  let offset = 0;
+  for (const [blockIndex, block] of blocks.entries()) {
+    for (const [position, arm] of schedule[blockIndex].entries()) {
+      if (signal?.aborted) break;
+      const worker = workers[arm];
+      positions[arm][position] += 1;
+      if (warmupPerBlock && typeof worker.probe === "function") await worker.probe();
+      const runs = await gradeScenarios({
+        worker,
+        scenarios: block,
+        maxOutputTokens,
+        repairAttempts,
+        concurrency,
+        signal,
+        onScenario: onScenario ? (run, scenario) => onScenario(run, scenario, { modelId: worker.model, block: blockIndex, position }) : null
+      });
+      runs.forEach((run, index) => { if (run) runsByArm[arm][offset + index] = run; });
+    }
+    offset += block.length;
+  }
+  const finishedAt = now().toISOString();
+  const balanced = blocks.length % workers.length === 0;
+  const reports = workers.map((worker, arm) => buildGradingReport({
+    worker,
+    runs: runsByArm[arm],
+    startedAt,
+    finishedAt,
+    repairAttempts,
+    maxOutputTokens,
+    concurrency,
+    aborted: signal?.aborted === true,
+    armOrder: {
+      mode: "balanced",
+      version: BALANCED_ARM_ORDER_VERSION,
+      orderSeed,
+      blockSize: size,
+      blocks: blocks.length,
+      arms: modelIds.length,
+      balanced,
+      warmupPerBlock,
+      positions: positions[arm]
+    }
+  }));
+  const scheduleBase = {
+    mode: "balanced",
+    version: BALANCED_ARM_ORDER_VERSION,
+    orderSeed,
+    blockSize: size,
+    blocks: blocks.length,
+    balanced,
+    warmupPerBlock,
+    order: schedule.map((order) => order.map((arm) => modelIds[arm]))
+  };
+  return { reports, schedule: { ...scheduleBase, digest: digestResearchValue(scheduleBase) } };
+}
+
+function validateGradingInputs({ worker, scenarios, repairAttempts, concurrency }) {
   if (!worker || typeof worker.runCase !== "function") {
     throw new Error("Curriculum grading requires a research worker");
   }
@@ -40,7 +159,26 @@ export async function runCurriculumGrading({
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16) {
     throw new Error("concurrency must be an integer from 1 to 16");
   }
-  const startedAt = now().toISOString();
+}
+
+// Deterministic base order for the arms, derived from the frozen order seed.
+function seededArmOrder(arms, orderSeed) {
+  const hex = digestResearchValue({ balancedArmOrder: orderSeed });
+  const order = Array.from({ length: arms }, (_, index) => index);
+  for (let index = arms - 1; index > 0; index -= 1) {
+    const byte = Number.parseInt(hex.slice((index * 2) % (hex.length - 2), ((index * 2) % (hex.length - 2)) + 2), 16);
+    const swap = byte % (index + 1);
+    [order[index], order[swap]] = [order[swap], order[index]];
+  }
+  return order;
+}
+
+function rotate(order, by) {
+  return order.map((_, index) => order[(index + by) % order.length]);
+}
+
+// Bounded parallel workers over the scenario list; results keep scenario order.
+async function gradeScenarios({ worker, scenarios, maxOutputTokens, repairAttempts, concurrency, signal, onScenario }) {
   const runs = new Array(scenarios.length);
   let cursor = 0;
   const gradeOne = async (scenario) => {
@@ -86,7 +224,6 @@ export async function runCurriculumGrading({
       attempts
     };
   };
-  // Bounded parallel workers over the scenario list; results keep scenario order.
   const lanes = Array.from({ length: Math.min(concurrency, scenarios.length) }, async () => {
     while (!signal?.aborted) {
       const position = cursor;
@@ -99,6 +236,10 @@ export async function runCurriculumGrading({
     }
   });
   await Promise.all(lanes);
+  return runs;
+}
+
+function buildGradingReport({ worker, runs, startedAt, finishedAt, repairAttempts, maxOutputTokens, concurrency, aborted, armOrder }) {
   const graded = runs.filter(Boolean);
   const summary = summarizeRuns(graded);
   const reportBase = {
@@ -107,7 +248,7 @@ export async function runCurriculumGrading({
     modelId: worker.model,
     controlId: worker.controlId ?? null,
     startedAt,
-    finishedAt: now().toISOString(),
+    finishedAt,
     protocol: {
       verifier: "amos-executable-contract-verifier",
       repairAttempts,
@@ -116,9 +257,10 @@ export async function runCurriculumGrading({
       targetNeverShown: true
     },
     protocolConcurrency: concurrency,
+    armOrder,
     pools: [...new Set(graded.map(({ pool }) => pool))].sort(),
     scenarioCount: graded.length,
-    aborted: signal?.aborted === true,
+    aborted,
     ...summary,
     runs: graded,
     interpretation: {

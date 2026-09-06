@@ -9,6 +9,7 @@ import { generateCurriculumScenarios } from "../src/amosCurriculumGenerator.js";
 import {
   compareCurriculumGrading,
   gradingMessages,
+  runBalancedCurriculumGrading,
   runCurriculumGrading,
   scenariosForGrading
 } from "../src/curriculumGrading.js";
@@ -196,4 +197,71 @@ test("standing orders become sleep work when due and are tracked through the led
   const third = sleepWorkFromStandingOrders(orders, { now: new Date("2026-09-04T03:00:00Z"), lastRunAt: last, kinds: ["curriculum-grading"] });
   assert.equal(third.items.length, 1);
   assert.throws(() => createStandingSleepWorkItem({ kind: "organism-artifact-replay", orderId: "x", payload: {} }), /Unsupported standing/);
+});
+
+test("balanced arm order rotates models per block, warms each arm, and yields comparable reports", async () => {
+  const calls = [];
+  const probes = [];
+  const makeWorker = (model, behavior) => {
+    const worker = fakeWorker({ model, scenariosById: byId, behavior });
+    const inner = worker.runCase.bind(worker);
+    worker.runCase = async (request) => { calls.push(model); return inner(request); };
+    worker.probe = async () => { probes.push(model); };
+    return worker;
+  };
+  const workers = [
+    makeWorker("fake-base", () => "pass"),
+    makeWorker("fake-a", (scenario) => (scenario.index % 2 ? "pass" : "fail")),
+    makeWorker("fake-b", () => "recover")
+  ];
+  // 16 scenarios in blocks of 4 → 4 blocks; positions cannot balance exactly for 3 arms and the report says so.
+  const { reports, schedule } = await runBalancedCurriculumGrading({
+    workers,
+    scenarios: trainingScenarios,
+    orderSeed: "prereg-v4-order",
+    blockSize: 4,
+    concurrency: 2,
+    now: () => new Date("2026-09-06T00:00:00Z")
+  });
+  assert.equal(reports.length, 3);
+  assert.equal(schedule.blocks, 4);
+  assert.equal(schedule.balanced, false);
+  assert.equal(schedule.order.length, 4);
+  // Every block runs every arm exactly once, in a rotation of the same base order.
+  for (const order of schedule.order) assert.deepEqual([...order].sort(), ["fake-a", "fake-b", "fake-base"]);
+  assert.notDeepEqual(schedule.order[0], schedule.order[1]);
+  assert.deepEqual(schedule.order[0], schedule.order[3]);
+  // One warm-up probe per arm per block, in schedule order.
+  assert.deepEqual(probes, schedule.order.flat());
+  // Arms alternate inside the run instead of one model finishing before the next starts.
+  const firstBaseCall = calls.indexOf("fake-base");
+  const lastBaseCall = calls.lastIndexOf("fake-base");
+  assert.ok(calls.slice(firstBaseCall, lastBaseCall).some((model) => model !== "fake-base"));
+  // Each report still covers every scenario in scenario order with the sequential schema.
+  for (const report of reports) {
+    assert.equal(report.scenarioCount, 16);
+    assert.deepEqual(report.runs.map(({ scenarioId }) => scenarioId), trainingScenarios.map(({ id }) => id));
+    assert.equal(report.armOrder.mode, "balanced");
+    assert.equal(report.armOrder.orderSeed, "prereg-v4-order");
+    assert.equal(report.armOrder.positions.reduce((sum, count) => sum + count, 0), 4);
+  }
+  const comparison = compareCurriculumGrading(reports);
+  assert.equal(comparison.candidates[0].modelId, "fake-a");
+  assert.equal(comparison.candidates[0].pairedLosses, 8);
+  assert.equal(comparison.candidates[1].pairedLosses, 0);
+  // Same order seed → same schedule; different seed → a different base order or rotation is allowed but deterministic.
+  const again = await runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "prereg-v4-order", blockSize: 4, concurrency: 2 });
+  assert.equal(again.schedule.digest, schedule.digest);
+  await assert.rejects(runBalancedCurriculumGrading({ workers: [workers[0]], scenarios: trainingScenarios, orderSeed: "x" }), /at least two/);
+  await assert.rejects(runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "" }), /orderSeed/);
+});
+
+test("balanced schedule is exactly balanced when the block count is a multiple of the arm count", async () => {
+  const workers = ["fake-base", "fake-a"].map((model) => fakeWorker({ model, scenariosById: byId, behavior: () => "pass" }));
+  const { reports, schedule } = await runBalancedCurriculumGrading({ workers, scenarios: trainingScenarios, orderSeed: "even", blockSize: 4 });
+  assert.equal(schedule.balanced, true);
+  for (const report of reports) assert.deepEqual(report.armOrder.positions, [2, 2]);
+  const sequential = await runCurriculumGrading({ worker: workers[0], scenarios: trainingScenarios });
+  assert.deepEqual(sequential.armOrder, { mode: "sequential" });
+  assert.deepEqual(reports[0].runs.map(({ passed }) => passed), sequential.runs.map(({ passed }) => passed));
 });
