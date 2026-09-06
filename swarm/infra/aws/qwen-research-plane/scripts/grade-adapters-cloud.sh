@@ -69,7 +69,7 @@ MAX_RANK=$(python3 -c 'import json,glob; print(max(json.load(open(p))["r"] for p
 
 # 3. Frozen identity manifest (before any inference)
 python3 - "$OUT/run-manifest.json" "$RUN_ID" "$VERIFIER" "$SLEEP_IMAGE" "$SRC_REVISION" "$SRC_SHA" "$DEADLINE_EPOCH" <<'PY'
-import json, sys, glob, hashlib, datetime
+import json, sys, glob, hashlib, datetime, os
 out, run_id, verifier, sleep_image, src_rev, src_sha, deadline = sys.argv[1:8]
 adapters = {}
 for cfg in sorted(glob.glob("/opt/amos-adapters/*/adapter_config.json")):
@@ -86,10 +86,10 @@ manifest = {
     "servingImage": verifier, "graderImage": sleep_image, "graderSourceRevision": src_rev, "graderSourceArchiveSha256": src_sha,
     "baseModel": {"servedAs": "base-bf16", "path": "/opt/amos-stage0/base-model"},
     "adapters": adapters,
-    "sets": [
+    "sets": [s for s in [
         {"id": "frozen-implicit", "pool": "holdout", "rulebook": "implicit", "seed": "stage1-holdout-v2", "perFamily": 12, "role": "frozen regression (seed previously used for stage1 r3 frozen comparisons)"},
         {"id": "sealed-implicit-v2", "pool": "holdout", "rulebook": "implicit", "seed": "stage1-sealed-v2", "perFamily": 12, "role": "fresh sealed, never used before this run; graded once"}
-    ],
+    ] if s["id"] in os.environ.get("SETS", "frozen-implicit=x sealed-implicit-v2=x")],
     "settings": {"temperature": 0.2, "seed": 7, "reasoningEffort": "medium", "repairAttempts": 1, "maxOutputTokens": 1200, "concurrency": 4, "reasoningParser": "qwen3", "maxModelLen": 6144},
     "primaryMetric": "verified first-attempt pass on the fresh sealed set; also final pass, paired wins/losses vs base-bf16, per-attempt latency",
     "evidenceClass": "adapter-direct bf16 grading on the trainer; not the live FP8 serving path; no promotion implied"
@@ -147,6 +147,8 @@ run_set() {
   aws s3 sync "$OUT/" "$DEST/" --only-show-errors
   return 0
 }
-run_set frozen-implicit stage1-holdout-v2
-run_set sealed-implicit-v2 stage1-sealed-v2
+# SETS: space-separated "<set-id>=<seed>" pairs; default runs both cohorts in order.
+for spec in ${SETS:-frozen-implicit=stage1-holdout-v2 sealed-implicit-v2=stage1-sealed-v2}; do
+  run_set "${spec%%=*}" "${spec#*=}"
+done
 if [ "$SET_FAILURES" = 0 ]; then STATUS=completed; else STATUS=partial; FAIL_REASON="$SET_FAILURES set(s) not completed; see per-set status files"; fi
