@@ -23,6 +23,8 @@ case "$*" in
   *"s3 sync"*) [ "${STUB_AWS_SYNC_FAIL:-0}" = 1 ] && exit 1 ;;
   *"s3 cp"*) [ "${STUB_AWS_CP_FAIL:-0}" = 1 ] && exit 1 ;;
   *"ec2 describe-instances"*) [ "${STUB_DESCRIBE_FAIL:-0}" = 1 ] && exit 255; echo "${STUB_STATE:-running}" ;;
+  *"sts get-caller-identity"*) echo "${STUB_ACCOUNT:-637423327454}" ;;
+  *"s3 cp"*"/root/grade-fp8-serving-qualification.sh"*) printf 'wrong bytes' > /root/grade-fp8-serving-qualification.sh 2>/dev/null || printf 'wrong bytes' > "${STUB_ROOT:-/tmp}/grade-fp8-serving-qualification.sh" ;;
   *"ec2 stop-instances"*) [ "${STUB_STOP_FAIL:-0}" = 1 ] && exit 1 ;;
 esac
 exit 0
@@ -36,10 +38,37 @@ exit "${STUB_DOCKER_RC:-0}"
 S
 cat > "$STUBS/timeout" <<'S'
 #!/usr/bin/env bash
-# timeout [-k N] SECONDS cmd...  -> run cmd directly
+# timeout [-k N] SECONDS cmd...  -> run cmd directly; --version answers like GNU coreutils
+[ "${1:-}" = "--version" ] && { echo "timeout (GNU coreutils) 9.5 (stub)"; exit 0; }
 [ "$1" = "-k" ] && shift 2
 shift
 exec "$@"
+S
+cp "$STUBS/timeout" "$STUBS/gtimeout"
+# GNU date is what the Linux runner/trainer have; on a Mac emulate only `-d <string>` via python and pass everything else through.
+cat > "$STUBS/date" <<'S'
+#!/usr/bin/env bash
+for a in "$@"; do [ "$a" = "-d" ] && { python3 - "$@" <<'PY'
+import sys, datetime
+args=sys.argv[1:]; s=args[args.index("-d")+1]; fmt=[a for a in args if a.startswith("+")][0]
+if s.startswith("@"): dt=datetime.datetime.fromtimestamp(int(s[1:]), datetime.timezone.utc)
+else:
+    s2=" ".join(p for p in s.replace("UTC","").split() if p not in ("Mon","Tue","Wed","Thu","Fri","Sat","Sun"))
+    dt=datetime.datetime.strptime(s2, "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+print(dt.strftime(fmt[1:].replace("%s", str(int(dt.timestamp())))))
+PY
+exit $?; }; done
+exec /bin/date "$@"
+S
+cat > "$STUBS/systemd-run" <<'S'
+#!/usr/bin/env bash
+echo "systemd-run $*" >> "$STUB_LOG"; exit "${STUB_SYSTEMD_RUN_RC:-0}"
+S
+cat > "$STUBS/systemctl" <<'S'
+#!/usr/bin/env bash
+echo "systemctl $*" >> "$STUB_LOG"
+case "$*" in *is-active*) echo "${STUB_TIMER_STATE:-active}";; *NextElapseUSecRealtime*) echo "${STUB_TIMER_NEXT:-Sat 2027-01-15 09:45:00 UTC}";; esac
+exit 0
 S
 cat > "$STUBS/shutdown" <<'S'
 #!/usr/bin/env bash
@@ -218,10 +247,83 @@ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); c=" ".join(d["comma
 grep -q "aws " "$LOG" && fail "T12 preflight must make no AWS call"
 # future-trigger rule
 AMOS_SQ_LIBRARY_ONLY=1 source "$LAUNCH"
-sq_timer_is_future 1800006300 1800000000 || fail "T12 105-min trigger must count as future"
-if sq_timer_is_future 1800003000 1800000000; then fail "T12 a trigger only 50 min ahead must be refused"; fi
-if sq_timer_is_future 1799999000 1800000000; then fail "T12 a past trigger must be refused"; fi
+fail() { echo "FAIL: $*"; FAIL=1; }   # the launcher's fail() exits; restore the harness version
+sq_timer_trigger_ok 1800006300 1800000000 || fail "T12 105-min trigger must be accepted"
+if sq_timer_trigger_ok 1800003000 1800000000; then fail "T12 a trigger only 50 min ahead must be refused"; fi
+if sq_timer_trigger_ok 1799999000 1800000000; then fail "T12 a past trigger must be refused"; fi
+if sq_timer_trigger_ok 1800010000 1800000000; then fail "T12 a trigger 167 min ahead must be refused (runaway)"; fi
+if sq_timer_trigger_ok "TIMER_NOT_ACTIVE 1800006300" 1800000000; then fail "T12 an error line must not pass as a trigger"; fi
+if sq_timer_trigger_ok "" 1800000000; then fail "T12 empty trigger must be refused"; fi
 [ "$FAIL" = 0 ] && pass "T12 launcher preflight renders offline and refuses bad bindings"
+
+
+# --- T13: the RENDERED timer payload, executed: a hash mismatch aborts the whole script; a good run prints TIMER_OK ---------
+run_payload() { python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["commands"]))' "$1" > "$WORK/payload.sh"; bash "$WORK/payload.sh"; }
+FAKEBIN="$WORK/fakebin"; mkdir -p "$FAKEBIN"
+# redirect /usr/local/bin writes to a sandbox by rewriting the rendered script paths
+render_sandboxed() { python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["commands"]; print("\n".join(x.replace("/usr/local/bin/", sys.argv[2]+"/") for x in c))' "$1" "$FAKEBIN" > "$WORK/payload.sh"; }
+render_sandboxed "$R/runner-stop-timer.params.json"
+: > "$LOG"
+# (a) tamper: the payload's own sha line must fail → exit 21, systemd-run never reached
+sed -i.bak "s/^echo '${SSHA}  /echo '0000000000000000000000000000000000000000000000000000000000000000  /" "$WORK/payload.sh"
+echo 'echo AFTER_FAILED_HASH' >> "$WORK/payload.sh"
+OUTP=$(STUB_TIMER_NEXT="Sat 2027-01-15 09:45:00 UTC" bash "$WORK/payload.sh" 2>&1); rc=$?
+[ "$rc" = 21 ] || fail "T13 tampered stop script must exit 21 (got $rc)"
+echo "$OUTP" | grep -q AFTER_FAILED_HASH && fail "T13 payload must not continue after a failed hash check"
+grep -q "systemd-run" "$LOG" && fail "T13 timer must not be installed after a failed hash check"
+# (b) good: TIMER_OK with the trigger epoch, timer verified active
+render_sandboxed "$R/runner-stop-timer.params.json"; : > "$LOG"
+OUTP=$(bash "$WORK/payload.sh" 2>&1); rc=$?
+[ "$rc" = 0 ] || fail "T13 good timer payload must succeed (rc $rc): $OUTP"
+echo "$OUTP" | grep -Eq '^TIMER_OK [0-9]{10}$' || fail "T13 good payload must print TIMER_OK <epoch> (got: $OUTP)"
+grep -q "systemd-run --unit=amos-sq-deadline-sq-fp8-s5-20270115T0800Z --on-calendar=2027-01-15 09:45:00 UTC" "$LOG" || fail "T13 timer must be scheduled at start+105"
+# (c) timer installed but not active → exit 22
+render_sandboxed "$R/runner-stop-timer.params.json"
+OUTP=$(STUB_TIMER_STATE=inactive bash "$WORK/payload.sh" 2>&1); rc=$?
+[ "$rc" = 22 ] || fail "T13 inactive timer must exit 22 (got $rc)"
+[ "$FAIL" = 0 ] && pass "T13 rendered timer payload is fail-fast and reports TIMER_OK only when active"
+
+# --- T14: the RENDERED controller payload, executed: wrong bytes from S3 → exit 31, nothing started -------------------------------
+export STUB_ROOT="$WORK/root-sandbox"; mkdir -p "$STUB_ROOT"
+python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["commands"]; print("\n".join(x.replace("/root/", sys.argv[2]+"/") for x in c))' "$R/trainer-controller.params.json" "$STUB_ROOT" > "$WORK/ctl-payload.sh"
+echo 'echo AFTER_FAILED_HASH' >> "$WORK/ctl-payload.sh"
+OUTP=$(bash "$WORK/ctl-payload.sh" 2>&1); rc=$?
+[ "$rc" = 31 ] || fail "T14 wrong controller bytes must exit 31 (got $rc): $OUTP"
+echo "$OUTP" | grep -q CONTROLLER_SHA_MISMATCH || fail "T14 mismatch must be named"
+echo "$OUTP" | grep -q AFTER_FAILED_HASH && fail "T14 payload must not continue after a failed hash check"
+ls "$STUB_ROOT" | grep -q "\.pid$" && fail "T14 controller must not be started after a failed hash check"
+[ "$FAIL" = 0 ] && pass "T14 rendered controller payload is fail-fast"
+
+# --- T15: dispatch — a failed timer install cannot be masked by a future epoch in its output --------------------------------------
+: > "$LOG"
+export SQ_CONTROLLER_PATH="$CTL" SQ_STOP_SCRIPT_PATH="$STOP"   # sourced from the test dir, so name the scripts explicitly
+AMOS_SQ_LIBRARY_ONLY=1 source "$LAUNCH"
+fail() { echo "FAIL: $*"; FAIL=1; }
+SQ_CONTROLLER_SHA_EXPECTED="$CSHA"; SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA"; SQ_RENDER_DIR="$WORK/rendered-dispatch"
+ssm_run() { echo "TIMER_OK $(( $(date -u +%s) + 6300 ))" > "$5"; echo "ssm_run $1" >> "$STUB_LOG"; return 1; }
+sha() { shasum -a 256 "$1" | cut -c1-64; }
+# preflight inside dispatch reads back the "uploaded" controller: make the stub s3 cp copy the real file for the readback path
+cat > "$STUBS/aws" <<'S'
+#!/usr/bin/env bash
+echo "aws $*" >> "$STUB_LOG"
+case "$*" in
+  *"sts get-caller-identity"*) echo 637423327454 ;;
+  *"s3 cp s3://"*"controller.readback"*) for a in "$@"; do case "$a" in *controller.readback) cp "$STUB_CONTROLLER" "$a";; esac; done ;;
+esac
+exit 0
+S
+export STUB_CONTROLLER="$CTL"
+( fail() { echo "PREFLIGHT FAIL: $*" >&2; exit 1; }; dispatch "$GOODENV" ) >/dev/null 2>"$WORK/t15.err"; rc=$?
+[ "$rc" != 0 ] || fail "T15 dispatch must fail when the timer install command failed"
+grep -q "stop timer install did not succeed" "$WORK/t15.err" || fail "T15 dispatch must fail for the timer reason, not earlier: $(cat "$WORK/t15.err" | tail -2)"
+grep -q "ec2 start-instances" "$LOG" && fail "T15 trainer must not be started after a failed timer install"
+grep -q "ssm_run i-08ed5227ea48bad2a" "$LOG" || fail "T15 timer install must have been attempted"
+# and a successful install whose output lacks the exact TIMER_OK line is also refused
+: > "$LOG"; ssm_run() { echo "something 1900000000 else" > "$5"; return 0; }
+( fail() { echo "PREFLIGHT FAIL: $*" >&2; exit 1; }; dispatch "$GOODENV" ) >/dev/null 2>&1; rc=$?
+[ "$rc" != 0 ] || fail "T15 digits inside another line must not be accepted as a trigger"
+grep -q "ec2 start-instances" "$LOG" && fail "T15 trainer must not start without an exact TIMER_OK line"
+[ "$FAIL" = 0 ] && pass "T15 dispatch checks SSM status and the exact TIMER_OK line before any compute"
 
 stop_watchdog
 [ "$FAIL" = 0 ] && echo "ALL PASSED" || echo "FAILURES"
