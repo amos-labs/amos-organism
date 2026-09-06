@@ -1,7 +1,11 @@
 # Curriculum grading protocol v4 — preregistration (draft for Codex review)
 
-Status: draft, 2026-09-06. Nothing here authorizes compute. Frozen before the next
-adapter comparison is dispatched; changes after freezing are new versions.
+Status: draft, revised 2026-09-06 after Codex's warm-up review. Nothing here authorizes
+compute. Frozen before the next adapter comparison is dispatched; changes after freezing
+are new versions. Seed `stage1-sealed-v4` is reserved for ONE declared primary use: the
+FP8 serving qualification of `stage1-060408-r32-s5` against `amos-qwen38-27b-fp8`
+(manifest `coordination/artifacts/s5-serving-qualification-manifest-v2-20260906.json`).
+It is not consumed by any bf16 or training comparison.
 
 ## Cohorts and seeds
 
@@ -12,21 +16,31 @@ adapter comparison is dispatched; changes after freezing are new versions.
 - Regression seed `stage1-holdout-v2` (frozen set) is graded alongside as regression
   evidence only.
 - Development seed `stage1-recovery-dev-v1`: training pool, families
-  `recover-without-replaying-completed-actions` and the governed-state family, used for
-  curriculum weighting and harvest inspection; never reported as evidence.
+  `recover-without-replaying-completed-actions` and
+  `compact-context-without-losing-governed-state`, used for curriculum weighting and
+  harvest inspection; never reported as evidence.
 
 ## Arms and order
 
-- Arms: `base-bf16` (control) and the candidate adapters, all served by one vLLM on the
-  trainer (adapter-direct bf16; this is not the production FP8 serving path and no
-  serving transfer is claimed from it).
+- Arms (two): control `amos-qwen38-27b-fp8` (the served FP8 checkpoint, weight manifest
+  `5b5b59c7…`) and candidate `stage1-060408-r32-s5` as a LoRA on that same FP8 base
+  (adapter `ff003625…`). Both served by one vLLM with the production image and effective
+  arguments, on an isolated trainer replica (not the live cell). Result scope: that
+  GPU/driver, synthetic curriculum, declared request settings.
 - Arm order: `--arm-order balanced`, `--block-size 4`, `--order-seed
-  stage1-sealed-v4:arm-order`. 96 scenarios → 24 blocks; with 4 arms every arm takes each
-  position 6 times (`armOrder.balanced = true` in each report).
-- Warm-up: one discarded probe per arm per block (`warmupPerBlock: true`).
+  stage1-sealed-v4:arm-order`. 96 scenarios → 24 blocks; with 2 arms every arm takes each
+  position 12 times (`armOrder.balanced = true` in each report). Rotation balances
+  position effects across arms; it does not remove cache or drift effects.
+- Warm-up: one fixed, bounded, non-evaluation inference request per arm per block through
+  the real worker (prompt `CURRICULUM_WARMUP_PROMPT`, digest `CURRICULUM_WARMUP_DIGEST`,
+  reasoning disabled, 16 output tokens). Executed count, wall time and tokens are recorded
+  per arm in `armOrder.warmup`, counted in the run budget, and never scored. A warm-up
+  that cannot be executed aborts the run; `--warmup none` is the only way to run without
+  one and the report then says so.
 - Concurrency 4, temperature 0.2, seed 7, reasoning effort medium, one repair attempt,
-  1200 max output tokens, reasoning parser qwen3, max model length 6144 — as in run
-  `grade-060408-20260906T0900Z`.
+  1200 max output tokens — the request settings of run `grade-060408-20260906T0900Z`;
+  the serving arguments are the production ones (see the manifest), not the trainer
+  bf16 arguments of that run.
 
 ## Primary contrast and uncertainty
 
@@ -35,10 +49,15 @@ adapter comparison is dispatched; changes after freezing are new versions.
   the candidates; report wins/losses/ties and the Holm-adjusted p.
 - Secondary: final pass (after one repair), paired the same way; reported, not
   confirmatory.
-- Family guards (all reported per family, first and final, of 12): a candidate fails the
-  guard if it loses to control by 3 or more first-attempt passes in
-  `recover-without-replaying-completed-actions` or in the governed-state family. A failed
-  guard is recorded on the candidate; aggregate gains never override it.
+- Family guards (all eight families reported, first-attempt and final counts of 12): a
+  candidate fails the guard if it loses to control by 3 or more first-attempt passes in
+  `recover-without-replaying-completed-actions` or in
+  `compact-context-without-losing-governed-state`. This is a coarse regression guard, not
+  evidence of non-inferiority. A failed guard is recorded on the candidate; aggregate gains
+  never override it. Final-count losses are reported beside first-attempt losses.
+- Promotion criteria are separate and unchanged: the shared plan's 95% paired-interval
+  requirement and the verified-Mission shadow gate. The sign test / Holm result here is
+  research evidence only and satisfies neither.
 - Latency: nearest-rank p50 and p95 of `attempts[0].metrics.wallMilliseconds` over
   exactly the 96 first attempts per arm; repair attempts are reported separately and
   never pooled into first-answer latency.
@@ -53,6 +72,7 @@ adapter comparison is dispatched; changes after freezing are new versions.
 
 ## Bounds
 
-- One trainer run, controller deadline and independent stop timer as in
-  `grade-adapters-cloud.sh`; grading cap 150 minutes. Training budget for any new plan is
-  requested separately and is not covered by the grading cap.
+- One trainer run; the controller deadline, per-set timeouts, the independent runner-side
+  stop timer and the cost cap are stated in the serving-qualification manifest, including
+  checkpoint staging and warm-ups. Training budget for any new plan is requested
+  separately and is not covered by the grading cap.

@@ -37,6 +37,11 @@ if (!["sequential", "balanced"].includes(armOrder)) throw new Error("--arm-order
 const orderSeed = option("--order-seed") || `${seed}:arm-order`;
 const blockSize = option("--block-size") ? integerOption("--block-size", concurrency, 1, 1_000) : concurrency;
 if (armOrder === "balanced" && modelIds.length < 2) throw new Error("--arm-order balanced needs at least two --model-ids");
+// Warm-up before each arm's turn in a block: "inference" sends one fixed, bounded,
+// non-evaluation request through the real worker; "none" declares no warm-up ran.
+const warmupMode = option("--warmup") || "inference";
+if (!["inference", "none"].includes(warmupMode)) throw new Error("--warmup must be inference or none");
+const warmupMaxTokens = integerOption("--warmup-max-tokens", 16, 1, 256);
 
 const apiKey = process.env.AMOS_LOCAL_BENCHMARK_API_KEY;
 const baseUrl = process.env.AMOS_QWEN_RESEARCH_URL;
@@ -77,6 +82,7 @@ if (armOrder === "balanced") {
     scenarios,
     orderSeed,
     blockSize,
+    warmup: warmupMode === "none" ? { mode: "none" } : { mode: "inference", maxOutputTokens: warmupMaxTokens },
     maxOutputTokens,
     repairAttempts,
     concurrency,
@@ -127,7 +133,7 @@ console.log(JSON.stringify({
   pool,
   rulebook,
   scenarios: scenarios.length,
-  armOrder: schedule ? { mode: "balanced", orderSeed, blockSize, blocks: schedule.blocks, balanced: schedule.balanced } : { mode: "sequential" },
+  armOrder: schedule ? { mode: "balanced", orderSeed, blockSize, blocks: schedule.blocks, balanced: schedule.balanced, warmup: schedule.warmup.mode } : { mode: "sequential" },
   models: reports.map(({ modelId, passRate, firstAttemptPassRate, recoveryRate }) => ({ modelId, passRate, firstAttemptPassRate, recoveryRate })),
   comparison: comparison?.candidates.map(({ modelId, passRateLift, pairedWins, pairedLosses }) => ({ modelId, passRateLift, pairedWins, pairedLosses })) ?? null,
   harvested: harvests.map(({ recorded, pairs }) => ({ recorded, pairs }))
