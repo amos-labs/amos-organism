@@ -16,7 +16,7 @@
   "adapterUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/runs/stage1-2026-09-060408-r32-s20260904/adapter",
   "baseModel": "amos-qwen38-27b-bf16@2ec19f85101ed0d9db0a93a4dee6710401bdab18e942144d7c0b00a52633e313",
   "status": "qualifying",
-  "nextGate": "frozen-holdout",
+  "nextGate": "sealed-holdout",
   "gates": [
     {
       "schema": "amos.adapter-candidate-gate",
@@ -35,6 +35,29 @@
       },
       "feedbackSignals": [],
       "evaluatedAt": "2026-09-06T06:21:37.000Z"
+    },
+    {
+      "schema": "amos.adapter-candidate-gate",
+      "version": 1,
+      "id": "frozen-holdout",
+      "status": "passed",
+      "evaluator": "amos-executable-contract-verifier",
+      "receiptDigest": "cf223a48b49c2a3e7837a9a995c384d6a98a95252af9bdb522b363831070e004",
+      "metrics": {
+        "controlModel": "base-bf16",
+        "controlPassRate": 0.8958,
+        "scenarioCount": 96,
+        "passRateLift": 0.0417,
+        "firstAttemptPassRateLift": 0.1458,
+        "pairedWins": 7,
+        "pairedLosses": 3,
+        "ties": 86,
+        "rulebook": "implicit",
+        "seed": "stage1-holdout-v2",
+        "pool": "holdout"
+      },
+      "feedbackSignals": [],
+      "evaluatedAt": "2026-09-06T09:54:33.362Z"
     }
   ],
   "feedback": [],
@@ -44,5 +67,5 @@
     "productionAllowed": false,
     "automaticallyDeployed": false
   },
-  "digest": "c0e938a854393e7ac2412744a1f2ff101d3b669d28fbed707a62efe56d3dca8a"
+  "digest": "5f9ec545db6f6335196def6e8d8cd7e1084d840b98503ae02402c0053be55448"
 }
