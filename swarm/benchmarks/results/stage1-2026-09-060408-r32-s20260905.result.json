@@ -1,0 +1,168 @@
+{
+  "adapterFiles": [
+    {
+      "bytes": 5205,
+      "path": "README.md",
+      "sha256": "07280aabce912308b3af549cdb87f57f8ca82153db38b495e364c487388ba905"
+    },
+    {
+      "bytes": 1311,
+      "path": "adapter_config.json",
+      "sha256": "0a533d310b6fb21fc34a537666774645a5547b3a06e16184af19c35da4bb1741"
+    },
+    {
+      "bytes": 933974032,
+      "path": "adapter_model.safetensors",
+      "sha256": "ff00362561ae2ae3344c4df754b027788b5fbbb90af753e99ee708b258ad3b47"
+    },
+    {
+      "bytes": 8952,
+      "path": "chat_template.jinja",
+      "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+    },
+    {
+      "bytes": 19989325,
+      "path": "tokenizer.json",
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+    },
+    {
+      "bytes": 1123,
+      "path": "tokenizer_config.json",
+      "sha256": "bee8eba30f0eb4af73c0fe2cd06d0f89b657d7819941c438157ec42f7c80ea87"
+    }
+  ],
+  "contractDigest": "78533db693af59ef0dfd2ba19a40ddf390ac0411fc7f444936e25d959adb4eef",
+  "contractId": "stage1-2026-09-060408-r32-s20260905",
+  "digest": "dcb5f6882f68454d1b2db481fb12f2af1cc74e806753c102c0314dda512b9db6",
+  "hardware": {
+    "cuda": "13.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "memoryGib": 94.972,
+    "torch": "2.13.0+cu130"
+  },
+  "metrics": {
+    "holdout": {
+      "meanLoss": 0.11580260865609186,
+      "supervisedTokenAccuracy": 0.9768895113936324,
+      "supervisedTokens": 18563
+    },
+    "training": {
+      "meanLoss": 0.0009049543137901988,
+      "supervisedTokenAccuracy": 0.9994828032066201,
+      "supervisedTokens": 23202
+    },
+    "validation": {
+      "meanLoss": 0.04857882579588275,
+      "supervisedTokenAccuracy": 0.9957537154989384,
+      "supervisedTokens": 1884
+    }
+  },
+  "multimodalBase": {
+    "architecture": "Qwen3_5ForConditionalGeneration",
+    "status": "complete-base-preserved-frozen",
+    "visionAdapterParameters": 0,
+    "visionTowerPresent": true
+  },
+  "parameters": {
+    "mtpAdapterParameters": 0,
+    "schema": "amos.qwen-stage0-parameter-receipt",
+    "status": "passed",
+    "totalParametersInTrainingView": 15186957552,
+    "trainableAdapterParameters": 233455616,
+    "trainableRatio": 0.015372112235162978,
+    "version": 1,
+    "visionAdapterParameters": 0
+  },
+  "preflight": {
+    "checkpointDigest": "2ec19f85101ed0d9db0a93a4dee6710401bdab18e942144d7c0b00a52633e313",
+    "contractDigest": "78533db693af59ef0dfd2ba19a40ddf390ac0411fc7f444936e25d959adb4eef",
+    "contractId": "stage1-2026-09-060408-r32-s20260905",
+    "datasetDigest": "20ec09641f4607e68308eee0e21520a896869f3e25dc2d26f533327a87ce7340",
+    "lineageStatus": "passed",
+    "rows": {
+      "holdout": 216,
+      "training": 283,
+      "validation": 72
+    },
+    "schema": "amos.qwen-adapter-stage0-preflight",
+    "status": "passed",
+    "torchNativeJitDisabled": true,
+    "version": 1
+  },
+  "probes": {
+    "adapterAfterReload": "251a75e1476929021a770b9fc33de706e1b984e9094a9686b0be2a2c7c3cd739",
+    "adapterBeforeSave": "251a75e1476929021a770b9fc33de706e1b984e9094a9686b0be2a2c7c3cd739",
+    "adapterReloadExact": true,
+    "baseAfterAdapterUnload": "ebec0f131387656467a8c93d903bc477fd1bf33207ff702b5b8860bcd3c652f2",
+    "baseBefore": "ebec0f131387656467a8c93d903bc477fd1bf33207ff702b5b8860bcd3c652f2",
+    "baseBitwiseUnchanged": true
+  },
+  "promotionAllowed": false,
+  "purpose": "amos-system-competence-sft",
+  "qualityClaimAllowed": false,
+  "remainingExitCriteria": [
+    "vllm-adapter-load-proof"
+  ],
+  "schema": "amos.qwen-adapter-stage0-result",
+  "stage": 1,
+  "status": "adapter-built-awaiting-vllm-load-proof",
+  "tokenization": {
+    "chatTemplateThinking": "disabled-empty-visible-think-block",
+    "contractId": "stage1-2026-09-060408-r32-s20260905",
+    "digest": "e1c31448e28ad75b1f3af0df3f678baad81c34ec3c48ecb69b78ff42662d0d48",
+    "loss": "assistant-tokens-only",
+    "schema": "amos.qwen-stage0-tokenization-receipt",
+    "splits": {
+      "holdout": {
+        "maskedPromptTokens": 90714,
+        "maximumTokens": 1066,
+        "rows": 216,
+        "supervisedAssistantTokens": 18563
+      },
+      "training": {
+        "maskedPromptTokens": 128091,
+        "maximumTokens": 1190,
+        "rows": 283,
+        "supervisedAssistantTokens": 23202
+      },
+      "validation": {
+        "maskedPromptTokens": 29335,
+        "maximumTokens": 598,
+        "rows": 72,
+        "supervisedAssistantTokens": 1884
+      }
+    },
+    "status": "passed",
+    "version": 1
+  },
+  "trainingHistory": [
+    {
+      "epoch": 1,
+      "meanLoss": 0.019738295654349862,
+      "validation": {
+        "meanLoss": 0.02830278628162988,
+        "supervisedTokenAccuracy": 0.9957537154989384,
+        "supervisedTokens": 1884
+      }
+    },
+    {
+      "epoch": 2,
+      "meanLoss": 0.005954404028812384,
+      "validation": {
+        "meanLoss": 0.04751991455628336,
+        "supervisedTokenAccuracy": 0.9957537154989384,
+        "supervisedTokens": 1884
+      }
+    },
+    {
+      "epoch": 3,
+      "meanLoss": 0.001652296688830205,
+      "validation": {
+        "meanLoss": 0.04857882579588275,
+        "supervisedTokenAccuracy": 0.9957537154989384,
+        "supervisedTokens": 1884
+      }
+    }
+  ],
+  "version": 1
+}

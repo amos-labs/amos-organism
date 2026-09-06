@@ -10,6 +10,7 @@
 //     --base-model <served base id> \
 //     --treatment <training treatment id> \
 //     --adapter-model-id implicit-r32-s3 \
+//     [--through trained] (record only the trained gate; frozen/sealed gradings then optional) \
 //     --frozen swarm/benchmarks/results/<frozen grading>.json \
 //     --sealed swarm/benchmarks/results/<sealed grading>.json \
 //     --out swarm/benchmarks/results/adapter-candidate-<id>.json
@@ -38,10 +39,13 @@ function required(name) {
 }
 async function json(path) { return JSON.parse(await readFile(path, "utf8")); }
 
+// --through trained | frozen-holdout | sealed-holdout (default sealed-holdout): stop after that gate.
+const through = option("--through", "sealed-holdout");
+if (!["trained", "frozen-holdout", "sealed-holdout"].includes(through)) { console.error("--through must be trained, frozen-holdout or sealed-holdout"); process.exit(2); }
 const trainingResult = await json(required("--training-result"));
-const frozen = await json(required("--frozen"));
-const sealed = await json(required("--sealed"));
-const adapterModelId = required("--adapter-model-id");
+const frozen = through === "trained" ? null : await json(required("--frozen"));
+const sealed = through === "sealed-holdout" ? await json(required("--sealed")) : null;
+const adapterModelId = through === "trained" ? option("--adapter-model-id") : required("--adapter-model-id");
 const now = option("--now") ? new Date(option("--now")) : new Date();
 
 if (trainingResult.probes?.adapterReloadExact !== true || trainingResult.probes?.baseBitwiseUnchanged !== true) {
@@ -80,6 +84,7 @@ candidate = recordAdapterGate(candidate, {
 });
 
 for (const [gateId, report] of [["frozen-holdout", frozen], ["sealed-holdout", sealed]]) {
+  if (!report) continue;
   const gate = holdoutGateFromComparison({
     gateId,
     comparison: report.comparison,

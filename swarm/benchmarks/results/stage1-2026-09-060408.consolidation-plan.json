@@ -1,0 +1,52 @@
+{
+  "schema": "amos.adapter-consolidation-plan",
+  "version": 1,
+  "id": "stage1-2026-09-060408",
+  "generatedAt": "2026-09-06T04:08:41.600Z",
+  "datasetUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/dataset",
+  "datasetManifestDigest": "20ec09641f4607e68308eee0e21520a896869f3e25dc2d26f533327a87ce7340",
+  "trainerImageUri": "637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research-plane/trainer@sha256:dfad292abe70578148a9c37ea1c1d62cbc10b94156b44b149c9285512a22ea21",
+  "sourceRevision": "f27d941cce6278d65fb13ba8ad0859005147a9e5",
+  "ranks": [
+    32
+  ],
+  "seeds": [
+    20260903,
+    20260904,
+    20260905
+  ],
+  "jobs": [
+    {
+      "contractId": "stage1-2026-09-060408-r32-s20260903",
+      "rank": 32,
+      "seed": 20260903,
+      "contractUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/training-contracts/stage1-2026-09-060408-r32-s20260903.json",
+      "outputUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/runs/stage1-2026-09-060408-r32-s20260903",
+      "contractDigest": "d132ecc4b5f8e778d1efc234a0557ec901c7288312cdd6d18679105aa4ce9e6f"
+    },
+    {
+      "contractId": "stage1-2026-09-060408-r32-s20260904",
+      "rank": 32,
+      "seed": 20260904,
+      "contractUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/training-contracts/stage1-2026-09-060408-r32-s20260904.json",
+      "outputUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/runs/stage1-2026-09-060408-r32-s20260904",
+      "contractDigest": "fa3443988b8607c9f8d77a51548bf90f94c450efc8e61f0987344ce4d79e621f"
+    },
+    {
+      "contractId": "stage1-2026-09-060408-r32-s20260905",
+      "rank": 32,
+      "seed": 20260905,
+      "contractUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/training-contracts/stage1-2026-09-060408-r32-s20260905.json",
+      "outputUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/stage1-2026-09-060408/runs/stage1-2026-09-060408-r32-s20260905",
+      "contractDigest": "78533db693af59ef0dfd2ba19a40ddf390ac0411fc7f444936e25d959adb4eef"
+    }
+  ],
+  "selection": {
+    "by": "curriculum-grading-on-holdout-pool",
+    "controlModel": "amos-qwen38-27b-fp8",
+    "requireThreeSeedReplication": true,
+    "qualityClaimAllowed": false,
+    "promotionAllowed": false
+  },
+  "digest": "9801d6a1ddafbab4fdc6da596f937e291d640bb47a33033b355ba2372deea4df"
+}

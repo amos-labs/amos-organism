@@ -242,3 +242,27 @@ comparison remain ahead of it.
   did not transfer, and the next lever is real episodes, not more epochs.
 - Promotion still requires the sealed holdout, the blind frontier comparison,
   and three-seed replication, exactly as the plan states.
+
+## Run stage1-2026-09-060408 (first runner-driven weekly consolidation, 2026-09-06)
+
+Planned and executed by `amos-consolidation.service` on the research runner with
+no operator laptop involved, after three infrastructure fixes surfaced by the
+first timer fire (#36 revision in the image, #37 runner permissions to drive the
+trainer including the KMS grant for its encrypted volume, #38 fail-fast start
+handling). Dataset: qualified, generated-curriculum harvests only (manifest
+digest `20ec0964…`), stage0/stage1 curriculum treatments excluded. Three rank-32
+contracts, one trainer (g7e.2xlarge), each contract ~44 minutes, trainer
+self-stopped between and after contracts; a one-shot watchdog at 07:45 UTC found
+the driver already inactive and the trainer stopped.
+
+| contract | result digest | holdout token accuracy | holdout loss | probes |
+|---|---|---|---|---|
+| r32 s20260903 | `b35a5d70…` | 0.9757 | 0.1214 | reload exact, base unchanged |
+| r32 s20260904 | `0a14e104…` | 0.9754 | 0.1200 | reload exact, base unchanged |
+| r32 s20260905 | `dcb5f688…` | 0.9769 | 0.1158 | reload exact, base unchanged |
+
+Ledger: `adapter-candidate-stage1-060408-r32-s{3,4,5}.json`, gate `trained`
+passed, next gate `frozen-holdout`. Grading (frozen, then a fresh never-used
+sealed seed, reasoning parser on) is pending; until it runs these are training
+receipts, not quality evidence, and nothing about them is served or claimed.
+
