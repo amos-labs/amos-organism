@@ -578,10 +578,15 @@ resource "aws_iam_role_policy" "trainer" {
         Resource = "*"
       },
       {
-        Sid      = "PullTrainer"
-        Effect   = "Allow"
-        Action   = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-        Resource = [aws_ecr_repository.trainer.arn]
+        Sid    = "PullTrainer"
+        Effect = "Allow"
+        Action = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+        Resource = [
+          aws_ecr_repository.trainer.arn,
+          # Production vLLM image, pulled read-only for the isolated FP8 serving qualification
+          # (scripts/grade-fp8-serving-qualification.sh). The repository belongs to the serving stack.
+          "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.inference_name}/vllm-openai",
+        ]
       }
     ]
   })
