@@ -64,11 +64,18 @@ It is not consumed by any bf16 or training comparison.
 
 ## Evidence class and limits
 
-- Adapter-direct bf16 grading on synthetic curriculum; no real-Mission, production FP8,
-  tier or router claim follows from it. Real-execution comparison goes only through the
+- Result class: FP8 base versus one LoRA under the production vLLM image and effective
+  arguments on an isolated trainer replica (its GPU/driver, not the live cell), on synthetic
+  curriculum with the declared request settings. It is not a real-Mission, tier, router or
+  live-serving claim, and it is not the adapter-direct bf16 class of run
+  `grade-060408-20260906T0900Z`. Real-execution comparison goes only through the
   independently executed Mission comparison contract owned by Codex.
-- Reports carry `armOrder`, the schedule digest, model ids, source revision, images and
-  the run manifest; the controller uploads status truthfully per set.
+- The regression cohort (`stage1-holdout-v2`) is optional: it runs only when the
+  manifest's time rule leaves enough budget after the primary cohort is synced, and it is
+  never required for the primary result.
+- Reports carry `armOrder` (including executed warm-up accounting), the schedule digest,
+  model ids, source revision, images and the run manifest; the controller
+  (`grade-fp8-serving-qualification.sh`) uploads status truthfully per set.
 
 ## Bounds
 
