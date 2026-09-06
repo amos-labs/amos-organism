@@ -86,10 +86,13 @@ manifest = {
     "servingImage": verifier, "graderImage": sleep_image, "graderSourceRevision": src_rev, "graderSourceArchiveSha256": src_sha,
     "baseModel": {"servedAs": "base-bf16", "path": "/opt/amos-stage0/base-model"},
     "adapters": adapters,
-    "sets": [s for s in [
-        {"id": "frozen-implicit", "pool": "holdout", "rulebook": "implicit", "seed": "stage1-holdout-v2", "perFamily": 12, "role": "frozen regression (seed previously used for stage1 r3 frozen comparisons)"},
-        {"id": "sealed-implicit-v2", "pool": "holdout", "rulebook": "implicit", "seed": "stage1-sealed-v2", "perFamily": 12, "role": "fresh sealed, never used before this run; graded once"}
-    ] if s["id"] in os.environ.get("SETS", "frozen-implicit=x sealed-implicit-v2=x")],
+    "sets": [
+        {"id": spec.split("=")[0], "pool": "holdout", "rulebook": "implicit", "seed": spec.split("=")[1], "perFamily": 12,
+         "role": ("frozen regression (seed previously used for stage1 r3 frozen comparisons)" if spec.split("=")[1] == "stage1-holdout-v2"
+                  else "fresh sealed, never used before this run; graded once; an attempted seed is consumed even if its report is incomplete")}
+        for spec in os.environ.get("SETS", "frozen-implicit=stage1-holdout-v2 sealed-implicit-v2=stage1-sealed-v2").split()
+    ],
+    "supersedes": os.environ.get("SUPERSEDES", None),
     "settings": {"temperature": 0.2, "seed": 7, "reasoningEffort": "medium", "repairAttempts": 1, "maxOutputTokens": 1200, "concurrency": 4, "reasoningParser": "qwen3", "maxModelLen": 6144},
     "primaryMetric": "verified first-attempt pass on the fresh sealed set; also final pass, paired wins/losses vs base-bf16, per-attempt latency",
     "evidenceClass": "adapter-direct bf16 grading on the trainer; not the live FP8 serving path; no promotion implied"
