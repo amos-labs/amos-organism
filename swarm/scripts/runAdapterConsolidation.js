@@ -208,13 +208,28 @@ async function startInstanceWithRetry(id) {
   for (let attempt = 1; ; attempt += 1) {
     try {
       aws(["ec2", "start-instances", "--instance-ids", id]);
-      return;
     } catch (error) {
-      const capacity = /InsufficientInstanceCapacity/.test(String(error?.stderr ?? error?.message ?? ""));
-      log({ event: "start-instances-retry", instanceId: id, attempt, capacity, minutesLeft: Math.round((deadline - Date.now()) / 60_000) });
+      const text = String(error?.stderr ?? error?.message ?? "");
+      const capacity = /InsufficientInstanceCapacity/.test(text);
+      const transient = capacity || /IncorrectInstanceState|IncorrectState|RequestLimitExceeded|Throttling|ServiceUnavailable|InternalError/.test(text);
+      log({ event: "start-instances-retry", instanceId: id, attempt, capacity, transient, minutesLeft: Math.round((deadline - Date.now()) / 60_000) });
+      // Permission and configuration errors never resolve by waiting: fail now, loudly.
+      if (!transient) throw new Error(`start-instances failed for ${id} with a non-transient error: ${text.trim().slice(0, 300)}`);
       if (Date.now() >= deadline) throw error;
       await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt < 4 ? 20_000 : 120_000));
+      continue;
     }
+    // EC2 accepts a start and can still roll the instance back to stopped (for
+    // example Client.InvalidKMSKey on an encrypted volume). Confirm it is coming up.
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 20_000));
+    const state = JSON.parse(aws(["ec2", "describe-instances", "--instance-ids", id, "--query", "Reservations[0].Instances[0].{state:State.Name,code:StateReason.Code,message:StateReason.Message}", "--output", "json"]));
+    log({ event: "start-instances-state", instanceId: id, attempt, ...state });
+    if (state.state === "pending" || state.state === "running") return;
+    if (state.state === "stopped" && state.code && !/InsufficientInstanceCapacity/.test(state.code)) {
+      throw new Error(`trainer ${id} stopped right after start: ${state.code} ${state.message ?? ""}`.trim());
+    }
+    if (Date.now() >= deadline) throw new Error(`trainer ${id} did not reach running before the start deadline (last state ${state.state})`);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 120_000));
   }
 }
 
