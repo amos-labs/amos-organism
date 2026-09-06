@@ -124,3 +124,20 @@ instance, and starts the trainer if it was stopped; stop it again afterwards.
 The trainer's `associate_public_ip_address` is drift-pinned with
 `ignore_changes`; replacing the trainer would destroy the cached base
 checkpoint on its volume.
+
+## Building the sleep/intake image
+
+Build on the runner (HTTPS-only egress) from a source archive of `main` and pass
+the revision explicitly, otherwise the consolidation driver aborts inside the
+image with "source revision unknown":
+
+```
+docker build --platform linux/amd64 \
+  --file swarm/infra/aws/qwen-research-plane/sleep/Dockerfile \
+  --build-arg AMOS_SOURCE_REVISION=$(git rev-parse HEAD) \
+  --tag <trainer-repo>:sleep-<short-sha>-<timestamp> .
+```
+
+The 2026-09-06 03:00 UTC consolidation timer failed for exactly this reason
+(image built without the argument, `git rev-parse` failing on a non-repository).
+

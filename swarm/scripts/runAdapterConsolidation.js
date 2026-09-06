@@ -31,7 +31,16 @@ const checkpointPath = resolve(option("--checkpoint") || resolve(swarmRoot, "ben
 const bucket = option("--bucket") || process.env.AMOS_RESEARCH_ARTIFACT_BUCKET;
 const runId = option("--run-id") || `stage1-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}`;
 const trainerImageUri = option("--trainer-image") || process.env.AMOS_TRAINER_IMAGE_URI;
-const sourceRevision = option("--source-revision") || execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+// Inside the packaged sleep image there is no .git; the image bakes the revision
+// it was built from as AMOS_SOURCE_REVISION. Order: flag, environment, git.
+const sourceRevision = option("--source-revision") || process.env.AMOS_SOURCE_REVISION?.trim() || gitRevision(repoRoot);
+function gitRevision(root) {
+  try {
+    return execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    throw new Error("source revision unknown: pass --source-revision, set AMOS_SOURCE_REVISION, or run from a git checkout");
+  }
+}
 const ranks = (option("--ranks") || "32").split(",").map(Number);
 const seeds = (option("--seeds") || "20260903,20260904,20260905").split(",").map(Number);
 const epochs = integerOption("--epochs", 3, 1, 20);
