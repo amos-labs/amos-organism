@@ -57,6 +57,7 @@ Description=AMOS organism weekly adapter consolidation (plan and execute when th
 After=docker.service network-online.target
 [Service]
 Type=oneshot
+ExecStartPre=-/usr/bin/docker rm -f amos-consolidation
 ExecStart=/usr/bin/docker run --name amos-consolidation --rm --network=host --env-file /etc/amos-sleep.env \
   -v /var/lib/amos-research/replay:/var/lib/amos-research/replay -v /var/lib/amos-research/sleep:/var/lib/amos-research/sleep \
   $IMAGE swarm/scripts/runAdapterConsolidation.js --store /var/lib/amos-research/replay \
