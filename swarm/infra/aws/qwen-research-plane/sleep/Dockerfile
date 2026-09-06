@@ -6,7 +6,10 @@
 # egress and the slim image has no CA bundle for apt, so nothing here uses apt.
 ARG NODE_IMAGE=node:22-bookworm
 FROM ${NODE_IMAGE}
-ENV NODE_ENV=production AWS_PAGER=""
+# The source revision the image was built from; the consolidation driver records
+# it in training contracts because the image carries no .git directory.
+ARG AMOS_SOURCE_REVISION=unknown
+ENV NODE_ENV=production AWS_PAGER="" AMOS_SOURCE_REVISION=${AMOS_SOURCE_REVISION}
 RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip \
     && python3 -c "import zipfile; zipfile.ZipFile('/tmp/awscli.zip').extractall('/tmp')" \
     && chmod +x /tmp/aws/install /tmp/aws/dist/aws /tmp/aws/dist/aws_completer \
