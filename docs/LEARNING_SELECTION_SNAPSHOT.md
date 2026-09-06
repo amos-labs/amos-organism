@@ -56,6 +56,30 @@ needs more than the statement), `tokens` (counts the statement), and `evidence`
 - The offered snapshot (this artifact) is distinct from what the gateway
   actually compiled (expression evidence); the comparator reads the latter.
 
+## Shared digest rules (producer and consumers)
+
+Agreed with the Platform consumer (Platform `docs/LEARNING-PROCEDURES.md`) and
+Codex's parity review, 2026-09-06:
+
+- **Canonical JSON**: kernel `canonicalJson` (`src/digest.ts`): keys sorted by
+  UTF-16 code-unit order, compact separators, strings as `JSON.stringify`,
+  numbers as ECMAScript `Number.prototype.toString` (so `0.000001`, not
+  `1e-6`; integral floats without `.0`; exponent form only below `1e-7` or at
+  and above `1e21`). Cross-language consumers reproduce this exactly; the
+  fixtures on `main` and the kernel are the oracle.
+- **Procedure ordering**: `procedures` are emitted strictly ascending by id in
+  UTF-16 code-unit order (JavaScript `<`), and ids are ASCII
+  (`^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,199}$`), so code-unit order equals byte
+  order for every valid id. The inner `procedureSnapshotSha256` is computed over
+  that order; a consumer may refuse a document whose procedures are not already
+  in that order rather than re-sort it. Duplicate ids are refused.
+- **`compatibleRuntimes`** are digested as written (the outer digest covers the
+  document as emitted); consumers do not re-sort them.
+- **Sidecar**: `learning-selection-snapshot.json.digest` holds `snapshot.digest`
+  plus LF. It is the kernel-canonical digest of the body without `digest`, not
+  the SHA-256 of the object bytes; the exact-object hash is transport
+  diagnostics only.
+
 ## Publishing from the live event chain
 
 `npm run organism:publish-selection-snapshot -- --events <organism events jsonl>
