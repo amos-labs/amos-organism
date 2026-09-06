@@ -66,6 +66,85 @@ test("the swarm turn gateway fans out proposals, critiques them, and returns one
   ]);
 });
 
+async function captureTokenBudgetRequests(tokenFields, { recover = false } = {}) {
+  const calls = [];
+  const traces = [];
+  const shadows = [];
+  const gateway = new SwarmTurnOrchestrator({
+    backendBaseUrl: "http://127.0.0.1:18080/v1",
+    backendModel: "qwen-token-limits",
+    backendContextTokens: 65_536,
+    internalMaxTokens: 4_096,
+    shadowModel: recover ? "qwen-token-adapter" : null,
+    onTrace: (trace) => traces.push(trace),
+    onShadow: (shadow) => shadows.push(shadow),
+    fetchImpl: async (_url, init) => {
+      const payload = JSON.parse(init.body);
+      calls.push(payload);
+      const index = calls.length;
+      return new Response(JSON.stringify({
+        id: `token-response-${index}`,
+        model: payload.model,
+        choices: [{
+          finish_reason: recover && [3, 5].includes(index) ? "length" : "stop",
+          message: { role: "assistant", content: "synthetic completion" }
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 }
+      }), { status: 200 });
+    }
+  });
+  await gateway.complete({
+    model: "gateway-alias",
+    messages: [{ role: "user", content: "Check the output token budget." }],
+    ...tokenFields
+  });
+  await gateway.drainShadows();
+  return { calls, traces, shadows };
+}
+
+test("modern completion limits match legacy wire budgets and take precedence when both are supplied", async () => {
+  const legacy = await captureTokenBudgetRequests({ max_tokens: 8_192 });
+  assert.deepEqual(legacy.calls.map((call) => call.max_tokens), [4_096, 4_096, 4_096, 8_192]);
+  for (const tokenFields of [
+    { max_completion_tokens: 8_192 },
+    { max_tokens: 2_048, max_completion_tokens: 8_192 },
+    { max_tokens: 8_192, max_completion_tokens: null }
+  ]) {
+    const modern = await captureTokenBudgetRequests(tokenFields);
+    assert.deepEqual(modern.calls, legacy.calls);
+    assert.ok(modern.calls.every((call) => !Object.hasOwn(call, "max_completion_tokens")));
+  }
+});
+
+test("modern completion limits preserve recovery stage budgets and shadow input parity", async () => {
+  const { calls, traces, shadows } = await captureTokenBudgetRequests(
+    { max_completion_tokens: 8_192 }, { recover: true }
+  );
+  assert.deepEqual(traces[0].stages.map((stage) => stage.stage), [
+    "candidate:primary", "candidate:alternative", "critic", "critic:recovery",
+    "integrator", "integrator:recovery"
+  ]);
+  assert.deepEqual(calls.map((call) => call.max_tokens), [4_096, 4_096, 4_096, 4_096, 8_192, 8_192, 8_192]);
+  assert.ok(calls.every((call) => !Object.hasOwn(call, "max_completion_tokens")));
+  assert.equal(shadows.length, 1);
+  assert.equal(shadows[0].inputEvidence.compiledInputSha256, shadows[0].shadow.inputEvidence.compiledInputSha256);
+});
+
+test("invalid modern completion limits are rejected before a backend call", async () => {
+  const gateway = new SwarmTurnOrchestrator({
+    backendBaseUrl: "http://127.0.0.1:18080/v1",
+    backendModel: "qwen-token-limits",
+    fetchImpl: async () => assert.fail("invalid token limits must not reach the backend")
+  });
+  for (const limit of [0, -1, 1.5, "8192", Number.NaN, Number.POSITIVE_INFINITY]) {
+    await assert.rejects(gateway.complete({
+      model: "gateway-alias",
+      messages: [{ role: "user", content: "Check the output token budget." }],
+      max_completion_tokens: limit
+    }), /max_completion_tokens must be a positive safe integer/);
+  }
+});
+
 test("the swarm turn gateway rejects streaming rather than returning a false stream", async () => {
   const gateway = new SwarmTurnOrchestrator({
     backendBaseUrl: "http://127.0.0.1:18080/v1",

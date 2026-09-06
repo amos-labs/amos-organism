@@ -666,6 +666,15 @@ function validateCompletionRequest(input) {
     throw new Error("completion request requires messages");
   }
   const request = structuredClone(input);
+  // vLLM gives the modern alias precedence over max_tokens. Normalize it
+  // before budgeting so each stage forwards one effective output limit.
+  if (request.max_completion_tokens != null) {
+    if (!Number.isSafeInteger(request.max_completion_tokens) || request.max_completion_tokens <= 0) {
+      throw new Error("max_completion_tokens must be a positive safe integer");
+    }
+    request.max_tokens = request.max_completion_tokens;
+  }
+  delete request.max_completion_tokens;
   request.messages.forEach((message, index) => {
     if (!message || typeof message !== "object" || Array.isArray(message)) {
       throw new Error(`messages[${index}] must be an object`);
