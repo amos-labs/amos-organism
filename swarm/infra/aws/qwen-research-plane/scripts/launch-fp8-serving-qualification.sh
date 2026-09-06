@@ -54,7 +54,11 @@ script=open(sys.argv[1]).read().rstrip("\n"); run_id, stop_at, unit, sha = sys.a
 # The heredoc re-adds the final newline, so the installed bytes equal the reviewed file exactly.
 # SSM joins the commands into ONE shell script: the first line makes every later failure fatal
 # for the parent shell (AWS reports the script's exit status). No `|| (…; exit 1)` subshells.
-cmds=["set -euo pipefail",
+cmds=[# SSM executes the joined commands with /bin/sh (dash on Ubuntu); re-exec under bash before bash-only options.
+      "[ -n \"${BASH_VERSION:-}\" ] || exec /bin/bash \"$0\" \"$@\"",
+      "set -euo pipefail",
+      # Any stop timer left by an aborted earlier dispatch would fire into this run: stop it first.
+      "for u in $(systemctl list-units --all --plain --no-legend 'amos-sq-deadline-*.timer' | awk '{print $1}'); do systemctl stop \"$u\" || true; echo \"STALE_TIMER_STOPPED $u\"; done",
       f"cat > /usr/local/bin/{unit} <<'STOPEOF'\n{script}\nSTOPEOF",
       f"echo '{sha}  /usr/local/bin/{unit}' | sha256sum -c --quiet - || {{ echo 'STOP_SCRIPT_SHA_MISMATCH'; exit 21; }}",
       f"chmod 0755 /usr/local/bin/{unit}",
@@ -70,7 +74,8 @@ import json,sys,shlex
 env=json.load(open(sys.argv[1])); run_id, deadline, s3, sha = sys.argv[2:6]
 env["RUN_ID"]=run_id; env["DEADLINE_UTC"]=deadline
 exports=" ".join(f"{k}={shlex.quote(str(v))}" for k,v in env.items())
-cmds=["set -euo pipefail",
+cmds=["[ -n \"${BASH_VERSION:-}\" ] || exec /bin/bash \"$0\" \"$@\"",
+      "set -euo pipefail",
       f"aws s3 cp {s3} /root/grade-fp8-serving-qualification.sh --only-show-errors",
       f"echo '{sha}  /root/grade-fp8-serving-qualification.sh' | sha256sum -c --quiet - || {{ echo CONTROLLER_SHA_MISMATCH; exit 31; }}",
       "chmod 0755 /root/grade-fp8-serving-qualification.sh",

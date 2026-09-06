@@ -281,7 +281,14 @@ grep -q "systemd-run --unit=amos-sq-deadline-sq-fp8-s5-20270115T0800Z --on-calen
 render_sandboxed "$R/runner-stop-timer.params.json"
 OUTP=$(STUB_TIMER_STATE=inactive bash "$WORK/payload.sh" 2>&1); rc=$?
 [ "$rc" = 22 ] || fail "T13 inactive timer must exit 22 (got $rc)"
-[ "$FAIL" = 0 ] && pass "T13 rendered timer payload is fail-fast and reports TIMER_OK only when active"
+# (d) both payloads start by re-executing under bash (SSM runs them with /bin/sh = dash on Ubuntu) and stop stale timers first
+for pf in "$R/runner-stop-timer.params.json" "$R/trainer-controller.params.json"; do
+  python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["commands"]; assert "BASH_VERSION" in c[0] and "exec /bin/bash" in c[0], c[0]; assert c[1].startswith("set -euo pipefail"), c[1]' "$pf" || fail "T13 $pf must re-exec under bash before set -o pipefail"
+done
+python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["commands"]; assert any("amos-sq-deadline-*.timer" in x and "systemctl stop" in x for x in c[:4])' "$R/runner-stop-timer.params.json" || fail "T13 timer payload must stop stale amos-sq-deadline timers before installing"
+# the rendered timer payload must also run correctly when started by a POSIX sh: the guard re-execs bash
+if command -v dash >/dev/null 2>&1; then render_sandboxed "$R/runner-stop-timer.params.json"; OUTP=$(dash "$WORK/payload.sh" 2>&1); rc=$?; [ "$rc" = 0 ] && echo "$OUTP" | grep -Eq '^TIMER_OK [0-9]{10}$' || fail "T13 payload under dash must re-exec bash and succeed (rc $rc): $OUTP"; fi
+[ "$FAIL" = 0 ] && pass "T13 rendered timer payload is fail-fast, bash-guarded, and reports TIMER_OK only when active"
 
 # --- T14: the RENDERED controller payload, executed: wrong bytes from S3 → exit 31, nothing started -------------------------------
 export STUB_ROOT="$WORK/root-sandbox"; mkdir -p "$STUB_ROOT"
