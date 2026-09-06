@@ -49,16 +49,20 @@ sq_install_watchdog() {
     timeout -k 10 60 aws s3 cp "$OUT/watchdog.json" "$DEST/watchdog.json" --only-show-errors >/dev/null 2>&1
     kill -TERM "$main_pid" 2>/dev/null
     sleep 20
-    docker rm -f amos-sq-grader amos-fp8-serving >/dev/null 2>&1
+    timeout -k 10 60 docker rm -f amos-sq-grader amos-fp8-serving >/dev/null 2>&1
     shutdown -h now "amos serving qualification $RUN_ID watchdog" >/dev/null 2>&1
   ) &
   WATCHDOG_PID=$!
   # OS-level fallback even if the killer itself dies: shutdown at deadline + grace + 2 min.
+  # Both the request and the resulting schedule are verified; a refused schedule fails the install.
   local shutdown_in_min=$(( (fire_in + 120 + 59) / 60 ))
-  shutdown -h "+$shutdown_in_min" "amos serving qualification $RUN_ID absolute stop" >/dev/null 2>&1 || true
+  shutdown -h "+$shutdown_in_min" "amos serving qualification $RUN_ID absolute stop" >/dev/null 2>&1 || { echo "FAIL: OS shutdown could not be scheduled"; return 2; }
   kill -0 "$WATCHDOG_PID" 2>/dev/null || return 1
-  WATCHDOG_SCHEDULED="$(shutdown --show 2>&1 | head -1)"
-  sq_log "watchdog pid $WATCHDOG_PID fires in ${fire_in}s; scheduled shutdown: ${WATCHDOG_SCHEDULED:-unknown}"
+  WATCHDOG_SCHEDULED="$(timeout -k 5 15 shutdown --show 2>&1 | head -1)"
+  case "$WATCHDOG_SCHEDULED" in
+    ""|*"No scheduled"*|*"not scheduled"*|*"Failed"*) echo "FAIL: scheduled shutdown not verified: '${WATCHDOG_SCHEDULED:-empty}'"; return 3 ;;
+  esac
+  sq_log "watchdog pid $WATCHDOG_PID fires in ${fire_in}s; scheduled shutdown: $WATCHDOG_SCHEDULED"
   return 0
 }
 
@@ -168,7 +172,7 @@ sq_run_set() {
     --arm-order balanced --block-size 4 --order-seed "$seed:arm-order" --warmup inference --warmup-max-tokens 16 \
     --output "/out/grading-$set_id.json" > "$OUT/grading-$set_id.summary.json" 2> "$OUT/grading-$set_id.log"
   local rc=$?
-  docker rm -f amos-sq-grader >/dev/null 2>&1 || true
+  timeout -k 10 60 docker rm -f amos-sq-grader >/dev/null 2>&1 || true
   local set_status="completed"
   if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then set_status="timeout"; elif [ "$rc" != 0 ]; then set_status="failed"; elif [ ! -s "$OUT/grading-$set_id.json" ]; then set_status="no-report"; fi
   echo "{\"set\":\"$set_id\",\"status\":\"$set_status\",\"exit\":$rc,\"finishedAt\":\"$(sq_now)\",\"uploaded\":null}" > "$OUT/grading-$set_id.status.json"
@@ -188,7 +192,7 @@ sq_finish() {
   echo "{\"runId\":\"$RUN_ID\",\"status\":\"$STATUS\",\"reason\":\"$FAIL_REASON\",\"finishedAt\":\"$(sq_now)\"}" > "$OUT/status.json"
   timeout -k 10 60 docker logs --tail 200 amos-fp8-serving > "$OUT/vllm-tail.log" 2>&1 || true
   timeout -k 30 300 aws s3 sync "$OUT/" "$DEST/" --only-show-errors || echo "final evidence upload failed" >&2
-  docker rm -f amos-fp8-serving amos-sq-grader >/dev/null 2>&1 || true
+  timeout -k 10 60 docker rm -f amos-fp8-serving amos-sq-grader >/dev/null 2>&1 || true
   [ -n "${WATCHDOG_PID:-}" ] && kill "$WATCHDOG_PID" 2>/dev/null
   logger -t amos-serving-qualification "$RUN_ID $STATUS $FAIL_REASON"
   echo "FINISHED $STATUS $FAIL_REASON"
@@ -234,7 +238,7 @@ sq_main() {
   [ -f "$ROOT/src/swarm/scripts/gradeCurriculum.js" ] || sq_die "extracted source lacks the grader"
 
   # 2. Images.
-  aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 637423327454.dkr.ecr.us-east-1.amazonaws.com >/dev/null 2>&1
+  sq_bounded 120 bash -c 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 637423327454.dkr.ecr.us-east-1.amazonaws.com >/dev/null 2>&1' || sq_die "ecr login failed"
   sq_bounded 900 docker pull -q "$VLLM_IMAGE" >/dev/null || sq_die "production vllm image pull failed"
   sq_bounded 600 docker pull -q "$SLEEP_IMAGE" >/dev/null || sq_die "grader image pull failed"
 
@@ -243,7 +247,7 @@ sq_main() {
   sq_bounded 120 aws s3 cp "$SERVED_MANIFEST_URI" "$ROOT/served-model-manifest.json" --only-show-errors || sq_die "served manifest download failed"
   sq_verify_manifests || sq_die "checkpoint manifests are not the reviewed bytes / weight identity (code $?)"
   install -d -m 0755 "$MODEL_DIR"
-  if ! sq_verify_model >/dev/null 2>&1; then
+  if ! sq_bounded 900 bash -c "$(declare -f sq_verify_model); MODEL_DIR='$MODEL_DIR' ROOT='$ROOT' sq_verify_model" >/dev/null 2>&1; then
     sq_log "checkpoint absent or not matching; downloading pinned revision $HF_REVISION"
     sq_bounded 2400 docker run --rm --network=host -v /opt/amos-fp8:/dl --env HF_HUB_DISABLE_TELEMETRY=1 --entrypoint python "$VLLM_IMAGE" -c \
       "from huggingface_hub import snapshot_download; snapshot_download('$HF_REPO', revision='$HF_REVISION', local_dir='/dl/model', max_workers=8)" \
@@ -262,9 +266,9 @@ sq_main() {
   sq_bounded 60 docker run --rm --network=none -v "$OUT:/out" --entrypoint sh "$SLEEP_IMAGE" -c 'echo ok > /out/.write-probe && rm /out/.write-probe' || sq_die "grader uid cannot write the output directory"
 
   # 6. Serve the FP8 base + the one adapter with the production arguments.
-  docker rm -f amos-fp8-serving >/dev/null 2>&1 || true
+  sq_bounded 60 docker rm -f amos-fp8-serving >/dev/null 2>&1 || true
   install -d -m 0777 /opt/amos-sq-cache
-  docker run -d --name amos-fp8-serving --gpus all --ipc=host --network=host \
+  sq_bounded 120 docker run -d --name amos-fp8-serving --gpus all --ipc=host --network=host \
     --env VLLM_NO_USAGE_STATS=1 --env VLLM_DO_NOT_TRACK=1 \
     --env HOME=/cache/home --env HF_HOME=/cache/hf --env TRITON_CACHE_DIR=/cache/triton --env XDG_CACHE_HOME=/cache/xdg \
     --volume "$MODEL_DIR:/model:ro" --volume /opt/amos-adapters-sq:/adapters:ro --volume /opt/amos-sq-cache:/cache:rw \
