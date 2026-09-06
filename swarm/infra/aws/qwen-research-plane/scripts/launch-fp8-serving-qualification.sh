@@ -17,7 +17,12 @@ BUCKET="amos-qwen-research-plane-637423327454-us-east-1"
 TRAINER_ROLE="amos-qwen-research-plane-trainer"; TRAINER_POLICY="amos-qwen-research-plane-trainer"
 VLLM_REPO_ARN_FRAGMENT="repository/amos-qwen-research/vllm-openai"
 REQUIRED_ENV="SRC_URI SRC_SHA_EXPECTED SRC_REVISION ADAPTER_ID ADAPTER_URI ADAPTER_SHA_EXPECTED ADAPTER_CONFIG_SHA_EXPECTED MODEL_MANIFEST_SHA_EXPECTED SERVED_MANIFEST_SHA_EXPECTED EXPECTED_WEIGHT_MANIFEST_SHA PROTOCOL_DIGEST PRIMARY_SET"
-RUN_MINUTES=100; STOP_MINUTES=105; MIN_TIMER_LEAD_MINUTES=60
+# Controller deadline and independent runner stop, in minutes from dispatch. Overridable so a
+# recovery run can fit the remaining aggregate allowance (e.g. SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=95).
+RUN_MINUTES="${SQ_RUN_MINUTES:-100}"; STOP_MINUTES="${SQ_STOP_MINUTES:-105}"; MIN_TIMER_LEAD_MINUTES=60
+case "$RUN_MINUTES$STOP_MINUTES" in *[!0-9]*) echo "PREFLIGHT FAIL: SQ_RUN_MINUTES/SQ_STOP_MINUTES must be integers" >&2; exit 1;; esac
+[ "$RUN_MINUTES" -ge 60 ] || { echo "PREFLIGHT FAIL: SQ_RUN_MINUTES must be >= 60 (got $RUN_MINUTES)" >&2; exit 1; }
+[ "$STOP_MINUTES" -ge $(( RUN_MINUTES + 5 )) ] || { echo "PREFLIGHT FAIL: SQ_STOP_MINUTES must be >= SQ_RUN_MINUTES + 5 (got $STOP_MINUTES vs $RUN_MINUTES)" >&2; exit 1; }
 EXPECTED_ACCOUNT=637423327454
 TIMEOUT_BIN="${TIMEOUT_BIN:-timeout}"
 fail() { echo "PREFLIGHT FAIL: $*" >&2; exit 1; }
@@ -87,12 +92,12 @@ PY
   for f in runner-stop-timer.params.json trainer-controller.params.json; do
     python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["commands"]; assert sum(len(c) for c in d["commands"]) < 60000' "$OUT_DIR/$f" || fail "$f invalid or too large for SSM"
   done
-  python3 - "$OUT_DIR/preflight.json" "$RUN_ID" "$DEADLINE_UTC" "$STOP_AT" "$CONTROLLER_SHA" "$STOP_SHA" "$CONTROLLER_S3" "$UNIT" "$(iso "$now_epoch")" <<'PY'
+  python3 - "$OUT_DIR/preflight.json" "$RUN_ID" "$DEADLINE_UTC" "$STOP_AT" "$CONTROLLER_SHA" "$STOP_SHA" "$CONTROLLER_S3" "$UNIT" "$(iso "$now_epoch")" "$RUN_MINUTES" "$STOP_MINUTES" <<'PY'
 import json,sys
 out,run_id,deadline,stop_at,csha,ssha,cs3,unit,now=sys.argv[1:10]
-json.dump({"schema":"amos.serving-qualification-preflight","version":1,"renderedAt":now,"runId":run_id,"deadlineUtc":deadline,"runnerStopAtUtc":stop_at,"controllerSha256":csha,"controllerS3":cs3,"stopScriptSha256":ssha,"stopTimerUnit":unit,"payloads":["runner-stop-timer.params.json","trainer-controller.params.json"]},open(out,"w"),indent=2)
+json.dump({"schema":"amos.serving-qualification-preflight","version":2,"renderedAt":now,"runId":run_id,"controllerMinutes":int(sys.argv[10]),"stopMinutes":int(sys.argv[11]),"deadlineUtc":deadline,"runnerStopAtUtc":stop_at,"controllerSha256":csha,"controllerS3":cs3,"stopScriptSha256":ssha,"stopTimerUnit":unit,"payloads":["runner-stop-timer.params.json","trainer-controller.params.json"]},open(out,"w"),indent=2)
 PY
-  echo "PREFLIGHT OK run=$RUN_ID deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
+  echo "PREFLIGHT OK run=$RUN_ID windows=${RUN_MINUTES}/${STOP_MINUTES}min deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
 }
 
 # ssm_run <instance> <params-file> <comment> <wait-seconds> <out-file>

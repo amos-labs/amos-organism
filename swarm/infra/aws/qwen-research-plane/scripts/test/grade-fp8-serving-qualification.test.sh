@@ -239,7 +239,7 @@ if SQ_CONTROLLER_SHA_EXPECTED="0000" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ
 BADENV="$WORK/launch-bad.json"; python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["ADAPTER_SHA_EXPECTED"]="<fill>"; json.dump(d,open(sys.argv[2],"w"))' "$GOODENV" "$BADENV"
 if SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$BADENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 placeholder in launch env must fail preflight"; fi
 OUTP=$(SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 2>&1) || fail "T12 good preflight must pass: $OUTP"
-echo "$OUTP" | grep -q "PREFLIGHT OK run=sq-fp8-s5-20270115T0800Z deadline=2027-01-15T09:40:00Z" || fail "T12 preflight must render run id and deadline from --now (got: $OUTP)"
+echo "$OUTP" | grep -q "PREFLIGHT OK run=sq-fp8-s5-20270115T0800Z windows=100/105min deadline=2027-01-15T09:40:00Z" || fail "T12 preflight must render run id and deadline from --now (got: $OUTP)"
 R="$WORK/rendered/sq-fp8-s5-20270115T0800Z"
 [ -s "$R/runner-stop-timer.params.json" ] && [ -s "$R/trainer-controller.params.json" ] && [ -s "$R/preflight.json" ] || fail "T12 rendered payloads missing"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); c=" ".join(d["commands"]); assert "sha256sum -c" in c and "RUN_ID=sq-fp8-s5-20270115T0800Z" in c and "DEADLINE_UTC=2027-01-15T09:40:00Z" in c and "nohup /root/grade-fp8-serving-qualification.sh" in c' "$R/trainer-controller.params.json" || fail "T12 controller payload must verify sha and carry run id/deadline"
@@ -254,7 +254,15 @@ if sq_timer_trigger_ok 1799999000 1800000000; then fail "T12 a past trigger must
 if sq_timer_trigger_ok 1800010000 1800000000; then fail "T12 a trigger 167 min ahead must be refused (runaway)"; fi
 if sq_timer_trigger_ok "TIMER_NOT_ACTIVE 1800006300" 1800000000; then fail "T12 an error line must not pass as a trigger"; fi
 if sq_timer_trigger_ok "" 1800000000; then fail "T12 empty trigger must be refused"; fi
-[ "$FAIL" = 0 ] && pass "T12 launcher preflight renders offline and refuses bad bindings"
+# window overrides: a recovery run renders shorter deadline/stop; invalid pairs are refused
+OUTP=$(SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=95 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 2>&1) || fail "T12 90/95 preflight must pass: $OUTP"
+echo "$OUTP" | grep -q "windows=90/95min deadline=2027-01-15T09:30:00Z runner-stop=2027-01-15 09:35:00 UTC" || fail "T12 override must render start+90 / start+95 (got: $OUTP)"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["controllerMinutes"]==90 and d["stopMinutes"]==95' "$WORK/rendered/sq-fp8-s5-20270115T0800Z/preflight.json" || fail "T12 preflight receipt must record the windows"
+if SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=92 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 stop window under deadline+5 must be refused"; fi
+if SQ_RUN_MINUTES=30 SQ_STOP_MINUTES=40 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 controller window under 60 min must be refused"; fi
+# the default render used later by T13/T14 must still be the 100/105 one
+OUTP=$(SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 2>&1) || fail "T12 default preflight must pass"
+[ "$FAIL" = 0 ] && pass "T12 launcher preflight renders offline, honours window overrides, and refuses bad bindings"
 
 
 # --- T13: the RENDERED timer payload, executed: a hash mismatch aborts the whole script; a good run prints TIMER_OK ---------

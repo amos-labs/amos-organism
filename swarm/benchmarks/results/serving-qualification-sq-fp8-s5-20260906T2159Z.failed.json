@@ -1,0 +1,19 @@
+{
+  "schema": "amos.serving-qualification-attempt",
+  "version": 1,
+  "runId": "sq-fp8-s5-20260906T2159Z",
+  "outcome": "failed-before-inference",
+  "dispatchedBy": "rick (one-line reviewed command, Codex signoff 20260906T214155Z)",
+  "timeline": {
+    "preflightOk": "2026-09-06T21:59:02Z",
+    "runnerStopTimer": {"unit": "amos-sq-deadline-sq-fp8-s5-20260906T2159Z", "ssmCommandId": "127ddd83", "triggerEpoch": 1788738242, "triggerUtc": "2026-09-06T23:44:02Z", "cancelledBy": "ssm 4cbabf56-472a-4529-825f-a71bd4bb5244 at ~22:02Z"},
+    "trainerLaunch": "2026-09-06T21:59:18Z",
+    "controllerSsm": {"commandId": "58ff73e0-66cf-4862-acfb-2dfe3a282f93", "status": "Failed", "exit": 2, "at": "2026-09-06T21:59:42Z", "error": "_script.sh: 1: set: Illegal option -o pipefail (AWS-RunShellScript ran the payload under /bin/sh = dash)"},
+    "stopRequested": "2026-09-06T21:59:49Z",
+    "trainerStoppedConfirmed": "2026-09-06T22:06Z (Codex read)"
+  },
+  "consumed": {"seed": "stage1-sealed-v4", "rule": "frozen protocol: consumed at dispatch regardless of outcome (Codex 20260906T220554Z)", "scenariosGenerated": 0, "inferenceRequests": 0},
+  "accounting": {"trainerRuntimeApproxMinutes": 7, "chargedMinutesConservative": 11, "aggregateCapMinutes": 111, "remainingWorstCaseMinutes": 100},
+  "fix": {"pr": "https://github.com/amos-labs/amos-organism/pull/49", "mergedAs": "6a3e7ec", "change": "rendered SSM payloads re-exec under bash before set -euo pipefail; stale amos-sq-deadline timers stopped before installing"},
+  "evidence": ["scratchpad rendered/sq-fp8-s5-20260906T2159Z/{preflight.json,timer.out,controller.out}", "coordination/messages/20260906T220228Z_codex_sq_2159_shell_failure_verified.md"]
+}
