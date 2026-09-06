@@ -65,7 +65,9 @@ export async function runCurriculumGrading({
         attempt: attempt + 1,
         answerText,
         verification,
-        outputTokens: observation.metrics?.outputTokens ?? null
+        outputTokens: observation.metrics?.outputTokens ?? null,
+        // Full per-attempt request metrics (wall time, token counts) so latency can be reported honestly.
+        metrics: observation.metrics ? structuredClone(observation.metrics) : null
       });
       if (verification.passed) break;
       previous = { answerText, failures: verification.failures };
