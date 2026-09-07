@@ -11,6 +11,7 @@ export * from "./learningSnapshotPublisher.ts";
 export * from "./organism.ts";
 export * from "./pheromoneField.ts";
 export * from "./platformEpisodeIntake.ts";
+export * from "./platformEpisodeSelection.ts";
 export * from "./platformEpisodeEvidence.ts";
 export * from "./strategyGenes.ts";
 export * from "./traceIntake.ts";
