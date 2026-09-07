@@ -200,6 +200,24 @@ sq_finish() {
   shutdown -h +1 "amos serving qualification $RUN_ID finished: $STATUS" >/dev/null 2>&1 || true
 }
 
+# A self-test warm-up passes only with a well-formed assistant completion (text or a tool call), not merely HTTP 200.
+sq_selftest_body_ok() {
+  python3 - "$1" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+choices = d.get("choices") or []
+if not choices:
+    sys.exit(1)
+msg = choices[0].get("message") or {}
+text = (msg.get("content") or "").strip()
+tools = msg.get("tool_calls") or []
+sys.exit(0 if (text or tools) else 1)
+PY
+}
+
 sq_main() {
   for v in RUN_ID DEADLINE_UTC SRC_URI SRC_SHA_EXPECTED SRC_REVISION ADAPTER_ID ADAPTER_URI ADAPTER_SHA_EXPECTED ADAPTER_CONFIG_SHA_EXPECTED \
            MODEL_MANIFEST_SHA_EXPECTED SERVED_MANIFEST_SHA_EXPECTED EXPECTED_WEIGHT_MANIFEST_SHA PROTOCOL_DIGEST PRIMARY_SET; do sq_need "$v"; done
@@ -228,7 +246,8 @@ sq_main() {
   API_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
   STATUS=started; FAIL_REASON=""; SET_FAILURES=0; WATCHDOG_PID=""; WATCHDOG_SCHEDULED=""
   trap sq_finish EXIT
-  [ "$(sq_remaining)" -gt 2700 ] || sq_die "less than 45 minutes before the deadline at start"
+  MIN_START_REMAINING=$([ "$SELF_TEST" = 1 ] && echo 600 || echo 2700)
+  [ "$(sq_remaining)" -gt "$MIN_START_REMAINING" ] || sq_die "not enough time before the deadline at start (need > ${MIN_START_REMAINING}s)"
 
   # 0. Absolute stop first: nothing else starts until the watchdog is verified active.
   sq_install_watchdog "$$" 300 || sq_die "watchdog could not be installed"
@@ -298,8 +317,9 @@ sq_main() {
       code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
         http://127.0.0.1:8000/v1/chat/completions \
         -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
-      echo "{\"arm\":\"$m\",\"httpCode\":\"$code\"}" >> "$OUT/selftest.jsonl"
-      [ "$code" = 200 ] || { STATUS=failed; FAIL_REASON="self-test arm $m returned $code"; sq_sync_out; return 1; }
+      body_ok=no; if [ "$code" = 200 ] && sq_selftest_body_ok "$OUT/selftest-$m.json"; then body_ok=yes; fi
+      echo "{\"arm\":\"$m\",\"httpCode\":\"$code\",\"bodyOk\":\"$body_ok\"}" >> "$OUT/selftest.jsonl"
+      [ "$body_ok" = yes ] || { STATUS=failed; FAIL_REASON="self-test arm $m: http $code, well-formed completion=$body_ok"; sq_sync_out; return 1; }
     done
     STATUS=self-test-passed
     echo "{\"runId\":\"$RUN_ID\",\"selfTest\":true,\"arms\":[\"$BASE_SERVED_NAME\",\"$ADAPTER_ID\"],\"result\":\"served and answered a bounded warm-up on both arms; no scenario generated; no seed consumed\"}" > "$OUT/self-test-result.json"

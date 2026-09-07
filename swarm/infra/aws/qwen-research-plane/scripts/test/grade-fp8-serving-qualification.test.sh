@@ -89,6 +89,7 @@ if [ "${1:-}" = "-c" ]; then shasum -a 256 -c "${@:2}"; else shasum -a 256 "$@";
 S
 fi
 chmod +x "$STUBS"/*
+REAL_TIMEOUT="$(command -v gtimeout || command -v timeout || true)"   # captured BEFORE the no-op stubs shadow it
 export PATH="$STUBS:$PATH" STUB_LOG="$LOG"
 
 # --- common environment --------------------------------------------------------
@@ -348,11 +349,19 @@ echo "$CMDS" | grep -qx 'cd /root' || fail "T16 payload must run 'cd /root' as i
 echo "$CMDS" | grep -Eq '^env .*setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-.*\.log 2>&1 &$' || fail "T16 controller must be a simple backgrounded command with stdin/out/err redirected"
 echo "$CMDS" | grep -q 'echo $! >' && fail "T16 liveness must use the controller's own pidfile, not the async wrapper \$!"
 echo "$CMDS" | grep -q 'STARTED pid=$pid' || fail "T16 must print STARTED with the controller pid"
-if command -v setsid >/dev/null 2>&1 && { command -v gtimeout >/dev/null 2>&1 || command -v timeout >/dev/null 2>&1; }; then
-  TB=$(command -v gtimeout || command -v timeout)
+if command -v setsid >/dev/null 2>&1 && [ -n "$REAL_TIMEOUT" ]; then
   FAKE="$WORK/fakectl.sh"; printf '#!/usr/bin/env bash\necho $$ > "%s/fc.pid"\nsleep 8\n' "$WORK" > "$FAKE"; chmod +x "$FAKE"
-  START="$WORK/start.sh"
-  cat > "$START" <<S
+  # emulate SSM: run a start script with stdout on a FIFO a reader drains; EOF within the deadline = pipe released.
+  run_via_fifo() {  # $1 = start script; sets RC (reader exit) and copies output to $WORK/ssm.out
+    local FIFO="$WORK/ssm.fifo"; rm -f "$FIFO" "$WORK/reader.rc"; mkfifo "$FIFO"
+    ( "$REAL_TIMEOUT" 4 cat "$FIFO" > "$WORK/ssm.out" 2>/dev/null; echo $? > "$WORK/reader.rc" ) &
+    local rd=$!
+    bash "$1" > "$FIFO" 2>&1 || true
+    wait "$rd" 2>/dev/null || true
+    RC=$(cat "$WORK/reader.rc" 2>/dev/null || echo 124)
+  }
+  # positive: the fixed form (cd separate; simple backgrounded setsid nohup with all fds redirected)
+  cat > "$WORK/start.ok.sh" <<S
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$WORK"
@@ -363,17 +372,22 @@ pid=\$(cat "$WORK/fc.pid")
 kill -0 "\$pid" || { echo CONTROLLER_NOT_RUNNING; exit 32; }
 echo "STARTED pid=\$pid"
 S
-  chmod +x "$START"
-  FIFO="$WORK/ssm.fifo"; rm -f "$FIFO"; mkfifo "$FIFO"
-  ( "$TB" 4 cat "$FIFO" > "$WORK/ssm.out" 2>/dev/null; echo $? > "$WORK/reader.rc" ) &
-  RD=$!
-  bash "$START" > "$FIFO" 2>&1 || true
-  wait "$RD" 2>/dev/null || true
-  rc=$(cat "$WORK/reader.rc" 2>/dev/null || echo 124)
-  [ "$rc" = 0 ] || fail "T16 controller start keeps the SSM pipe open (reader rc $rc) — SSM would stay InProgress and the launcher would abort the run"
-  grep -q 'STARTED pid=' "$WORK/ssm.out" || fail "T16 start must print STARTED"
+  run_via_fifo "$WORK/start.ok.sh"
+  [ "$RC" = 0 ] || fail "T16 fixed controller start keeps the SSM pipe open (reader rc $RC) — SSM would stay InProgress"
+  grep -q 'STARTED pid=' "$WORK/ssm.out" || fail "T16 fixed start must print STARTED"
   fcpid=$(cat "$WORK/fc.pid" 2>/dev/null || true); [ -n "$fcpid" ] && grep -q "STARTED pid=$fcpid" "$WORK/ssm.out" || fail "T16 STARTED pid must be the controller's own pid"
   kill "$fcpid" 2>/dev/null || true
+  # negative control: the old AND-list form (compound backgrounded, child in the subshell foreground) MUST hang the reader
+  cat > "$WORK/start.bad.sh" <<S
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$WORK" && nohup "$FAKE" > "$WORK/fc.log" 2>&1 &
+echo STARTED
+S
+  run_via_fifo "$WORK/start.bad.sh"
+  [ "$RC" = 124 ] || fail "T16 negative control did not reproduce the pipe-hang (reader rc $RC); the test would not catch a regression"
+  pkill -f "$FAKE" 2>/dev/null || true
+  pass "T16 pipe test discriminates: fixed start releases the pipe, the old AND-list form hangs it"
 else echo "  (T16 pipe behaviour skipped: needs setsid + GNU timeout; rendered-structure assertions ran)"; fi
 [ "$FAIL" = 0 ] && pass "T16 controller start releases the SSM pipe and reports the controller's own pid"
 
@@ -383,7 +397,24 @@ grep -q 'SELF_TEST="\${SQ_SELF_TEST:-0}"' "$CTL" || fail "T17 controller must re
 awk '/if \[ "\$SELF_TEST" = 1 \]; then/{f=1} f&&/gradeCurriculum.js/{print "SEED_IN_SELFTEST"} /^  fi$/{if(f)exit}' "$CTL" | grep -q SEED_IN_SELFTEST && fail "T17 self-test path must not call gradeCurriculum (would consume a seed)"
 grep -q 'STATUS=self-test-passed' "$CTL" || fail "T17 self-test must record its own status"
 grep -q 'run_set "\${PRIMARY_SET%%=\*}"' "$CTL" || fail "T17 non-self-test path must still grade the primary set"
-[ "$FAIL" = 0 ] && pass "T17 self-test mode proves startup without generating a scenario"
+# correction 3: a well-formed-completion check (not HTTP 200 alone) gates each self-test arm
+CTL="$HERE/../grade-fp8-serving-qualification.sh"
+grep -q 'sq_selftest_body_ok' "$CTL" || fail "T17 controller must validate the self-test completion body"
+# exercise the extracted validator directly with good/malformed/empty/tool-call/error bodies
+( AMOS_SQ_LIBRARY_ONLY=1; source "$CTL" ) 2>/dev/null; source "$CTL" 2>/dev/null || true
+printf '%s' '{"choices":[{"message":{"role":"assistant","content":"ready"}}]}' > "$WORK/b.ok.json"
+printf '%s' '{"choices":[{"message":{"role":"assistant","content":"","tool_calls":[{"id":"t"}]}}]}' > "$WORK/b.tool.json"
+printf '%s' '{"choices":[{"message":{"role":"assistant","content":"   "}}]}' > "$WORK/b.empty.json"
+printf '%s' '{"choices":[]}' > "$WORK/b.nochoice.json"
+printf '%s' 'not json at all' > "$WORK/b.malformed.json"
+printf '%s' '{"error":{"message":"bad model"}}' > "$WORK/b.error.json"
+sq_selftest_body_ok "$WORK/b.ok.json"       || fail "T17 body-ok: a text completion must pass"
+sq_selftest_body_ok "$WORK/b.tool.json"     || fail "T17 body-ok: a tool-call completion must pass"
+sq_selftest_body_ok "$WORK/b.empty.json"    && fail "T17 body-ok: an empty completion must fail"
+sq_selftest_body_ok "$WORK/b.nochoice.json" && fail "T17 body-ok: no choices must fail"
+sq_selftest_body_ok "$WORK/b.malformed.json" && fail "T17 body-ok: malformed JSON must fail"
+sq_selftest_body_ok "$WORK/b.error.json"    && fail "T17 body-ok: an error body must fail"
+[ "$FAIL" = 0 ] && pass "T17 self-test proves startup without a scenario and requires a well-formed completion per arm"
 
 stop_watchdog
 [ "$FAIL" = 0 ] && echo "ALL PASSED" || echo "FAILURES"
