@@ -8,6 +8,7 @@ import { digest, immutable } from "./digest.ts";
 import type { EventStore, OrganismEvent, OrganismEventProposal } from "./eventStore.ts";
 import type { HostGate, HostReceipt } from "./host.ts";
 import { requireHostReceipt } from "./host.ts";
+import { validateMissionEvidence } from "./platformEpisodeEvidence.ts";
 
 export interface PlatformEpisodeIntakeResult {
   readonly classification: "verified" | "negative";
@@ -50,6 +51,11 @@ export class PlatformEpisodeIntake {
     }
     requireMatchingSourceIdentity(episode);
 
+    // Consumer-side validation of the additive host-evidence block. A present-but-malformed
+    // block is rejected here, so Platform emission is gated on a receiver that validates it;
+    // a legacy episode with no source.evidence yields present:false and is accepted unchanged.
+    const evidence = validateMissionEvidence(episode.source);
+
     const classification = episode.terminalStatus === "completed" && allChecksPassed(episode.source)
       ? "verified" as const
       : "negative" as const;
@@ -70,6 +76,8 @@ export class PlatformEpisodeIntake {
         consentReceiptId: episode.consentReceiptId,
         source: episode.source,
         geneAdmissionAllowed: false,
+        evidencePresent: evidence.present,
+        evidence,
       },
     });
     return immutable({ classification, event });
