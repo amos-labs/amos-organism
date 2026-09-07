@@ -131,7 +131,7 @@ manifest = {
   "protocolDigest": "$PROTOCOL_DIGEST",
   "watchdog": {"killerPid": int("${WATCHDOG_PID:-0}"), "scheduledShutdown": "${WATCHDOG_SCHEDULED:-}"},
   "servingImage": "$VLLM_IMAGE", "graderImage": "$SLEEP_IMAGE", "graderSourceRevision": "$SRC_REVISION", "graderSourceArchiveSha256": "$SRC_SHA",
-  "base": {"servedAs": "$BASE_SERVED_NAME", "hfRepo": "$HF_REPO", "hfRevision": "$HF_REVISION",
+  "base": {"servedAs": "$BASE_SERVED_NAME", "checkpointS3": "$CHECKPOINT_S3", "checkpointRevision": "$CHECKPOINT_REVISION",
            "modelManifestSha256": "$MODEL_MANIFEST_SHA_EXPECTED", "servedManifestSha256": "$SERVED_MANIFEST_SHA_EXPECTED",
            "weightManifestSha256": served["weightManifestSha256"], "filesVerified": len(served["weights"]) + len(served.get("tokenizerAndConfig", {}))},
   "candidate": {"servedAs": "$ADAPTER_ID", "adapterUri": "$ADAPTER_URI", "adapterModelSha256": "$ADAPTER_SHA_EXPECTED", "adapterConfigSha256": "$ADAPTER_CONFIG_SHA_EXPECTED",
@@ -232,8 +232,11 @@ sq_main() {
   VLLM_IMAGE="${VLLM_IMAGE:-637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research/vllm-openai@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2}"
   SLEEP_IMAGE="${SLEEP_IMAGE:-637423327454.dkr.ecr.us-east-1.amazonaws.com/amos-qwen-research-plane/trainer@sha256:ff962a7f5f5679a11e50ee424e5add9477a9fe02b4c11447f2f426bcbacc0432}"
   BASE_SERVED_NAME="amos-qwen38-27b-fp8"
-  HF_REPO="Qwen/Qwen3.8-27B-FP8"
-  HF_REVISION="017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+  # The served FP8 checkpoint lives in the inference model bucket (the same source the serving cell
+  # was provisioned from), NOT on public Hugging Face; stage it from S3 over the VPC endpoint.
+  MODEL_BUCKET="${MODEL_BUCKET:-amos-qwen-research-637423327454-us-east-1}"
+  CHECKPOINT_REVISION="017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+  CHECKPOINT_S3="s3://$MODEL_BUCKET/models/Qwen--Qwen3.8-27B-FP8/$CHECKPOINT_REVISION/files"
   MODEL_MANIFEST_URI="s3://$BUCKET/models/amos-qwen38-27b-fp8/model-manifest.sha256"
   SERVED_MANIFEST_URI="s3://$BUCKET/models/amos-qwen38-27b-fp8/served-model-manifest-20260905.json"
   MODEL_DIR=/opt/amos-fp8/model
@@ -270,11 +273,10 @@ sq_main() {
   sq_verify_manifests || sq_die "checkpoint manifests are not the reviewed bytes / weight identity (code $?)"
   install -d -m 0755 "$MODEL_DIR"
   if ! sq_bounded 900 bash -c "$(declare -f sq_verify_model); MODEL_DIR='$MODEL_DIR' ROOT='$ROOT' sq_verify_model" >/dev/null 2>&1; then
-    sq_log "checkpoint absent or not matching; downloading pinned revision $HF_REVISION"
-    sq_bounded 2400 docker run --rm --network=host -v /opt/amos-fp8:/dl --env HF_HUB_DISABLE_TELEMETRY=1 --entrypoint python "$VLLM_IMAGE" -c \
-      "from huggingface_hub import snapshot_download; snapshot_download('$HF_REPO', revision='$HF_REVISION', local_dir='/dl/model', max_workers=8)" \
-      || sq_die "checkpoint download failed"
-    sq_bounded 900 bash -c "$(declare -f sq_verify_model); MODEL_DIR='$MODEL_DIR' ROOT='$ROOT' sq_verify_model" || sq_die "downloaded checkpoint does not match the pinned manifests"
+    sq_log "checkpoint absent or not matching; syncing revision $CHECKPOINT_REVISION from $CHECKPOINT_S3"
+    sq_bounded 2400 aws s3 sync "$CHECKPOINT_S3/" "$MODEL_DIR/" --only-show-errors > "$OUT/checkpoint-sync.log" 2>&1 \
+      || { tail -c 2000 "$OUT/checkpoint-sync.log" 2>/dev/null; sq_die "checkpoint sync from S3 failed (see checkpoint-sync.log)"; }
+    sq_bounded 900 bash -c "$(declare -f sq_verify_model); MODEL_DIR='$MODEL_DIR' ROOT='$ROOT' sq_verify_model" || sq_die "synced checkpoint does not match the pinned manifests"
   fi
 
   # 4. Candidate adapter, weights and config pinned.
