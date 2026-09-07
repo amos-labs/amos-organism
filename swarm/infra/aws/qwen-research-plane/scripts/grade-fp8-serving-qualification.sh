@@ -302,7 +302,7 @@ sq_main() {
     --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching \
     --enable-lora --max-lora-rank 32 --max-loras 4 --lora-modules "$ADAPTER_ID=/adapters/$ADAPTER_ID" \
     --speculative-config '{"method":"mtp","num_speculative_tokens":3}' --trust-remote-code > "$OUT/vllm-start.out" 2> "$OUT/vllm-start.err" \
-    || { sq_log "docker run -d failed for the vLLM server:"; tail -c 3000 "$OUT/vllm-start.err" 2>/dev/null; docker ps -a > "$OUT/docker-ps.txt" 2>&1 || true; nvidia-smi -L > "$OUT/nvidia.txt" 2>&1 || true; sq_sync_out; sq_die "vllm start failed (see vllm-start.err / docker-ps.txt)"; }
+    || { sq_log "docker run -d failed for the vLLM server:"; tail -c 3000 "$OUT/vllm-start.err" 2>/dev/null; timeout -k 5 15 docker ps -a > "$OUT/docker-ps.txt" 2>&1 || true; timeout -k 5 15 nvidia-smi -L > "$OUT/nvidia.txt" 2>&1 || true; sq_sync_out; sq_die "vllm start failed (see vllm-start.err / docker-ps.txt)"; }
   # Give a cold FP8 + MTP + LoRA load the full remaining window minus a cleanup reserve, not a
   # fixed 15-minute floor (which starved the 20-minute smoke). On timeout, capture the container log.
   READY=0
