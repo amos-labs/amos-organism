@@ -318,7 +318,7 @@ sq_main() {
     for m in "$BASE_SERVED_NAME" "$ADAPTER_ID"; do
       code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
         http://127.0.0.1:8000/v1/chat/completions \
-        -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
+        -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"enable_thinking\":false,\"chat_template_kwargs\":{\"enable_thinking\":false},\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
       body_ok=no; if [ "$code" = 200 ] && sq_selftest_body_ok "$OUT/selftest-$m.json"; then body_ok=yes; fi
       echo "{\"arm\":\"$m\",\"httpCode\":\"$code\",\"bodyOk\":\"$body_ok\"}" >> "$OUT/selftest.jsonl"
       [ "$body_ok" = yes ] || { STATUS=failed; FAIL_REASON="self-test arm $m: http $code, well-formed completion=$body_ok"; sq_sync_out; return 1; }
