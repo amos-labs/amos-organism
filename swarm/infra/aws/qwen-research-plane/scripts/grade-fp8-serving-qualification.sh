@@ -296,7 +296,7 @@ sq_main() {
     --env VLLM_NO_USAGE_STATS=1 --env VLLM_DO_NOT_TRACK=1 \
     --env HOME=/cache/home --env HF_HOME=/cache/hf --env TRITON_CACHE_DIR=/cache/triton --env XDG_CACHE_HOME=/cache/xdg \
     --volume "$MODEL_DIR:/model:ro" --volume /opt/amos-adapters-sq:/adapters:ro --volume /opt/amos-sq-cache:/cache:rw \
-    --entrypoint python "$VLLM_IMAGE" -m vllm.entrypoints.openai.api_server \
+    --entrypoint python3 "$VLLM_IMAGE" -m vllm.entrypoints.openai.api_server \
     --host 127.0.0.1 --port 8000 --api-key "$API_KEY" --model /model --served-model-name "$BASE_SERVED_NAME" \
     --max-model-len 65536 --max-num-seqs 8 --max-num-batched-tokens 32768 --gpu-memory-utilization 0.85 \
     --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching \
