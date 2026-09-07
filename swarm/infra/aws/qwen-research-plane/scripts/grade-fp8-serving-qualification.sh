@@ -138,7 +138,7 @@ manifest = {
                 "rank": adapter_config.get("r"), "alpha": adapter_config.get("lora_alpha"), "targetModules": sorted(adapter_config.get("target_modules", [])), "peftType": adapter_config.get("peft_type")},
   "servingArgs": {"maxModelLen": 65536, "maxNumSeqs": 8, "maxNumBatchedTokens": 32768, "gpuMemoryUtilization": 0.85, "toolCallParser": "qwen3_xml", "reasoningParser": "qwen3", "prefixCaching": True, "maxLoraRank": 32, "maxLoras": 4, "speculative": {"method": "mtp", "num_speculative_tokens": 3}, "trustRemoteCode": True,
                   "deviations": ["one LoRA module: $ADAPTER_ID", "loopback host with run-local API key", "trainer GPU/driver, not the cell"]},
-  "sets": {"primary": "$PRIMARY_SET", "optional": "$OPTIONAL_SET" or None, "optionalRunsOnlyIf": "primary report uploaded and >= $OPTIONAL_MIN_SECONDS s remaining"},
+  "selfTest": "${SELF_TEST:-0}" == "1", "sets": {"primary": "$PRIMARY_SET", "optional": "$OPTIONAL_SET" or None, "optionalRunsOnlyIf": "primary report uploaded and >= $OPTIONAL_MIN_SECONDS s remaining"},
   "grader": {"armOrder": "balanced", "blockSize": 4, "warmup": "inference", "warmupMaxTokens": 16, "concurrency": 4, "temperature": 0.2, "seed": 7, "reasoningEffort": "medium", "repairAttempts": 1, "maxOutputTokens": 1200},
   "evidenceClass": "FP8 base vs one LoRA under the production vLLM image and effective arguments on an isolated trainer replica; synthetic curriculum; not a real-Mission, tier, router or live-serving claim; no promotion implied"
 }
@@ -200,6 +200,24 @@ sq_finish() {
   shutdown -h +1 "amos serving qualification $RUN_ID finished: $STATUS" >/dev/null 2>&1 || true
 }
 
+# A self-test warm-up passes only with a well-formed assistant completion (text or a tool call), not merely HTTP 200.
+sq_selftest_body_ok() {
+  python3 - "$1" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+choices = d.get("choices") or []
+if not choices:
+    sys.exit(1)
+msg = choices[0].get("message") or {}
+text = (msg.get("content") or "").strip()
+tools = msg.get("tool_calls") or []
+sys.exit(0 if (text or tools) else 1)
+PY
+}
+
 sq_main() {
   for v in RUN_ID DEADLINE_UTC SRC_URI SRC_SHA_EXPECTED SRC_REVISION ADAPTER_ID ADAPTER_URI ADAPTER_SHA_EXPECTED ADAPTER_CONFIG_SHA_EXPECTED \
            MODEL_MANIFEST_SHA_EXPECTED SERVED_MANIFEST_SHA_EXPECTED EXPECTED_WEIGHT_MANIFEST_SHA PROTOCOL_DIGEST PRIMARY_SET; do sq_need "$v"; done
@@ -207,6 +225,7 @@ sq_main() {
   GRADER_UID="${GRADER_UID:-10002}"
   OPTIONAL_SET="${OPTIONAL_SET:-}"
   OPTIONAL_MIN_SECONDS="${OPTIONAL_MIN_SECONDS:-2400}"
+  SELF_TEST="${SQ_SELF_TEST:-0}"   # 1 = prove startup and stop before any scenario is generated; consumes no seed
   BUCKET="amos-qwen-research-plane-637423327454-us-east-1"
   PLAN="stage1/stage1-2026-09-060408"
   DEST="s3://$BUCKET/$PLAN/serving-qualification/$RUN_ID"
@@ -222,10 +241,13 @@ sq_main() {
   OUT=$ROOT/out
   mkdir -p "$ROOT/src" "$OUT" /opt/amos-fp8 /opt/amos-adapters-sq
   chown "$GRADER_UID:$GRADER_UID" "$OUT" && chmod 0775 "$OUT"
+  # Honest controller identity for the launcher liveness check (its own PID, not the async wrapper).
+  echo $$ > "/root/sq-controller-$RUN_ID.pid" 2>/dev/null || true
   API_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
   STATUS=started; FAIL_REASON=""; SET_FAILURES=0; WATCHDOG_PID=""; WATCHDOG_SCHEDULED=""
   trap sq_finish EXIT
-  [ "$(sq_remaining)" -gt 2700 ] || sq_die "less than 45 minutes before the deadline at start"
+  MIN_START_REMAINING=$([ "$SELF_TEST" = 1 ] && echo 600 || echo 2700)
+  [ "$(sq_remaining)" -gt "$MIN_START_REMAINING" ] || sq_die "not enough time before the deadline at start (need > ${MIN_START_REMAINING}s)"
 
   # 0. Absolute stop first: nothing else starts until the watchdog is verified active.
   sq_install_watchdog "$$" 300 || sq_die "watchdog could not be installed"
@@ -239,8 +261,8 @@ sq_main() {
 
   # 2. Images.
   sq_bounded 120 bash -c 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 637423327454.dkr.ecr.us-east-1.amazonaws.com >/dev/null 2>&1' || sq_die "ecr login failed"
-  sq_bounded 900 docker pull -q "$VLLM_IMAGE" >/dev/null || sq_die "production vllm image pull failed"
-  sq_bounded 600 docker pull -q "$SLEEP_IMAGE" >/dev/null || sq_die "grader image pull failed"
+  sq_bounded 900 docker pull "$VLLM_IMAGE" > "$OUT/pull-vllm.log" 2>&1 || { tail -c 2000 "$OUT/pull-vllm.log" 2>/dev/null; sq_die "production vllm image pull failed (see pull-vllm.log)"; }
+  sq_bounded 600 docker pull "$SLEEP_IMAGE" > "$OUT/pull-grader.log" 2>&1 || { tail -c 2000 "$OUT/pull-grader.log" 2>/dev/null; sq_die "grader image pull failed (see pull-grader.log)"; }
 
   # 3. Checkpoint manifests (byte-pinned) and the checkpoint itself (always re-verified).
   sq_bounded 120 aws s3 cp "$MODEL_MANIFEST_URI" "$ROOT/model-manifest.sha256" --only-show-errors || sq_die "model manifest download failed"
@@ -289,6 +311,21 @@ sq_main() {
 
   # 7. Primary set always; optional set only if the primary's evidence is in S3 and time remains.
   MODEL_IDS="$BASE_SERVED_NAME,$ADAPTER_ID"
+  if [ "$SELF_TEST" = 1 ]; then
+    # Startup proof only: one bounded warm-up request per arm through the served endpoint, no gradeCurriculum, no seed.
+    for m in "$BASE_SERVED_NAME" "$ADAPTER_ID"; do
+      code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
+        http://127.0.0.1:8000/v1/chat/completions \
+        -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
+      body_ok=no; if [ "$code" = 200 ] && sq_selftest_body_ok "$OUT/selftest-$m.json"; then body_ok=yes; fi
+      echo "{\"arm\":\"$m\",\"httpCode\":\"$code\",\"bodyOk\":\"$body_ok\"}" >> "$OUT/selftest.jsonl"
+      [ "$body_ok" = yes ] || { STATUS=failed; FAIL_REASON="self-test arm $m: http $code, well-formed completion=$body_ok"; sq_sync_out; return 1; }
+    done
+    STATUS=self-test-passed
+    echo "{\"runId\":\"$RUN_ID\",\"selfTest\":true,\"arms\":[\"$BASE_SERVED_NAME\",\"$ADAPTER_ID\"],\"result\":\"served and answered a bounded warm-up on both arms; no scenario generated; no seed consumed\"}" > "$OUT/self-test-result.json"
+    sq_sync_out
+    return 0
+  fi
   sq_run_set "${PRIMARY_SET%%=*}" "${PRIMARY_SET#*=}"
   PRIMARY_STATUS="$LAST_SET_STATUS"; PRIMARY_UPLOADED="$LAST_SET_UPLOADED"
   if [ -n "$OPTIONAL_SET" ]; then

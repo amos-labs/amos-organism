@@ -19,9 +19,14 @@ VLLM_REPO_ARN_FRAGMENT="repository/amos-qwen-research/vllm-openai"
 REQUIRED_ENV="SRC_URI SRC_SHA_EXPECTED SRC_REVISION ADAPTER_ID ADAPTER_URI ADAPTER_SHA_EXPECTED ADAPTER_CONFIG_SHA_EXPECTED MODEL_MANIFEST_SHA_EXPECTED SERVED_MANIFEST_SHA_EXPECTED EXPECTED_WEIGHT_MANIFEST_SHA PROTOCOL_DIGEST PRIMARY_SET"
 # Controller deadline and independent runner stop, in minutes from dispatch. Overridable so a
 # recovery run can fit the remaining aggregate allowance (e.g. SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=95).
-RUN_MINUTES="${SQ_RUN_MINUTES:-100}"; STOP_MINUTES="${SQ_STOP_MINUTES:-105}"; MIN_TIMER_LEAD_MINUTES=60
+if [ "${SQ_SELF_TEST:-0}" = 1 ]; then
+  # Startup smoke test: shorter, validated windows; consumes no seed.
+  RUN_MINUTES="${SQ_RUN_MINUTES:-25}"; STOP_MINUTES="${SQ_STOP_MINUTES:-30}"; MIN_RUN_MINUTES=15; MIN_TIMER_LEAD_MINUTES=15
+else
+  RUN_MINUTES="${SQ_RUN_MINUTES:-100}"; STOP_MINUTES="${SQ_STOP_MINUTES:-105}"; MIN_RUN_MINUTES=60; MIN_TIMER_LEAD_MINUTES=60
+fi
 case "$RUN_MINUTES$STOP_MINUTES" in *[!0-9]*) echo "PREFLIGHT FAIL: SQ_RUN_MINUTES/SQ_STOP_MINUTES must be integers" >&2; exit 1;; esac
-[ "$RUN_MINUTES" -ge 60 ] || { echo "PREFLIGHT FAIL: SQ_RUN_MINUTES must be >= 60 (got $RUN_MINUTES)" >&2; exit 1; }
+[ "$RUN_MINUTES" -ge "$MIN_RUN_MINUTES" ] || { echo "PREFLIGHT FAIL: SQ_RUN_MINUTES must be >= $MIN_RUN_MINUTES (got $RUN_MINUTES)" >&2; exit 1; }
 [ "$STOP_MINUTES" -ge $(( RUN_MINUTES + 5 )) ] || { echo "PREFLIGHT FAIL: SQ_STOP_MINUTES must be >= SQ_RUN_MINUTES + 5 (got $STOP_MINUTES vs $RUN_MINUTES)" >&2; exit 1; }
 EXPECTED_ACCOUNT=637423327454
 TIMEOUT_BIN="${TIMEOUT_BIN:-timeout}"
@@ -54,7 +59,7 @@ preflight() {
   UNIT="amos-sq-deadline-$RUN_ID"
   # Runner stop-timer payload: install the script, start a transient timer, print the unit's next trigger as epoch.
   python3 - "$STOP_SCRIPT" "$RUN_ID" "$STOP_AT" "$UNIT" "$STOP_SHA" > "$OUT_DIR/runner-stop-timer.params.json" <<'PY' || fail "could not render the stop-timer payload"
-import json,sys
+import json,sys,os
 script=open(sys.argv[1]).read().rstrip("\n"); run_id, stop_at, unit, sha = sys.argv[2:6]
 # The heredoc re-adds the final newline, so the installed bytes equal the reviewed file exactly.
 # SSM joins the commands into ONE shell script: the first line makes every later failure fatal
@@ -75,17 +80,30 @@ json.dump({"commands": cmds}, sys.stdout)
 PY
   # Trainer controller payload: fetch the pinned controller from S3, verify its sha, run it detached with the pinned environment.
   python3 - "$env_json" "$RUN_ID" "$DEADLINE_UTC" "$CONTROLLER_S3" "$CONTROLLER_SHA" > "$OUT_DIR/trainer-controller.params.json" <<'PY' || fail "could not render the controller payload"
-import json,sys,shlex
+import json,sys,shlex,os
 env=json.load(open(sys.argv[1])); run_id, deadline, s3, sha = sys.argv[2:6]
 env["RUN_ID"]=run_id; env["DEADLINE_UTC"]=deadline
+# Pass a self-test request through to the controller (no seed consumed); absent = a real qualification.
+_st=os.environ.get("SQ_SELF_TEST")
+if _st: env["SQ_SELF_TEST"]=_st
 exports=" ".join(f"{k}={shlex.quote(str(v))}" for k,v in env.items())
 cmds=["[ -n \"${BASH_VERSION:-}\" ] || exec /bin/bash \"$0\" \"$@\"",
       "set -euo pipefail",
       f"aws s3 cp {s3} /root/grade-fp8-serving-qualification.sh --only-show-errors",
       f"echo '{sha}  /root/grade-fp8-serving-qualification.sh' | sha256sum -c --quiet - || {{ echo CONTROLLER_SHA_MISMATCH; exit 31; }}",
       "chmod 0755 /root/grade-fp8-serving-qualification.sh",
-      f"cd /root && env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh > /root/sq-controller-{run_id}.log 2>&1 & echo $! > /root/sq-controller-{run_id}.pid",
-      f"sleep 3; pid=$(cat /root/sq-controller-{run_id}.pid); kill -0 \"$pid\" || {{ echo CONTROLLER_NOT_RUNNING; tail -20 /root/sq-controller-{run_id}.log; exit 32; }}",
+      # The controller must NOT keep the SSM command open. Background a SIMPLE command (not an
+      # AND-list) with all three std fds redirected, in its own new session; SSM then returns as
+      # soon as this payload finishes while the controller runs on. `cd` is a separate command so
+      # the backgrounded unit stays simple (the AND-list form kept the pipe and hung run 0750Z).
+      # The controller writes its own PID to the pidfile at startup, so the liveness check and the
+      # STARTED line report the controller itself, never the async wrapper.
+      "cd /root",
+      f"rm -f /root/sq-controller-{run_id}.pid",
+      f"env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-{run_id}.log 2>&1 &",
+      f"for i in 1 2 3 4 5 6 7 8 9 10; do [ -s /root/sq-controller-{run_id}.pid ] && break; sleep 1; done",
+      f"pid=$(cat /root/sq-controller-{run_id}.pid 2>/dev/null || true)",
+      f"{{ [ -n \"$pid\" ] && kill -0 \"$pid\"; }} || {{ echo CONTROLLER_NOT_RUNNING; tail -20 /root/sq-controller-{run_id}.log 2>/dev/null || true; exit 32; }}",
       f"echo \"STARTED pid=$pid\""]
 json.dump({"commands": cmds}, sys.stdout)
 PY
@@ -93,11 +111,11 @@ PY
     python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["commands"]; assert sum(len(c) for c in d["commands"]) < 60000' "$OUT_DIR/$f" || fail "$f invalid or too large for SSM"
   done
   python3 - "$OUT_DIR/preflight.json" "$RUN_ID" "$DEADLINE_UTC" "$STOP_AT" "$CONTROLLER_SHA" "$STOP_SHA" "$CONTROLLER_S3" "$UNIT" "$(iso "$now_epoch")" "$RUN_MINUTES" "$STOP_MINUTES" <<'PY'
-import json,sys
+import json,sys,os
 out,run_id,deadline,stop_at,csha,ssha,cs3,unit,now=sys.argv[1:10]
-json.dump({"schema":"amos.serving-qualification-preflight","version":2,"renderedAt":now,"runId":run_id,"controllerMinutes":int(sys.argv[10]),"stopMinutes":int(sys.argv[11]),"deadlineUtc":deadline,"runnerStopAtUtc":stop_at,"controllerSha256":csha,"controllerS3":cs3,"stopScriptSha256":ssha,"stopTimerUnit":unit,"payloads":["runner-stop-timer.params.json","trainer-controller.params.json"]},open(out,"w"),indent=2)
+json.dump({"schema":"amos.serving-qualification-preflight","version":3,"selfTest":os.environ.get("SQ_SELF_TEST","0"),"renderedAt":now,"runId":run_id,"controllerMinutes":int(sys.argv[10]),"stopMinutes":int(sys.argv[11]),"deadlineUtc":deadline,"runnerStopAtUtc":stop_at,"controllerSha256":csha,"controllerS3":cs3,"stopScriptSha256":ssha,"stopTimerUnit":unit,"payloads":["runner-stop-timer.params.json","trainer-controller.params.json"]},open(out,"w"),indent=2)
 PY
-  echo "PREFLIGHT OK run=$RUN_ID windows=${RUN_MINUTES}/${STOP_MINUTES}min deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
+  echo "PREFLIGHT OK run=$RUN_ID selftest=${SQ_SELF_TEST:-0} windows=${RUN_MINUTES}/${STOP_MINUTES}min deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
 }
 
 # ssm_run <instance> <params-file> <comment> <wait-seconds> <out-file>
