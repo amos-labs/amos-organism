@@ -301,14 +301,17 @@ sq_main() {
     --max-model-len 65536 --max-num-seqs 8 --max-num-batched-tokens 32768 --gpu-memory-utilization 0.85 \
     --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching \
     --enable-lora --max-lora-rank 32 --max-loras 4 --lora-modules "$ADAPTER_ID=/adapters/$ADAPTER_ID" \
-    --speculative-config '{"method":"mtp","num_speculative_tokens":3}' --trust-remote-code >/dev/null || sq_die "vllm start failed"
+    --speculative-config '{"method":"mtp","num_speculative_tokens":3}' --trust-remote-code > "$OUT/vllm-start.out" 2> "$OUT/vllm-start.err" \
+    || { sq_log "docker run -d failed for the vLLM server:"; tail -c 3000 "$OUT/vllm-start.err" 2>/dev/null; timeout -k 5 15 docker ps -a > "$OUT/docker-ps.txt" 2>&1 || true; timeout -k 5 15 nvidia-smi -L > "$OUT/nvidia.txt" 2>&1 || true; sq_sync_out; sq_die "vllm start failed (see vllm-start.err / docker-ps.txt)"; }
+  # Give a cold FP8 + MTP + LoRA load the full remaining window minus a cleanup reserve, not a
+  # fixed 15-minute floor (which starved the 20-minute smoke). On timeout, capture the container log.
   READY=0
-  for _ in $(seq 1 120); do
+  for _ in $(seq 1 180); do
     if timeout -k 5 15 curl -fsS -H "authorization: Bearer $API_KEY" http://127.0.0.1:8000/v1/models >/dev/null 2>&1; then READY=1; break; fi
-    [ "$(sq_remaining)" -gt 900 ] || break
+    [ "$(sq_remaining)" -gt 180 ] || break
     sleep 10
   done
-  [ "$READY" = 1 ] || sq_die "vllm not ready"
+  if [ "$READY" != 1 ]; then timeout -k 10 60 docker logs --tail 200 amos-fp8-serving > "$OUT/vllm-tail.log" 2>&1 || true; sq_sync_out; sq_die "vllm not ready (see vllm-tail.log)"; fi
   timeout -k 5 15 curl -fsS -H "authorization: Bearer $API_KEY" http://127.0.0.1:8000/v1/models | python3 -c 'import json,sys; print("served:", [m["id"] for m in json.load(sys.stdin)["data"]])' | tee "$OUT/served-models.txt"
 
   # 7. Primary set always; optional set only if the primary's evidence is in S3 and time remains.
