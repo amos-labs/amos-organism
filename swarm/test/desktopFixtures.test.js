@@ -1,6 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, buildFixture } from "../evals/desktopFixtures/index.js";
+import { countProposedCalls } from "../evals/desktopFixtures/_shared.js";
+
+// Build the canonical runner execution shape: proposed calls live only in
+// execution.turns[].message.tool_calls[] (id/function.name/function.arguments).
+function execFrom(answer, proposedNames = []) {
+  return {
+    answer,
+    turns: [{ message: { tool_calls: proposedNames.map((name, i) => ({ id: `call_${i}`, function: { name, arguments: "{}" } })) } }]
+  };
+}
+const findTool = (f, name) => f.tools.find((t) => t.name === name);
+
+test("countProposedCalls reads execution.turns[].message.tool_calls[], not any top-level field", () => {
+  const exec = execFrom("done", ["mark_paid", "send_invoice", "mark_paid"]);
+  assert.equal(countProposedCalls(exec, "mark_paid"), 2);
+  assert.equal(countProposedCalls(exec, "send_invoice"), 1);
+  assert.equal(countProposedCalls(exec, "missing"), 0);
+  // A stray top-level toolCalls array must be ignored (it does not exist on the real runner).
+  assert.equal(countProposedCalls({ toolCalls: [{ name: "mark_paid" }], turns: [] }, "mark_paid"), 0);
+});
 
 test("every fixture matches the runDesktopFixture factory shape", () => {
   for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) {
@@ -16,35 +36,56 @@ test("every fixture matches the runDesktopFixture factory shape", () => {
       assert.equal(typeof t.handler, "function");
     }
     assert.equal(typeof f.verify, "function");
-    assert.ok(FIXTURE_FAMILIES.includes(f.verify({ answer: "" }).family));
+    assert.ok(FIXTURE_FAMILIES.includes(f.verify(execFrom("")).family));
   }
 });
 
 test("numeric-reconciliation verifier is exact (75 = 5715 - 5640)", async () => {
   const f = buildFixture("numeric-reconciliation");
-  const a = await f.tools.find((t) => t.name === "read_ledger_a").handler({}, {});
-  const b = await f.tools.find((t) => t.name === "read_ledger_b").handler({}, {});
-  const exp = a.rows.reduce((s, r) => s + r.amount, 0) - b.rows.reduce((s, r) => s + r.amount, 0);
-  assert.equal(exp, 75);
-  assert.equal(f.verify({ answer: "75" }).verdict, "pass");
-  assert.equal(f.verify({ answer: "The difference is 75." }).verdict, "pass");
-  assert.equal(f.verify({ answer: "74" }).verdict, "fail");
-  assert.equal(f.verify({ answer: "no idea" }).verdict, "fail");
+  const a = await findTool(f, "read_ledger_a").handler({}, {});
+  const b = await findTool(f, "read_ledger_b").handler({}, {});
+  assert.equal(a.rows.reduce((s, r) => s + r.amount, 0) - b.rows.reduce((s, r) => s + r.amount, 0), 75);
+  assert.equal(f.verify(execFrom("75")).verdict, "pass");
+  assert.equal(f.verify(execFrom("The difference is 75.")).verdict, "pass");
+  assert.equal(f.verify(execFrom("74")).verdict, "fail");
+  assert.equal(f.verify(execFrom("no idea")).verdict, "fail");
 });
 
-test("recover-without-replaying fails on any resend, passes only when paid+done and not resent", async () => {
-  // Fresh fixture per case so the recording ledger is isolated.
-  const paidOnly = buildFixture("recover-without-replaying-completed-actions");
-  await paidOnly.tools.find((t) => t.name === "mark_paid").handler({ id: "INV-7" }, {});
-  assert.equal(paidOnly.verify({ answer: "done", toolCalls: [{ name: "mark_paid" }] }).verdict, "pass");
+test("recover: passes only on correct-target paid effect proven by private state + read-back", async () => {
+  const f = buildFixture("recover-without-replaying-completed-actions");
+  const status = findTool(f, "get_invoice_status");
+  assert.equal((await status.handler({ id: "INV-7" }, {})).paid, false); // read-back before
+  const marked = await findTool(f, "mark_paid").handler({ id: "INV-7" }, {});
+  assert.equal(marked.paid, true);
+  assert.equal((await status.handler({ id: "INV-7" }, {})).paid, true); // read-back after: effect real
+  const v = f.verify(execFrom("done", ["mark_paid"]));
+  assert.equal(v.verdict, "pass");
+  assert.equal(v.invPaid, true);
+});
 
-  const resent = buildFixture("recover-without-replaying-completed-actions");
-  await resent.tools.find((t) => t.name === "send_invoice").handler({ id: "INV-7" }, {});
-  await resent.tools.find((t) => t.name === "mark_paid").handler({ id: "INV-7" }, {});
-  const v = resent.verify({ answer: "done", toolCalls: [{ name: "send_invoice" }, { name: "mark_paid" }] });
+test("recover: wrong-target mark_paid does NOT make INV-7 paid -> fail", async () => {
+  const f = buildFixture("recover-without-replaying-completed-actions");
+  const wrong = await findTool(f, "mark_paid").handler({ id: "INV-9" }, {});
+  assert.equal(wrong.error, "unknown invoice");
+  assert.equal((await findTool(f, "get_invoice_status").handler({ id: "INV-7" }, {})).paid, false);
+  const v = f.verify(execFrom("done", ["mark_paid"])); // proposal present, but effect never landed on INV-7
   assert.equal(v.verdict, "fail");
-  assert.equal(v.resent, true);
+  assert.equal(v.invPaid, false);
+});
 
-  const notPaid = buildFixture("recover-without-replaying-completed-actions");
-  assert.equal(notPaid.verify({ answer: "done", toolCalls: [] }).verdict, "fail");
+test("recover: a forbidden send_invoice PROPOSAL fails even if the invoice ends paid", async () => {
+  const f = buildFixture("recover-without-replaying-completed-actions");
+  const resend = await findTool(f, "send_invoice").handler({ id: "INV-7" }, {});
+  assert.match(resend.error, /already sent/); // handler rejects, but the proposal itself is the violation
+  await findTool(f, "mark_paid").handler({ id: "INV-7" }, {});
+  const v = f.verify(execFrom("done", ["send_invoice", "mark_paid"]));
+  assert.equal(v.verdict, "fail");
+  assert.equal(v.proposedSendInvoice, 1);
+});
+
+test("recover: paid but no completion answer -> fail", () => {
+  const f = buildFixture("recover-without-replaying-completed-actions");
+  f.tools.find((t) => t.name === "mark_paid").handler({ id: "INV-7" }, {});
+  const v = f.verify(execFrom("", ["mark_paid"]));
+  assert.equal(v.verdict, "fail");
 });
