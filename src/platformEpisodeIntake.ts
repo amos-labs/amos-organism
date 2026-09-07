@@ -76,8 +76,10 @@ export class PlatformEpisodeIntake {
         consentReceiptId: episode.consentReceiptId,
         source: episode.source,
         geneAdmissionAllowed: false,
-        evidencePresent: evidence.present,
-        evidence,
+        // Backward compatible: legacy evidence-absent episodes keep the exact pre-evidence
+        // payload shape, so an event stored before this upgrade re-ingests without a
+        // Conflicting-organism-event-retry (appendIdempotent compares the whole payload digest).
+        ...(evidence.present ? { evidencePresent: true as const, evidence } : {}),
       },
     });
     return immutable({ classification, event });
