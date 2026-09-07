@@ -60,6 +60,28 @@ test("shadow rows join to Mission episodes by missionId and never become compara
   assert.equal(again.digest, report.digest);
 });
 
+test("transport-validation episodes are excluded from the shadow join and attribution", () => {
+  const SYNTH_MISSION = "a10c9080-71f9-48e3-96b9-f6e2185332a0";
+  const SYNTH_ID = "platform-mission:7f80fdb1-a26d-41e8-95ac-451aeaa54e32:a10c9080-71f9-48e3-96b9-f6e2185332a0:completed:v1";
+  const syntheticEpisode = {
+    id: `platform-episode:${SYNTH_ID}`, type: "platform.experience-negative", missionId: SYNTH_MISSION,
+    authority: "host", hostReceiptId: "platform-attestation:synthetic",
+    payload: { episodeId: SYNTH_ID, terminalStatus: "completed", source: { task: { objectiveDigest: sha("obj"), completionConditionDigest: sha("cc"), contractDigest: sha("contract"), operationKeys: ["finance.read"] } } },
+  };
+  const records = [
+    shadowRecord({ missionId: SYNTH_MISSION, plannerAttempt: 1, tenantId: "t" }),
+    shadowRecord({ missionId: "m1", plannerAttempt: 1, tenantId: "t", completedAt: "2026-09-05T20:02:00.000Z" }),
+  ];
+  const events = [syntheticEpisode, episodeEvent("m1", true)];
+  const report = joinShadowWithEpisodes({ shadowRecords: records, episodeEvents: events, now: new Date("2026-09-05T21:00:00Z") });
+  // The synthetic transport-validation episode is filtered out -> its mission has no episode.
+  const synthRow = report.rows.find((r) => r.missionId === SYNTH_MISSION);
+  assert.equal(synthRow.attribution, "mission-without-episode");
+  assert.equal(report.counts.attributed, 1, "only the real m1 episode attributes");
+  assert.equal(report.counts.missionWithoutEpisode, 1);
+  assert.ok(report.tasksObserved.every((t) => JSON.stringify(t).indexOf(SYNTH_ID) === -1));
+});
+
 test("duplicate shadow lines collapse and non-shadow lines are ignored", () => {
   const record = shadowRecord({ missionId: "m1", plannerAttempt: 1, tenantId: "t" });
   const report = joinShadowWithEpisodes({ shadowRecords: [record, structuredClone(record), { schema: "amos.swarm-turn-gateway" }] });
