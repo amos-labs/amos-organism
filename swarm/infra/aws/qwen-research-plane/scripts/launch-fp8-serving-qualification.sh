@@ -75,19 +75,30 @@ json.dump({"commands": cmds}, sys.stdout)
 PY
   # Trainer controller payload: fetch the pinned controller from S3, verify its sha, run it detached with the pinned environment.
   python3 - "$env_json" "$RUN_ID" "$DEADLINE_UTC" "$CONTROLLER_S3" "$CONTROLLER_SHA" > "$OUT_DIR/trainer-controller.params.json" <<'PY' || fail "could not render the controller payload"
-import json,sys,shlex
+import json,sys,shlex,os
 env=json.load(open(sys.argv[1])); run_id, deadline, s3, sha = sys.argv[2:6]
 env["RUN_ID"]=run_id; env["DEADLINE_UTC"]=deadline
+# Pass a self-test request through to the controller (no seed consumed); absent = a real qualification.
+_st=os.environ.get("SQ_SELF_TEST")
+if _st: env["SQ_SELF_TEST"]=_st
 exports=" ".join(f"{k}={shlex.quote(str(v))}" for k,v in env.items())
 cmds=["[ -n \"${BASH_VERSION:-}\" ] || exec /bin/bash \"$0\" \"$@\"",
       "set -euo pipefail",
       f"aws s3 cp {s3} /root/grade-fp8-serving-qualification.sh --only-show-errors",
       f"echo '{sha}  /root/grade-fp8-serving-qualification.sh' | sha256sum -c --quiet - || {{ echo CONTROLLER_SHA_MISMATCH; exit 31; }}",
       "chmod 0755 /root/grade-fp8-serving-qualification.sh",
-      # Detach stdin as well as stdout/stderr: a backgrounded process still holding the SSM commands
-      # stdin keeps the invocation InProgress, which is what aborted run 0750Z mid image-pull.
-      f"cd /root && env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-{run_id}.log 2>&1 & echo $! > /root/sq-controller-{run_id}.pid",
-      f"sleep 3; pid=$(cat /root/sq-controller-{run_id}.pid); kill -0 \"$pid\" || {{ echo CONTROLLER_NOT_RUNNING; tail -20 /root/sq-controller-{run_id}.log; exit 32; }}",
+      # The controller must NOT keep the SSM command open. Background a SIMPLE command (not an
+      # AND-list) with all three std fds redirected, in its own new session; SSM then returns as
+      # soon as this payload finishes while the controller runs on. `cd` is a separate command so
+      # the backgrounded unit stays simple (the AND-list form kept the pipe and hung run 0750Z).
+      # The controller writes its own PID to the pidfile at startup, so the liveness check and the
+      # STARTED line report the controller itself, never the async wrapper.
+      "cd /root",
+      f"rm -f /root/sq-controller-{run_id}.pid",
+      f"env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-{run_id}.log 2>&1 &",
+      f"for i in 1 2 3 4 5 6 7 8 9 10; do [ -s /root/sq-controller-{run_id}.pid ] && break; sleep 1; done",
+      f"pid=$(cat /root/sq-controller-{run_id}.pid 2>/dev/null || true)",
+      f"{{ [ -n \"$pid\" ] && kill -0 \"$pid\"; }} || {{ echo CONTROLLER_NOT_RUNNING; tail -20 /root/sq-controller-{run_id}.log 2>/dev/null || true; exit 32; }}",
       f"echo \"STARTED pid=$pid\""]
 json.dump({"commands": cmds}, sys.stdout)
 PY
@@ -99,7 +110,7 @@ import json,sys
 out,run_id,deadline,stop_at,csha,ssha,cs3,unit,now=sys.argv[1:10]
 json.dump({"schema":"amos.serving-qualification-preflight","version":2,"renderedAt":now,"runId":run_id,"controllerMinutes":int(sys.argv[10]),"stopMinutes":int(sys.argv[11]),"deadlineUtc":deadline,"runnerStopAtUtc":stop_at,"controllerSha256":csha,"controllerS3":cs3,"stopScriptSha256":ssha,"stopTimerUnit":unit,"payloads":["runner-stop-timer.params.json","trainer-controller.params.json"]},open(out,"w"),indent=2)
 PY
-  echo "PREFLIGHT OK run=$RUN_ID windows=${RUN_MINUTES}/${STOP_MINUTES}min deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
+  echo "PREFLIGHT OK run=$RUN_ID selftest=${SQ_SELF_TEST:-0} windows=${RUN_MINUTES}/${STOP_MINUTES}min deadline=$DEADLINE_UTC runner-stop=$STOP_AT UTC controller=$CONTROLLER_SHA stop=$STOP_SHA rendered=$OUT_DIR"
 }
 
 # ssm_run <instance> <params-file> <comment> <wait-seconds> <out-file>

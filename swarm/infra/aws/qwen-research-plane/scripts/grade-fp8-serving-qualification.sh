@@ -223,6 +223,8 @@ sq_main() {
   OUT=$ROOT/out
   mkdir -p "$ROOT/src" "$OUT" /opt/amos-fp8 /opt/amos-adapters-sq
   chown "$GRADER_UID:$GRADER_UID" "$OUT" && chmod 0775 "$OUT"
+  # Honest controller identity for the launcher liveness check (its own PID, not the async wrapper).
+  echo $$ > "/root/sq-controller-$RUN_ID.pid" 2>/dev/null || true
   API_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
   STATUS=started; FAIL_REASON=""; SET_FAILURES=0; WATCHDOG_PID=""; WATCHDOG_SCHEDULED=""
   trap sq_finish EXIT
@@ -240,8 +242,8 @@ sq_main() {
 
   # 2. Images.
   sq_bounded 120 bash -c 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 637423327454.dkr.ecr.us-east-1.amazonaws.com >/dev/null 2>&1' || sq_die "ecr login failed"
-  sq_bounded 900 docker pull -q "$VLLM_IMAGE" >/dev/null || sq_die "production vllm image pull failed"
-  sq_bounded 600 docker pull -q "$SLEEP_IMAGE" >/dev/null || sq_die "grader image pull failed"
+  sq_bounded 900 docker pull "$VLLM_IMAGE" > "$OUT/pull-vllm.log" 2>&1 || { tail -c 2000 "$OUT/pull-vllm.log" 2>/dev/null; sq_die "production vllm image pull failed (see pull-vllm.log)"; }
+  sq_bounded 600 docker pull "$SLEEP_IMAGE" > "$OUT/pull-grader.log" 2>&1 || { tail -c 2000 "$OUT/pull-grader.log" 2>/dev/null; sq_die "grader image pull failed (see pull-grader.log)"; }
 
   # 3. Checkpoint manifests (byte-pinned) and the checkpoint itself (always re-verified).
   sq_bounded 120 aws s3 cp "$MODEL_MANIFEST_URI" "$ROOT/model-manifest.sha256" --only-show-errors || sq_die "model manifest download failed"

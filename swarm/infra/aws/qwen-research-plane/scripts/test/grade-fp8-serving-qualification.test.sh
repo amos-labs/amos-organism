@@ -239,7 +239,7 @@ if SQ_CONTROLLER_SHA_EXPECTED="0000" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ
 BADENV="$WORK/launch-bad.json"; python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["ADAPTER_SHA_EXPECTED"]="<fill>"; json.dump(d,open(sys.argv[2],"w"))' "$GOODENV" "$BADENV"
 if SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$BADENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 placeholder in launch env must fail preflight"; fi
 OUTP=$(SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 2>&1) || fail "T12 good preflight must pass: $OUTP"
-echo "$OUTP" | grep -q "PREFLIGHT OK run=sq-fp8-s5-20270115T0800Z windows=100/105min deadline=2027-01-15T09:40:00Z" || fail "T12 preflight must render run id and deadline from --now (got: $OUTP)"
+echo "$OUTP" | grep -q "PREFLIGHT OK run=sq-fp8-s5-20270115T0800Z selftest=0 windows=100/105min deadline=2027-01-15T09:40:00Z" || fail "T12 preflight must render run id and deadline from --now (got: $OUTP)"
 R="$WORK/rendered/sq-fp8-s5-20270115T0800Z"
 [ -s "$R/runner-stop-timer.params.json" ] && [ -s "$R/trainer-controller.params.json" ] && [ -s "$R/preflight.json" ] || fail "T12 rendered payloads missing"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); c=" ".join(d["commands"]); assert "sha256sum -c" in c and "RUN_ID=sq-fp8-s5-20270115T0800Z" in c and "DEADLINE_UTC=2027-01-15T09:40:00Z" in c and "nohup /root/grade-fp8-serving-qualification.sh" in c' "$R/trainer-controller.params.json" || fail "T12 controller payload must verify sha and carry run id/deadline"
@@ -256,7 +256,7 @@ if sq_timer_trigger_ok "TIMER_NOT_ACTIVE 1800006300" 1800000000; then fail "T12 
 if sq_timer_trigger_ok "" 1800000000; then fail "T12 empty trigger must be refused"; fi
 # window overrides: a recovery run renders shorter deadline/stop; invalid pairs are refused
 OUTP=$(SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=95 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 2>&1) || fail "T12 90/95 preflight must pass: $OUTP"
-echo "$OUTP" | grep -q "windows=90/95min deadline=2027-01-15T09:30:00Z runner-stop=2027-01-15 09:35:00 UTC" || fail "T12 override must render start+90 / start+95 (got: $OUTP)"
+echo "$OUTP" | grep -q "selftest=0 windows=90/95min deadline=2027-01-15T09:30:00Z runner-stop=2027-01-15 09:35:00 UTC" || fail "T12 override must render start+90 / start+95 (got: $OUTP)"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["controllerMinutes"]==90 and d["stopMinutes"]==95' "$WORK/rendered/sq-fp8-s5-20270115T0800Z/preflight.json" || fail "T12 preflight receipt must record the windows"
 if SQ_RUN_MINUTES=90 SQ_STOP_MINUTES=92 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 stop window under deadline+5 must be refused"; fi
 if SQ_RUN_MINUTES=30 SQ_STOP_MINUTES=40 SQ_CONTROLLER_SHA_EXPECTED="$CSHA" SQ_STOP_SCRIPT_SHA_EXPECTED="$SSHA" AMOS_SQ_LIBRARY_ONLY=0 bash "$LAUNCH" preflight "$GOODENV" --now 1800000000 >/dev/null 2>&1; then fail "T12 controller window under 60 min must be refused"; fi
@@ -341,24 +341,41 @@ grep -q "ec2 start-instances" "$LOG" && fail "T15 trainer must not start without
 [ "$FAIL" = 0 ] && pass "T15 dispatch checks SSM status and the exact TIMER_OK line before any compute"
 
 
-# --- T16: the rendered controller start detaches stdin so a long child cannot hold the SSM command open --------------
-CTLPAY=$(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["commands"]))' "$R/trainer-controller.params.json")
-echo "$CTLPAY" | grep -Eq 'setsid nohup .*grade-fp8-serving-qualification.sh </dev/null >' || fail "T16 controller start must redirect </dev/null (and stdout/stderr) so SSM does not wait on it"
-# behaviour: a start line shaped like the rendered one returns immediately even though the child runs on
-cat > "$WORK/detach.sh" <<'D'
-#!/usr/bin/env bash
-set -euo pipefail
-setsid nohup sleep 30 </dev/null > "$1/child.log" 2>&1 & echo $! > "$1/child.pid"
-sleep 1; kill -0 "$(cat "$1/child.pid")"; echo STARTED
-D
+# --- T16: the controller start must not keep the SSM command's pipe open (real pipe-backed reproduction) ------------
+CMDS=$(python3 -c 'import json,sys; print(chr(10).join(json.load(open(sys.argv[1]))["commands"]))' "$R/trainer-controller.params.json")
+# rendered structure: cd is its own command; the backgrounded unit is a SIMPLE command with all fds redirected
+echo "$CMDS" | grep -qx 'cd /root' || fail "T16 payload must run 'cd /root' as its own command (not an AND-list with the background start)"
+echo "$CMDS" | grep -Eq '^env .*setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-.*\.log 2>&1 &$' || fail "T16 controller must be a simple backgrounded command with stdin/out/err redirected"
+echo "$CMDS" | grep -q 'echo $! >' && fail "T16 liveness must use the controller's own pidfile, not the async wrapper \$!"
+echo "$CMDS" | grep -q 'STARTED pid=$pid' || fail "T16 must print STARTED with the controller pid"
 if command -v setsid >/dev/null 2>&1 && { command -v gtimeout >/dev/null 2>&1 || command -v timeout >/dev/null 2>&1; }; then
   TB=$(command -v gtimeout || command -v timeout)
-  OUTP=$("$TB" -k 2 6 bash "$WORK/detach.sh" "$WORK" 2>&1); rc=$?
-  [ "$rc" = 0 ] || fail "T16 detached start must return within the timeout even with a live child (rc $rc)"
-  echo "$OUTP" | grep -q STARTED || fail "T16 detached start must print STARTED"
-  kill "$(cat "$WORK/child.pid")" 2>/dev/null || true
-else echo "  (T16 behavioural sleeper skipped: no setsid on this host; the rendered </dev/null assertion still ran)"; fi
-[ "$FAIL" = 0 ] && pass "T16 controller start is stdin-detached and returns while the controller runs on"
+  FAKE="$WORK/fakectl.sh"; printf '#!/usr/bin/env bash\necho $$ > "%s/fc.pid"\nsleep 8\n' "$WORK" > "$FAKE"; chmod +x "$FAKE"
+  START="$WORK/start.sh"
+  cat > "$START" <<S
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$WORK"
+rm -f "$WORK/fc.pid"
+setsid nohup "$FAKE" </dev/null > "$WORK/fc.log" 2>&1 &
+for i in \$(seq 1 10); do [ -s "$WORK/fc.pid" ] && break; sleep 1; done
+pid=\$(cat "$WORK/fc.pid")
+kill -0 "\$pid" || { echo CONTROLLER_NOT_RUNNING; exit 32; }
+echo "STARTED pid=\$pid"
+S
+  chmod +x "$START"
+  FIFO="$WORK/ssm.fifo"; rm -f "$FIFO"; mkfifo "$FIFO"
+  ( "$TB" 4 cat "$FIFO" > "$WORK/ssm.out" 2>/dev/null; echo $? > "$WORK/reader.rc" ) &
+  RD=$!
+  bash "$START" > "$FIFO" 2>&1 || true
+  wait "$RD" 2>/dev/null || true
+  rc=$(cat "$WORK/reader.rc" 2>/dev/null || echo 124)
+  [ "$rc" = 0 ] || fail "T16 controller start keeps the SSM pipe open (reader rc $rc) — SSM would stay InProgress and the launcher would abort the run"
+  grep -q 'STARTED pid=' "$WORK/ssm.out" || fail "T16 start must print STARTED"
+  fcpid=$(cat "$WORK/fc.pid" 2>/dev/null || true); [ -n "$fcpid" ] && grep -q "STARTED pid=$fcpid" "$WORK/ssm.out" || fail "T16 STARTED pid must be the controller's own pid"
+  kill "$fcpid" 2>/dev/null || true
+else echo "  (T16 pipe behaviour skipped: needs setsid + GNU timeout; rendered-structure assertions ran)"; fi
+[ "$FAIL" = 0 ] && pass "T16 controller start releases the SSM pipe and reports the controller's own pid"
 
 # --- T17: SQ_SELF_TEST renders/records without gradeCurriculum (no seed) — assert the controller wiring ---------------
 CTL="$HERE/../grade-fp8-serving-qualification.sh"
