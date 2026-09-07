@@ -55,7 +55,9 @@ test("all four shared wire cases validate with the agreed rules", () => {
   assert.equal(correction.recoveryEvidence?.unexpectedCorrections, 1);
   assert.deepEqual([...correction.recoveryEvidence!.evidenceRefs], ["step:1", "step:3"]); // string host refs
   // Rejected attempt is NOT an accepted binding; only the accepted tool_call + checkpoint are.
-  assert.deepEqual(correction.acceptedAttemptBindings.map(attemptBindingKey), ["2:2", "2:3"]);
+  // Actual producer emits only the accepted checkpoint binding for this synthetic case.
+  assert.deepEqual(correction.acceptedAttemptBindings.map(attemptBindingKey), ["2:3"]);
+  assert.equal(correction.recoveryEvidence?.requiredRecoveries, 0);
   assert.equal(correction.acceptedAttemptBindings.some((b) => b.kind === "failure"), false);
   // The failure survives in attemptIdentities with its failureClass.
   assert.equal(correction.attemptIdentities[0]!.failureClass, "planner_input_rejected");
@@ -73,6 +75,19 @@ test("all four shared wire cases validate with the agreed rules", () => {
   assert.equal(unknown.recoveryEvidence?.coverage, "unknown");
   assert.equal(unknown.recoveryEvidence?.unexpectedCorrections, null);
   assert.deepEqual([...unknown.recoveryEvidence!.evidenceRefs], []);
+});
+
+test("a tool_call binding with snake_case claim/receipt normalizes to camelCase (coverage preserved)", () => {
+  const block = { ...wireCase("failure-then-correction"), acceptedAttemptBindings: [
+    { kind: "tool_call", planner_attempt: 2, step_position: 2, claim_id: "claim-2", receipt_id: "receipt-2", status: "executed" },
+    { kind: "checkpoint", planner_attempt: 2, step_position: 3 },
+  ] };
+  const ev = validateMissionEvidence({ evidence: block } as Record<string, unknown>);
+  const toolCall = ev.acceptedAttemptBindings.find((b) => b.kind === "tool_call")!;
+  assert.equal(toolCall.claimId, "claim-2");
+  assert.equal(toolCall.receiptId, "receipt-2");
+  assert.equal(toolCall.status, "executed");
+  assert.equal(attemptBindingKey(toolCall), "2:2");
 });
 
 test("integer evidenceRefs and complete-without-refs (the two producer P1s) stay rejected", () => {
@@ -109,7 +124,7 @@ test("intake: signed new-evidence episode accepted; evidence normalized in the p
   assert.equal(result.classification, "verified");
   assert.equal(result.event.payload.evidencePresent, true);
   const ev = result.event.payload.evidence as ReturnType<typeof validateMissionEvidence>;
-  assert.equal(ev.acceptedAttemptBindings.length, 2);
+  assert.equal(ev.acceptedAttemptBindings.length, 1);
 });
 
 test("intake: legacy no-evidence episode keeps the exact pre-upgrade payload shape", () => {
