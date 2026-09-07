@@ -572,6 +572,10 @@ function mergedCompletion(response, trace) {
     schema: trace.schema,
     version: trace.version,
     traceDigest: trace.digest,
+    // Return the trace-bound input of the response actually served, including
+    // recovery/fallback selection, so Platform can retain it on this attempt.
+    requestDigest: trace.requestDigest,
+    inputEvidence: structuredClone(trace.inputEvidence),
     gatewayRecoveryEvidence: gatewayRecoveryEvidenceFromTrace(trace),
     mode: trace.contextBudget.mode,
     stageCount: trace.stages.length,
