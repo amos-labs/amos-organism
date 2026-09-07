@@ -18,10 +18,10 @@ export function numericReconciliationFixture() {
     tools: [
       { name: "read_ledger_a", description: "Return ledger A rows [{id, amount}].", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { rows: ledgerA }; } },
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: ledgerA }; } },
       { name: "read_ledger_b", description: "Return ledger B rows [{id, amount}].", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { rows: ledgerB }; } }
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: ledgerB }; } }
     ],
     verify: (execution) => {
       const a = norm(execution?.answer);
