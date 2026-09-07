@@ -140,6 +140,32 @@
     "report": "serving-qualification-s5-fp8-sealed-v3-96-2026-09-07.json",
     "comparisonDigest": "02500746d0aa3025e21d8392f6ded6220d5845ba07a60cb1d987ec1539a753c3",
     "evidenceClass": "synthetic curriculum on production FP8 serving; NOT real-Mission evidence; independent Codex regrade pending; no admission gate change; verified-Mission shadow gate remains separate and unmet",
-    "seedConsumed": "stage1-sealed-v3 (last reserved; sealed-once)"
+    "seedConsumed": "stage1-sealed-v3 (last reserved; sealed-once)",
+    "liveCanaryAcceptance": {
+      "at": "2026-09-07T15:0x UTC",
+      "tenant": "426b4297-73f3-45df-936a-dee3c263fa1b (AMOS Labs)",
+      "taskDefinition": "amos-platform:381 (durable, repo-variable rendered)",
+      "servedModel": "stage1-060408-r32-s5",
+      "frontierRoute": "canary",
+      "routingReasons": [
+        "legacy_reasoning_effort",
+        "frontier_canary"
+      ],
+      "providerCalls": 1,
+      "fallbackUsed": false,
+      "correlationIds": [
+        "9e6a28ae-21c6-41a9-bdfd-3cbdb0763e23 (Organism)",
+        "chatcmpl-78e1e8e2-2a8f-4a02-a1bb-7901007577f7 (Platform non-stream)"
+      ],
+      "adapterBinding": {
+        "servedModelId": "stage1-060408-r32-s5",
+        "cellAdapterSha256": "ff00362561ae2ae3344c4df754b027788b5fbbb90af753e99ee708b258ad3b47",
+        "qualifiedAdapterSha256": "ff00362561ae2ae3344c4df754b027788b5fbbb90af753e99ee708b258ad3b47",
+        "identical": true
+      },
+      "scope": "AMOS Labs Frontier only; Opus fallback; expires 2026-09-08T12:06:25Z",
+      "evidence": "coordination/artifacts/s5-canary-live-acceptance-20260907.json + platform-frontier-canary-acceptance-20260907.json",
+      "note": "live canary acceptance evidence only; admission gate semantics unchanged (Codex-owned); verified-Mission shadow gate remains separate and unmet; Codex live-quality review in progress, do not train from those diagnostic outcomes until its wire-vs-client classification completes"
+    }
   }
 }
