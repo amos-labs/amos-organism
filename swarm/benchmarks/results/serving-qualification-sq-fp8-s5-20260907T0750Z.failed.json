@@ -1,0 +1,22 @@
+{
+  "schema": "amos.serving-qualification-attempt",
+  "version": 1,
+  "runId": "sq-fp8-s5-20260907T0750Z",
+  "outcome": "failed-before-inference",
+  "manifest": "s5-serving-qualification-manifest-v7-recovery-20260906.json",
+  "dispatchedBy": "fable-organism (Codex release 20260906T224754Z; reviewed v7 command, windows 90/95)",
+  "timeline": {
+    "trainerLaunch": "2026-09-07T07:50:31Z",
+    "controllerStartSsm": {"commandId": "5c147371-522d-423b-b978-d8091afac04c", "status": "InProgress past the launcher 120s wait", "cause": "the detached controller inherited the SSM command stdin, so the invocation never returned Success"},
+    "launcherStopRequest": "2026-07T07:53:21Z",
+    "controllerStatus": {"status": "failed", "reason": "production vllm image pull failed", "finishedAt": "2026-09-07T07:53:22Z", "note": "the ~9.1GB vLLM image pull was interrupted by the launcher stop-instances; docker socket connection reset"},
+    "stopRequested": "2026-09-07T07:53:21Z",
+    "trainerStopping": "confirmed 2026-09-07T07:5x"
+  },
+  "rootCause": "launcher controller-start payload did not detach the controller from the SSM command stdin; the SSM invocation stayed InProgress, the launcher hit its 120s wait, declared failure and requested stop-instances, which interrupted the in-progress vLLM image pull. The image digest sha256:c2f3b1b9… IS present in ECR (9110688401 bytes, pushed 2026-08-22), so the pull would have completed.",
+  "consumed": {"seed": "stage1-sealed-v5", "rule": "frozen protocol: consumed at dispatch regardless of outcome (Codex 20260906T224754Z)", "scenariosGenerated": 0, "inferenceRequests": 0},
+  "accounting": {"trainerRuntimeApproxMinutes": 3, "priorFailedAttempt": "sq-fp8-s5-20260906T2159Z (11 min charged)", "aggregateChargedMinutes": 14, "aggregateCapMinutes": 111},
+  "seedsRemaining": {"reserved": ["stage1-sealed-v3"], "consumed": ["stage1-sealed-v4 (2159Z)", "stage1-sealed-v5 (0750Z)"]},
+  "fix": {"branch": "codex/sq-launcher-stdin-detach-selftest", "launcherChange": "controller start adds </dev/null so the SSM command returns while the controller runs on", "controllerChange": "SQ_SELF_TEST=1 proves image pull + checkpoint stage/verify + vLLM serve + one warm-up per arm, then stops, without gradeCurriculum and without consuming a seed"},
+  "evidence": ["s3 …/serving-qualification/sq-fp8-s5-20260907T0750Z/{status.json,vllm-tail.log}", "ssm 5c147371 (controller), 4cbabf56-class timer cancel"]
+}

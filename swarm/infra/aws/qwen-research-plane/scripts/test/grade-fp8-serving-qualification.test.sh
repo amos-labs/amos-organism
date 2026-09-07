@@ -340,6 +340,34 @@ grep -q "ssm_run i-08ed5227ea48bad2a" "$LOG" || fail "T15 timer install must hav
 grep -q "ec2 start-instances" "$LOG" && fail "T15 trainer must not start without an exact TIMER_OK line"
 [ "$FAIL" = 0 ] && pass "T15 dispatch checks SSM status and the exact TIMER_OK line before any compute"
 
+
+# --- T16: the rendered controller start detaches stdin so a long child cannot hold the SSM command open --------------
+CTLPAY=$(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["commands"]))' "$R/trainer-controller.params.json")
+echo "$CTLPAY" | grep -Eq 'setsid nohup .*grade-fp8-serving-qualification.sh </dev/null >' || fail "T16 controller start must redirect </dev/null (and stdout/stderr) so SSM does not wait on it"
+# behaviour: a start line shaped like the rendered one returns immediately even though the child runs on
+cat > "$WORK/detach.sh" <<'D'
+#!/usr/bin/env bash
+set -euo pipefail
+setsid nohup sleep 30 </dev/null > "$1/child.log" 2>&1 & echo $! > "$1/child.pid"
+sleep 1; kill -0 "$(cat "$1/child.pid")"; echo STARTED
+D
+if command -v setsid >/dev/null 2>&1 && { command -v gtimeout >/dev/null 2>&1 || command -v timeout >/dev/null 2>&1; }; then
+  TB=$(command -v gtimeout || command -v timeout)
+  OUTP=$("$TB" -k 2 6 bash "$WORK/detach.sh" "$WORK" 2>&1); rc=$?
+  [ "$rc" = 0 ] || fail "T16 detached start must return within the timeout even with a live child (rc $rc)"
+  echo "$OUTP" | grep -q STARTED || fail "T16 detached start must print STARTED"
+  kill "$(cat "$WORK/child.pid")" 2>/dev/null || true
+else echo "  (T16 behavioural sleeper skipped: no setsid on this host; the rendered </dev/null assertion still ran)"; fi
+[ "$FAIL" = 0 ] && pass "T16 controller start is stdin-detached and returns while the controller runs on"
+
+# --- T17: SQ_SELF_TEST renders/records without gradeCurriculum (no seed) — assert the controller wiring ---------------
+CTL="$HERE/../grade-fp8-serving-qualification.sh"
+grep -q 'SELF_TEST="\${SQ_SELF_TEST:-0}"' "$CTL" || fail "T17 controller must read SQ_SELF_TEST"
+awk '/if \[ "\$SELF_TEST" = 1 \]; then/{f=1} f&&/gradeCurriculum.js/{print "SEED_IN_SELFTEST"} /^  fi$/{if(f)exit}' "$CTL" | grep -q SEED_IN_SELFTEST && fail "T17 self-test path must not call gradeCurriculum (would consume a seed)"
+grep -q 'STATUS=self-test-passed' "$CTL" || fail "T17 self-test must record its own status"
+grep -q 'run_set "\${PRIMARY_SET%%=\*}"' "$CTL" || fail "T17 non-self-test path must still grade the primary set"
+[ "$FAIL" = 0 ] && pass "T17 self-test mode proves startup without generating a scenario"
+
 stop_watchdog
 [ "$FAIL" = 0 ] && echo "ALL PASSED" || echo "FAILURES"
 exit "$FAIL"

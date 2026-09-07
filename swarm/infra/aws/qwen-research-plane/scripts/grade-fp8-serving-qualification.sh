@@ -138,7 +138,7 @@ manifest = {
                 "rank": adapter_config.get("r"), "alpha": adapter_config.get("lora_alpha"), "targetModules": sorted(adapter_config.get("target_modules", [])), "peftType": adapter_config.get("peft_type")},
   "servingArgs": {"maxModelLen": 65536, "maxNumSeqs": 8, "maxNumBatchedTokens": 32768, "gpuMemoryUtilization": 0.85, "toolCallParser": "qwen3_xml", "reasoningParser": "qwen3", "prefixCaching": True, "maxLoraRank": 32, "maxLoras": 4, "speculative": {"method": "mtp", "num_speculative_tokens": 3}, "trustRemoteCode": True,
                   "deviations": ["one LoRA module: $ADAPTER_ID", "loopback host with run-local API key", "trainer GPU/driver, not the cell"]},
-  "sets": {"primary": "$PRIMARY_SET", "optional": "$OPTIONAL_SET" or None, "optionalRunsOnlyIf": "primary report uploaded and >= $OPTIONAL_MIN_SECONDS s remaining"},
+  "selfTest": "${SELF_TEST:-0}" == "1", "sets": {"primary": "$PRIMARY_SET", "optional": "$OPTIONAL_SET" or None, "optionalRunsOnlyIf": "primary report uploaded and >= $OPTIONAL_MIN_SECONDS s remaining"},
   "grader": {"armOrder": "balanced", "blockSize": 4, "warmup": "inference", "warmupMaxTokens": 16, "concurrency": 4, "temperature": 0.2, "seed": 7, "reasoningEffort": "medium", "repairAttempts": 1, "maxOutputTokens": 1200},
   "evidenceClass": "FP8 base vs one LoRA under the production vLLM image and effective arguments on an isolated trainer replica; synthetic curriculum; not a real-Mission, tier, router or live-serving claim; no promotion implied"
 }
@@ -207,6 +207,7 @@ sq_main() {
   GRADER_UID="${GRADER_UID:-10002}"
   OPTIONAL_SET="${OPTIONAL_SET:-}"
   OPTIONAL_MIN_SECONDS="${OPTIONAL_MIN_SECONDS:-2400}"
+  SELF_TEST="${SQ_SELF_TEST:-0}"   # 1 = prove startup and stop before any scenario is generated; consumes no seed
   BUCKET="amos-qwen-research-plane-637423327454-us-east-1"
   PLAN="stage1/stage1-2026-09-060408"
   DEST="s3://$BUCKET/$PLAN/serving-qualification/$RUN_ID"
@@ -289,6 +290,20 @@ sq_main() {
 
   # 7. Primary set always; optional set only if the primary's evidence is in S3 and time remains.
   MODEL_IDS="$BASE_SERVED_NAME,$ADAPTER_ID"
+  if [ "$SELF_TEST" = 1 ]; then
+    # Startup proof only: one bounded warm-up request per arm through the served endpoint, no gradeCurriculum, no seed.
+    for m in "$BASE_SERVED_NAME" "$ADAPTER_ID"; do
+      code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
+        http://127.0.0.1:8000/v1/chat/completions \
+        -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
+      echo "{\"arm\":\"$m\",\"httpCode\":\"$code\"}" >> "$OUT/selftest.jsonl"
+      [ "$code" = 200 ] || { STATUS=failed; FAIL_REASON="self-test arm $m returned $code"; sq_sync_out; return 1; }
+    done
+    STATUS=self-test-passed
+    echo "{\"runId\":\"$RUN_ID\",\"selfTest\":true,\"arms\":[\"$BASE_SERVED_NAME\",\"$ADAPTER_ID\"],\"result\":\"served and answered a bounded warm-up on both arms; no scenario generated; no seed consumed\"}" > "$OUT/self-test-result.json"
+    sq_sync_out
+    return 0
+  fi
   sq_run_set "${PRIMARY_SET%%=*}" "${PRIMARY_SET#*=}"
   PRIMARY_STATUS="$LAST_SET_STATUS"; PRIMARY_UPLOADED="$LAST_SET_UPLOADED"
   if [ -n "$OPTIONAL_SET" ]; then

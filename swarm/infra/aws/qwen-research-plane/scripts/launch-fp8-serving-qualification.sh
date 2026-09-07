@@ -84,7 +84,9 @@ cmds=["[ -n \"${BASH_VERSION:-}\" ] || exec /bin/bash \"$0\" \"$@\"",
       f"aws s3 cp {s3} /root/grade-fp8-serving-qualification.sh --only-show-errors",
       f"echo '{sha}  /root/grade-fp8-serving-qualification.sh' | sha256sum -c --quiet - || {{ echo CONTROLLER_SHA_MISMATCH; exit 31; }}",
       "chmod 0755 /root/grade-fp8-serving-qualification.sh",
-      f"cd /root && env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh > /root/sq-controller-{run_id}.log 2>&1 & echo $! > /root/sq-controller-{run_id}.pid",
+      # Detach stdin as well as stdout/stderr: a backgrounded process still holding the SSM commands
+      # stdin keeps the invocation InProgress, which is what aborted run 0750Z mid image-pull.
+      f"cd /root && env {exports} setsid nohup /root/grade-fp8-serving-qualification.sh </dev/null > /root/sq-controller-{run_id}.log 2>&1 & echo $! > /root/sq-controller-{run_id}.pid",
       f"sleep 3; pid=$(cat /root/sq-controller-{run_id}.pid); kill -0 \"$pid\" || {{ echo CONTROLLER_NOT_RUNNING; tail -20 /root/sq-controller-{run_id}.log; exit 32; }}",
       f"echo \"STARTED pid=$pid\""]
 json.dump({"commands": cmds}, sys.stdout)
