@@ -90,5 +90,56 @@
     "productionAllowed": false,
     "automaticallyDeployed": false
   },
-  "digest": "83fff66bf7208bf8a42775b5639609c07dc3ec37b9f0887c7d50c8c4e64a84bd"
+  "digest": "83fff66bf7208bf8a42775b5639609c07dc3ec37b9f0887c7d50c8c4e64a84bd",
+  "servingQualification": {
+    "schema": "amos.serving-qualification-evidence",
+    "version": 1,
+    "runId": "sq-fp8-s5-20260907T1100Z",
+    "servingPath": "production FP8 vLLM image sha256:c2f3b1b9 + effective args on isolated trainer replica; balanced arm order; real 16-token warm-up gate on both arms before scoring",
+    "cohort": {
+      "seed": "stage1-sealed-v3",
+      "pool": "holdout",
+      "rulebook": "implicit",
+      "n": 96
+    },
+    "control": {
+      "modelId": "amos-qwen38-27b-fp8",
+      "firstAttempt": 63,
+      "finalPass": 88,
+      "passRate": 0.9167
+    },
+    "candidate": {
+      "modelId": "stage1-060408-r32-s5",
+      "firstAttempt": 84,
+      "finalPass": 92
+    },
+    "paired": {
+      "firstAttemptLift": 0.2187,
+      "passRateLift": 0.0416,
+      "wins": 7,
+      "losses": 3,
+      "ties": 86
+    },
+    "latencyFirstAnswerMs": {
+      "base": {
+        "p50": 4268,
+        "p95": 11643
+      },
+      "s5": {
+        "p50": 2056,
+        "p95": 6150
+      }
+    },
+    "disclosedRegressions": {
+      "compact-context-without-losing-governed-state": {
+        "s5Final": 8,
+        "baseFinal": 11,
+        "of": 12
+      }
+    },
+    "report": "serving-qualification-s5-fp8-sealed-v3-96-2026-09-07.json",
+    "comparisonDigest": "02500746d0aa3025e21d8392f6ded6220d5845ba07a60cb1d987ec1539a753c3",
+    "evidenceClass": "synthetic curriculum on production FP8 serving; NOT real-Mission evidence; independent Codex regrade pending; no admission gate change; verified-Mission shadow gate remains separate and unmet",
+    "seedConsumed": "stage1-sealed-v3 (last reserved; sealed-once)"
+  }
 }
