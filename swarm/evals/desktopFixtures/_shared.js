@@ -2,32 +2,29 @@
 // Each fixture is a pure factory returning { fixture, tools, verify } matching
 // amos-agent src/evals/desktopFixtureRunner.js (runDesktopFixture). The controller
 // (Codex) supplies modelConfig/fetchImpl/expectedServedModel/limits and the transport;
-// fixtures supply only the synthetic prompt, trusted deterministic tool handlers and an
-// independent verifier. No real external tools, no network, no randomness.
+// fixtures supply only the synthetic prompt, trusted deterministic tool handlers over a
+// PRIVATE world object, and an independent verifier. No network, no randomness.
+//
+// Correct verifier discipline (Codex 20260907T174205Z, reproduced false passes in #58):
+//  - PROPOSED calls (including rejected/forbidden ones) live in
+//    execution.turns[].message.tool_calls[] with { id, function:{ name, arguments } };
+//    there is NO top-level toolCalls field and NO tool_call event. Use countProposedCalls
+//    to guard against forbidden proposals.
+//  - SUCCESSFUL effects are proven by PRIVATE world state that the trusted handler mutates
+//    only on a valid target, then re-read (never by a proposal or ledger count). A proposed
+//    or rejected action must never count as a completed effect.
 
-// Count how many times a named tool was invoked in an execution result. Defensive across
-// the runner's reported shapes (toolCalls[] or loop events with a tool_call/tool name);
-// the exact field is confirmed against the runner in the integration harness.
-export function countToolCalls(execution, name) {
-  if (!execution || typeof execution !== "object") return 0;
-  const calls = Array.isArray(execution.toolCalls) ? execution.toolCalls : null;
-  if (calls) return calls.filter((c) => (c?.name ?? c?.tool ?? c?.function?.name) === name).length;
-  const events = Array.isArray(execution.events) ? execution.events : [];
-  return events.filter((e) => (e?.type === "tool_call" || e?.kind === "tool_call") &&
-    (e?.name ?? e?.tool ?? e?.toolName) === name).length;
+export function countProposedCalls(execution, name) {
+  const turns = Array.isArray(execution?.turns) ? execution.turns : [];
+  let n = 0;
+  for (const t of turns) {
+    const calls = t?.message?.tool_calls;
+    if (!Array.isArray(calls)) continue;
+    for (const c of calls) if ((c?.function?.name ?? c?.name) === name) n += 1;
+  }
+  return n;
 }
 
-// A trusted handler that records each call into a shared, per-run mutable ledger so a
-// verifier can assert side-effect-once semantics (recover-without-replaying).
-export function recordingHandler(ledger, key, result) {
-  return async (_args, { signal } = {}) => {
-    if (signal?.aborted) throw new Error("aborted");
-    ledger[key] = (ledger[key] ?? 0) + 1;
-    return typeof result === "function" ? result(_args) : result;
-  };
-}
-
-// Normalize the model's final answer for comparison (trim, collapse whitespace, lower).
 export function norm(answer) {
   return String(answer ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
