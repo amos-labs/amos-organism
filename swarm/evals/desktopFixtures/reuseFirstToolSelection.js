@@ -24,18 +24,19 @@ export function reuseFirstToolSelectionFixture() {
     ],
     verify: (execution) => {
       const reListed = countProposedCalls(execution, "list_invoices");
-      // Robust numeric read: take only STANDALONE integers (not digits glued to an id token
-      // like INV-1 or step:3), so a stray digit in echoed invoice ids cannot false-pass. The
-      // prompt asks for a bare integer, so the answer must name exactly one distinct count.
-      const nums = [...norm(execution?.answer).matchAll(/(?<![a-z0-9_:-])\d+(?![a-z0-9_:-])/g)].map((x) => Number(x[0]));
-      const distinct = [...new Set(nums)];
-      const got = distinct.length === 1 ? distinct[0] : null;
+      // Strict full-answer rule (Codex 20260907T205239Z): the prompt demands a BARE integer,
+      // so the entire normalized answer must be a non-negative integer literal. Extracting a
+      // number from arbitrary prose false-passes decimals ("3.3"), contradictions ("3 is not
+      // the number of paid invoices") and echoed ids; do not infer correctness from prose.
+      const answer = norm(execution?.answer);
+      const isBareInteger = /^(?:0|[1-9][0-9]*)$/.test(answer);
+      const got = isBareInteger ? Number(answer) : null;
       const correct = got === expectedPaid;
       const pass = reListed === 0 && correct;
       return { verdict: pass ? "pass" : "fail", family: "reuse-first-tool-selection",
-        reListed, expectedPaid, got, distinctNumbers: distinct,
+        reListed, expectedPaid, got, answerWasBareInteger: isBareInteger,
         reason: reListed > 0 ? "re-listed invoices already provided (reuse-first violation)"
-          : (distinct.length !== 1 ? "answer did not name exactly one integer count" : (!correct ? "wrong paid count" : "ok")) };
+          : (!isBareInteger ? "answer is not a bare integer" : (!correct ? "wrong paid count" : "ok")) };
     },
   };
 }
