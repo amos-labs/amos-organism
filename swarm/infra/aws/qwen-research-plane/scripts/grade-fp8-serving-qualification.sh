@@ -314,23 +314,24 @@ sq_main() {
   if [ "$READY" != 1 ]; then timeout -k 10 60 docker logs --tail 200 amos-fp8-serving > "$OUT/vllm-tail.log" 2>&1 || true; sq_sync_out; sq_die "vllm not ready (see vllm-tail.log)"; fi
   timeout -k 5 15 curl -fsS -H "authorization: Bearer $API_KEY" http://127.0.0.1:8000/v1/models | python3 -c 'import json,sys; print("served:", [m["id"] for m in json.load(sys.stdin)["data"]])' | tee "$OUT/served-models.txt"
 
-  # 7. Primary set always; optional set only if the primary's evidence is in S3 and time remains.
+  # 7. Both-arm serving gate — runs in EVERY mode BEFORE any scored generation, so a valid completion
+  # from base AND the S5 adapter is proven before the seed is ever consumed (Codex 20260907T104525Z:
+  # both valid arm completions must precede scored generation). One bounded 16-token thinking-off
+  # request per arm; no scenario, no seed. On SELF_TEST=1 the run stops here; otherwise it falls
+  # through to grading on the same warm server (no checkpoint reload, no cold restart).
   MODEL_IDS="$BASE_SERVED_NAME,$ADAPTER_ID"
-  if [ "$SELF_TEST" = 1 ]; then
-    # Startup proof only: one bounded warm-up request per arm through the served endpoint, no gradeCurriculum, no seed.
-    for m in "$BASE_SERVED_NAME" "$ADAPTER_ID"; do
-      code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
-        http://127.0.0.1:8000/v1/chat/completions \
-        -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"enable_thinking\":false,\"chat_template_kwargs\":{\"enable_thinking\":false},\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
-      body_ok=no; if [ "$code" = 200 ] && sq_selftest_body_ok "$OUT/selftest-$m.json"; then body_ok=yes; fi
-      echo "{\"arm\":\"$m\",\"httpCode\":\"$code\",\"bodyOk\":\"$body_ok\"}" >> "$OUT/selftest.jsonl"
-      [ "$body_ok" = yes ] || { STATUS=failed; FAIL_REASON="self-test arm $m: http $code, well-formed completion=$body_ok"; sq_sync_out; return 1; }
-    done
-    STATUS=self-test-passed
-    echo "{\"runId\":\"$RUN_ID\",\"selfTest\":true,\"arms\":[\"$BASE_SERVED_NAME\",\"$ADAPTER_ID\"],\"result\":\"served and answered a bounded warm-up on both arms; no scenario generated; no seed consumed\"}" > "$OUT/self-test-result.json"
-    sq_sync_out
-    return 0
-  fi
+  for m in "$BASE_SERVED_NAME" "$ADAPTER_ID"; do
+    code=$(timeout -k 5 60 curl -s -o "$OUT/selftest-$m.json" -w '%{http_code}' -H "authorization: Bearer $API_KEY" -H 'content-type: application/json' \
+      http://127.0.0.1:8000/v1/chat/completions \
+      -d "{\"model\":\"$m\",\"max_tokens\":16,\"temperature\":0,\"enable_thinking\":false,\"chat_template_kwargs\":{\"enable_thinking\":false},\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word ready.\"}]}") || code=000
+    body_ok=no; if [ "$code" = 200 ] && sq_selftest_body_ok "$OUT/selftest-$m.json"; then body_ok=yes; fi
+    echo "{\"arm\":\"$m\",\"httpCode\":\"$code\",\"bodyOk\":\"$body_ok\"}" >> "$OUT/selftest.jsonl"
+    [ "$body_ok" = yes ] || { STATUS=failed; FAIL_REASON="both-arm gate: arm $m http $code, well-formed completion=$body_ok"; sq_sync_out; return 1; }
+  done
+  echo "{\"runId\":\"$RUN_ID\",\"selfTest\":$([ "$SELF_TEST" = 1 ] && echo true || echo false),\"arms\":[\"$BASE_SERVED_NAME\",\"$ADAPTER_ID\"],\"result\":\"both arms served and answered a bounded 16-token warm-up; gate passed before any scored generation\"}" > "$OUT/self-test-result.json"
+  sq_sync_out
+  if [ "$SELF_TEST" = 1 ]; then STATUS=self-test-passed; return 0; fi
+  # Both arms proved; grade the primary set on the same warm server. This is where the seed is consumed.
   sq_run_set "${PRIMARY_SET%%=*}" "${PRIMARY_SET#*=}"
   PRIMARY_STATUS="$LAST_SET_STATUS"; PRIMARY_UPLOADED="$LAST_SET_UPLOADED"
   if [ -n "$OPTIONAL_SET" ]; then
