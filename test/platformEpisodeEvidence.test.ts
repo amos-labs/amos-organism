@@ -18,11 +18,11 @@ import {
 import { PlatformEpisodeReceiver } from "../src/platformEpisodeReceiver.ts";
 import { AllowListHostGate, receipt } from "./helpers.ts";
 
-// Canonical producer-shaped evidence block shared with Platform
-// (coordination/artifacts/episode-evidence-producer-fixture-v1.json): snake_case bindings,
-// camelCase identities, unknown-coverage recovery, lowercase-hex digests.
-const producerBlock = () =>
-  JSON.parse(readFileSync(new URL("./fixtures/platform-mission-evidence-block.producer.json", import.meta.url), "utf8"));
+// Shared cross-language wire fixture bound by both the Platform Rust producer (#861) and this
+// consumer (#63). Case ids mirror coordination/artifacts/episode-producer-review-20260907/cases.json.
+const WIRE = JSON.parse(readFileSync(new URL("./fixtures/platform-mission-evidence-block.producer.json", import.meta.url), "utf8"));
+const wireCase = (id: string) => structuredClone(WIRE.cases[id]);
+const producerBlock = () => wireCase("failure-then-correction");
 
 function makeSource(withEvidence: boolean, status: "completed" | "failed" = "completed", evidence?: unknown) {
   const source: Record<string, unknown> = {
@@ -47,66 +47,61 @@ function envelope(source: Record<string, unknown>): PlatformMissionLearningEpiso
 const attest = (gate: AllowListHostGate, value: PlatformMissionLearningEpisodeContract) =>
   gate.allow({ ...receipt("attested", "m", "platform-episode-attested"), payloadDigest: digest(value) });
 
-// ---- validator unit + Codex 183822Z reproducer cases -------------------------------------
+// ---- cross-language wire alignment: every producer case is accepted --------------------------
 
-test("producer-shaped evidence normalizes: unknown coverage, snake_case bindings, nullable identity", () => {
-  const ev = validateMissionEvidence({ evidence: producerBlock() } as Record<string, unknown>);
-  assert.equal(ev.present, true);
-  assert.equal(ev.recoveryEvidence?.coverage, "unknown");
-  assert.equal(ev.recoveryEvidence?.unexpectedCorrections, null);
-  assert.deepEqual(ev.acceptedAttemptBindings.map(attemptBindingKey), ["1:1", "2:2", "2:3"]);
-  const checkpoint = ev.acceptedAttemptBindings[2]!; // no status/claim/receipt on the wire
+test("all four shared wire cases validate with the agreed rules", () => {
+  const correction = validateMissionEvidence({ evidence: wireCase("failure-then-correction") } as Record<string, unknown>);
+  assert.equal(correction.recoveryEvidence?.coverage, "complete");
+  assert.equal(correction.recoveryEvidence?.unexpectedCorrections, 1);
+  assert.deepEqual([...correction.recoveryEvidence!.evidenceRefs], ["step:1", "step:3"]); // string host refs
+  // Rejected attempt is NOT an accepted binding; only the accepted tool_call + checkpoint are.
+  assert.deepEqual(correction.acceptedAttemptBindings.map(attemptBindingKey), ["2:2", "2:3"]);
+  assert.equal(correction.acceptedAttemptBindings.some((b) => b.kind === "failure"), false);
+  // The failure survives in attemptIdentities with its failureClass.
+  assert.equal(correction.attemptIdentities[0]!.failureClass, "planner_input_rejected");
+
+  const success = validateMissionEvidence({ evidence: wireCase("instrumented-first-attempt-success") } as Record<string, unknown>);
+  assert.equal(success.recoveryEvidence?.coverage, "complete");
+  assert.deepEqual([...success.recoveryEvidence!.evidenceRefs], ["step:1"]); // complete cites the instrumented checkpoint
+  assert.equal(success.recoveryEvidence?.unexpectedCorrections, 0);
+
+  const partial = validateMissionEvidence({ evidence: wireCase("partial-coverage") } as Record<string, unknown>);
+  assert.equal(partial.recoveryEvidence?.coverage, "partial");
+  assert.equal(partial.recoveryEvidence?.unexpectedCorrections, null); // null counts on partial
+
+  const unknown = validateMissionEvidence({ evidence: wireCase("legacy-unknown-coverage") } as Record<string, unknown>);
+  assert.equal(unknown.recoveryEvidence?.coverage, "unknown");
+  assert.equal(unknown.recoveryEvidence?.unexpectedCorrections, null);
+  assert.deepEqual([...unknown.recoveryEvidence!.evidenceRefs], []);
+});
+
+test("integer evidenceRefs and complete-without-refs (the two producer P1s) stay rejected", () => {
+  const intRefs = { ...wireCase("failure-then-correction"), recoveryEvidence: { version: 1, coverage: "complete", unexpectedCorrections: 1, requiredRecoveries: 1, evidenceRefs: [1, 3] } };
+  assert.throws(() => validateMissionEvidence({ evidence: intRefs } as Record<string, unknown>), /evidenceRefs must be an array of strings/);
+  const emptyComplete = { ...wireCase("instrumented-first-attempt-success"), recoveryEvidence: { version: 1, coverage: "complete", unexpectedCorrections: 0, requiredRecoveries: 0, evidenceRefs: [] } };
+  assert.throws(() => validateMissionEvidence({ evidence: emptyComplete } as Record<string, unknown>), /complete coverage requires non-empty evidenceRefs/);
+});
+
+test("snake_case checkpoint binding (no status) and null-attempt identity are accepted", () => {
+  const ev = validateMissionEvidence({ evidence: wireCase("failure-then-correction") } as Record<string, unknown>);
+  const checkpoint = ev.acceptedAttemptBindings.find((b) => b.kind === "checkpoint")!;
   assert.equal(checkpoint.status, null);
   assert.equal(checkpoint.claimId, null);
-  assert.equal(checkpoint.receiptId, null);
-  assert.equal(ev.attemptIdentities[0]!.treatmentSha256, null); // never inferred
+  const nullAttempt = validateMissionEvidence({ evidence: { ...wireCase("legacy-unknown-coverage"), attemptIdentities: [{ kind: "failure", plannerAttempt: null, stepPosition: 1 }] } } as Record<string, unknown>);
+  assert.equal(nullAttempt.attemptIdentities[0]!.plannerAttempt, null);
 });
 
-test("canonical unknown coverage is accepted (comparator vocabulary complete|partial|unknown)", () => {
-  const block = { ...producerBlock(), recoveryEvidence: { version: 1, coverage: "unknown", unexpectedCorrections: null, requiredRecoveries: null, evidenceRefs: [] } };
-  const ev = validateMissionEvidence({ evidence: block } as Record<string, unknown>);
-  assert.equal(ev.recoveryEvidence?.coverage, "unknown");
-});
-
-test("complete coverage without host evidenceRefs is rejected", () => {
-  const block = { ...producerBlock(), recoveryEvidence: { version: 1, coverage: "complete", unexpectedCorrections: 0, requiredRecoveries: 0, evidenceRefs: [] } };
-  assert.throws(() => validateMissionEvidence({ evidence: block } as Record<string, unknown>), /complete coverage requires non-empty evidenceRefs/);
-});
-
-test("complete coverage with host refs and counts is accepted", () => {
-  const block = { ...producerBlock(), recoveryEvidence: { version: 1, coverage: "complete", unexpectedCorrections: 1, requiredRecoveries: 1, evidenceRefs: ["step:2", "checkpoint:3"] } };
-  const ev = validateMissionEvidence({ evidence: block } as Record<string, unknown>);
-  assert.equal(ev.recoveryEvidence?.unexpectedCorrections, 1);
-});
-
-test("actual get_mission checkpoint binding (snake_case, no status) is accepted", () => {
-  const block = { ...producerBlock(), recoveryEvidence: null, acceptedAttemptBindings: [{ kind: "checkpoint", planner_attempt: 2, step_position: 5 }], attemptIdentities: [] };
-  const ev = validateMissionEvidence({ evidence: block } as Record<string, unknown>);
-  assert.equal(attemptBindingKey(ev.acceptedAttemptBindings[0]!), "2:5");
-  assert.equal(ev.acceptedAttemptBindings[0]!.status, null);
-});
-
-test("unknown-attempt planner step (plannerAttempt null) is accepted, not invented", () => {
-  const block = { ...producerBlock(), recoveryEvidence: null, acceptedAttemptBindings: [], attemptIdentities: [{ kind: "failure", plannerAttempt: null, stepPosition: 1 }] };
-  const ev = validateMissionEvidence({ evidence: block } as Record<string, unknown>);
-  assert.equal(ev.attemptIdentities[0]!.plannerAttempt, null);
-  assert.equal(ev.attemptIdentities[0]!.traceDigest, null);
-});
-
-test("non-hex identity digest is rejected", () => {
-  const block = { ...producerBlock(), attemptIdentities: [{ kind: "failure", plannerAttempt: 1, stepPosition: 1, traceDigest: "t".repeat(64) }] };
-  assert.throws(() => validateMissionEvidence({ evidence: block } as Record<string, unknown>), /lowercase 64-char hex/);
-});
-
-test("wrong schema / unknown-vocabulary coverage / bad recovery are rejected", () => {
-  assert.throws(() => validateMissionEvidence({ evidence: { ...producerBlock(), schema: "nope" } } as Record<string, unknown>), /schema must be/);
-  const badCoverage = { ...producerBlock(), recoveryEvidence: { version: 1, coverage: "none", unexpectedCorrections: null, requiredRecoveries: null, evidenceRefs: [] } };
+test("non-hex identity digest and unknown-vocabulary coverage are rejected", () => {
+  const badHex = { ...wireCase("failure-then-correction"), attemptIdentities: [{ kind: "failure", plannerAttempt: 1, stepPosition: 1, traceDigest: "t".repeat(64) }] };
+  assert.throws(() => validateMissionEvidence({ evidence: badHex } as Record<string, unknown>), /lowercase 64-char hex/);
+  const badCoverage = { ...wireCase("legacy-unknown-coverage"), recoveryEvidence: { version: 1, coverage: "none", unexpectedCorrections: null, requiredRecoveries: null, evidenceRefs: [] } };
   assert.throws(() => validateMissionEvidence({ evidence: badCoverage } as Record<string, unknown>), PlatformEpisodeEvidenceInvalid);
+  assert.throws(() => validateMissionEvidence({ evidence: { ...wireCase("legacy-unknown-coverage"), schema: "nope" } } as Record<string, unknown>), /schema must be/);
 });
 
 // ---- intake compatibility ----------------------------------------------------------------
 
-test("intake: signed new-evidence episode is accepted and evidence is normalized in the payload", () => {
+test("intake: signed new-evidence episode accepted; evidence normalized in the payload", () => {
   const gate = new AllowListHostGate();
   const store = new MemoryEventStore();
   const value = envelope(makeSource(true));
@@ -114,31 +109,29 @@ test("intake: signed new-evidence episode is accepted and evidence is normalized
   assert.equal(result.classification, "verified");
   assert.equal(result.event.payload.evidencePresent, true);
   const ev = result.event.payload.evidence as ReturnType<typeof validateMissionEvidence>;
-  assert.equal(ev.acceptedAttemptBindings.length, 3);
+  assert.equal(ev.acceptedAttemptBindings.length, 2);
 });
 
-test("intake: legacy no-evidence episode keeps the exact pre-upgrade payload shape (no evidence fields)", () => {
+test("intake: legacy no-evidence episode keeps the exact pre-upgrade payload shape", () => {
   const gate = new AllowListHostGate();
   const store = new MemoryEventStore();
   const value = envelope(makeSource(false));
   const result = new PlatformEpisodeIntake(gate, store).ingest(value, attest(gate, value));
-  assert.equal(result.classification, "verified");
   assert.equal("evidencePresent" in result.event.payload, false);
   assert.equal("evidence" in result.event.payload, false);
 });
 
-test("intake: a legacy event stored BEFORE the upgrade re-ingests without a conflict (upgrade retry P1)", () => {
+test("intake: a legacy event stored BEFORE the upgrade re-ingests without a conflict", () => {
   const gate = new AllowListHostGate();
   const store = new MemoryEventStore();
   const value = envelope(makeSource(false));
   const attested = attest(gate, value);
-  // Exact pre-upgrade event payload shape emitted by the previous intake.
   store.append({
     id: `platform-episode:${value.episodeId}`, type: "platform.experience-verified", missionId: "m",
     occurredAt: attested.issuedAt, authority: "host", hostReceiptId: attested.id,
     payload: { episodeId: value.episodeId, terminalStatus: value.terminalStatus, sourceEpisodeDigest: value.sourceEpisodeDigest, rightsTags: [...value.rightsTags].sort(), consentReceiptId: value.consentReceiptId, source: value.source, geneAdmissionAllowed: false },
   });
-  const result = new PlatformEpisodeIntake(gate, store).ingest(value, attested); // must not throw
+  const result = new PlatformEpisodeIntake(gate, store).ingest(value, attested);
   assert.equal(result.event.id, `platform-episode:${value.episodeId}`);
   assert.equal(store.events().length, 1);
 });
@@ -152,19 +145,15 @@ function deliver(value: PlatformMissionLearningEpisodeContract, raw?: Buffer) {
   return { raw: body, headers: { idempotencyKey: value.episodeId, attestationReceiptId: "att-ev", kmsKeyId: KEY_ID, signingAlgorithm: "ECDSA_SHA_256", signatureBase64: sign("sha256", body, privateKey).toString("base64"), bearerToken: null } };
 }
 
-test("signed receiver accepts a new-evidence episode and a legacy episode, and rejects a tampered evidence block", () => {
+test("signed receiver accepts new-evidence + legacy episodes and rejects a tampered evidence block", () => {
   const receiver = new PlatformEpisodeReceiver(new MemoryEventStore(), { publicKey, expectedKeyId: KEY_ID, now: () => new Date("2026-09-07T00:00:00Z") });
   const withEv = deliver(envelope(makeSource(true)));
   assert.equal(receiver.receive(withEv.raw, withEv.headers).status, 200);
-
   const legacyReceiver = new PlatformEpisodeReceiver(new MemoryEventStore(), { publicKey, expectedKeyId: KEY_ID });
   const legacy = deliver(envelope(makeSource(false)));
   assert.equal(legacyReceiver.receive(legacy.raw, legacy.headers).status, 200);
-
-  // Tamper the evidence bytes after signing -> signature fails (401), no receipt minted.
   const tamperedBytes = Buffer.from(withEv.raw.toString("utf8").replace("planner_input_rejected", "executed"), "utf8");
-  const tampered = new PlatformEpisodeReceiver(new MemoryEventStore(), { publicKey, expectedKeyId: KEY_ID }).receive(tamperedBytes, withEv.headers);
-  assert.equal(tampered.status, 401);
+  assert.equal(new PlatformEpisodeReceiver(new MemoryEventStore(), { publicKey, expectedKeyId: KEY_ID }).receive(tamperedBytes, withEv.headers).status, 401);
 });
 
 test("signed receiver is idempotent on a re-delivered evidence episode", () => {

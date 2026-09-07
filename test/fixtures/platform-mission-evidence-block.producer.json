@@ -1,20 +1,51 @@
 {
-  "schema": "amos.platform-mission-evidence",
-  "version": 1,
-  "recoveryEvidence": {
-    "version": 1,
-    "coverage": "unknown",
-    "unexpectedCorrections": null,
-    "requiredRecoveries": null,
-    "evidenceRefs": []
-  },
-  "acceptedAttemptBindings": [
-    { "kind": "failure", "planner_attempt": 1, "step_position": 1, "claim_id": null, "receipt_id": null, "status": "planner_input_rejected" },
-    { "kind": "tool_call", "planner_attempt": 2, "step_position": 2, "claim_id": "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d", "receipt_id": "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d", "status": "executed" },
-    { "kind": "checkpoint", "planner_attempt": 2, "step_position": 3 }
-  ],
-  "attemptIdentities": [
-    { "plannerAttempt": 1, "stepPosition": 1, "kind": "failure", "failureClass": "planner_input_rejected", "traceDigest": "ec72307907996329d12eed48f0a8c73d058877979db68e480184d4690eb3c5fc", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null },
-    { "plannerAttempt": 2, "stepPosition": 3, "kind": "checkpoint", "failureClass": null, "traceDigest": "2bcbdd34a2a233bd8236aeafa4e6016b1cc47b5b30fba6b5e05adf34f81a9487", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null }
-  ]
+  "note": "Shared cross-language wire fixture for the additive source.evidence block (amos.platform-mission-evidence v1). Bound by BOTH the Platform Rust producer (#861) and the Organism TS consumer (#63). Rules agreed 2026-09-07: evidenceRefs are string host refs 'step:<position>'; complete coverage cites the instrumented steps and carries non-null counts; partial/unknown keep null counts (partial may list recorded refs); acceptedAttemptBindings holds only ACCEPTED bindings (checkpoint + tool_call, snake_case, checkpoints without status) — a rejected attempt is NOT a binding and appears only in attemptIdentities (failureClass) and recoveryEvidence.evidenceRefs. Identity digests are lowercase-64 hex or null; nothing is invented. Case ids mirror coordination/artifacts/episode-producer-review-20260907/cases.json.",
+  "cases": {
+    "failure-then-correction": {
+      "schema": "amos.platform-mission-evidence",
+      "version": 1,
+      "recoveryEvidence": { "version": 1, "coverage": "complete", "unexpectedCorrections": 1, "requiredRecoveries": 1, "evidenceRefs": ["step:1", "step:3"] },
+      "acceptedAttemptBindings": [
+        { "kind": "tool_call", "planner_attempt": 2, "step_position": 2, "claim_id": "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d", "receipt_id": "9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d", "status": "executed" },
+        { "kind": "checkpoint", "planner_attempt": 2, "step_position": 3 }
+      ],
+      "attemptIdentities": [
+        { "plannerAttempt": 1, "stepPosition": 1, "kind": "failure", "failureClass": "planner_input_rejected", "traceDigest": "ec72307907996329d12eed48f0a8c73d058877979db68e480184d4690eb3c5fc", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null },
+        { "plannerAttempt": 2, "stepPosition": 3, "kind": "checkpoint", "failureClass": null, "traceDigest": "2bcbdd34a2a233bd8236aeafa4e6016b1cc47b5b30fba6b5e05adf34f81a9487", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null }
+      ]
+    },
+    "instrumented-first-attempt-success": {
+      "schema": "amos.platform-mission-evidence",
+      "version": 1,
+      "recoveryEvidence": { "version": 1, "coverage": "complete", "unexpectedCorrections": 0, "requiredRecoveries": 0, "evidenceRefs": ["step:1"] },
+      "acceptedAttemptBindings": [
+        { "kind": "checkpoint", "planner_attempt": 1, "step_position": 1 }
+      ],
+      "attemptIdentities": [
+        { "plannerAttempt": 1, "stepPosition": 1, "kind": "checkpoint", "failureClass": null, "traceDigest": "49871da1c221d5c440cde2d1cbcabce6bd9aafdd30fe96a9fe16eeef600309d4", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null }
+      ]
+    },
+    "partial-coverage": {
+      "schema": "amos.platform-mission-evidence",
+      "version": 1,
+      "recoveryEvidence": { "version": 1, "coverage": "partial", "unexpectedCorrections": null, "requiredRecoveries": null, "evidenceRefs": ["step:2"] },
+      "acceptedAttemptBindings": [
+        { "kind": "checkpoint", "planner_attempt": 2, "step_position": 2 }
+      ],
+      "attemptIdentities": [
+        { "plannerAttempt": 2, "stepPosition": 2, "kind": "checkpoint", "failureClass": null, "traceDigest": "2bcbdd34a2a233bd8236aeafa4e6016b1cc47b5b30fba6b5e05adf34f81a9487", "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null }
+      ]
+    },
+    "legacy-unknown-coverage": {
+      "schema": "amos.platform-mission-evidence",
+      "version": 1,
+      "recoveryEvidence": { "version": 1, "coverage": "unknown", "unexpectedCorrections": null, "requiredRecoveries": null, "evidenceRefs": [] },
+      "acceptedAttemptBindings": [
+        { "kind": "checkpoint", "planner_attempt": 1, "step_position": 1 }
+      ],
+      "attemptIdentities": [
+        { "plannerAttempt": 1, "stepPosition": 1, "kind": "checkpoint", "failureClass": null, "traceDigest": null, "requestDigest": null, "compiledInputSha256": null, "requestPayloadSha256": null, "treatmentSha256": null }
+      ]
+    }
+  }
 }
