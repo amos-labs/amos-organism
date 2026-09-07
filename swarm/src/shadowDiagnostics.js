@@ -1,5 +1,6 @@
 import { digestResearchValue } from "./experimentProtocol.js";
 import { createMissionTreatment, EMPTY_PROCEDURE_SNAPSHOT_SHA256 } from "./missionComparisonProtocol.js";
+import { isTransportValidationEpisodeId } from "../../src/platformEpisodeSelection.ts";
 
 /**
  * Shadow diagnostics: the Organism-side ingestion step between the gateway's
@@ -57,6 +58,9 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
   const episodesByMission = new Map();
   for (const event of episodeEvents) {
     if (!EPISODE_EVENT_TYPES.has(event?.type) || !event?.missionId) continue;
+    // Transport/receiver-validation episodes live in the durable chain but are never real
+    // Mission experience (coordination transport-validation exclusion); drop from the join.
+    if (isTransportValidationEpisodeId(event?.payload?.episodeId)) continue;
     const list = episodesByMission.get(event.missionId) ?? [];
     list.push(event);
     episodesByMission.set(event.missionId, list);
