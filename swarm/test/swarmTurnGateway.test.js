@@ -544,7 +544,7 @@ test("a failing shadow backend is recorded as an error and never affects the pri
   assert.equal(shadows[0].shadow.inputEvidence.compiledInputSha256, shadows[0].inputEvidence.compiledInputSha256);
 });
 
-test("shadow and trace input evidence follows the actual served response through recovery and fallback", async () => {
+test("returned, shadow and trace input evidence follows the actual served response through recovery and fallback", async () => {
   const validPlan = { decision: "tool", summary: "Read inventory", verb: "inventory.read", args: {}, checkpoint: {} };
   for (const [mode, expectedStage, expectedPrimaryCalls] of [
     ["normal", "integrator", 4],
@@ -602,6 +602,9 @@ test("shadow and trace input evidence follows the actual served response through
     const { digest: shadowDigest, ...shadowBody } = shadows[0];
     assert.equal(shadowDigest, digestResearchValue(shadowBody));
     assert.equal(result.amos_swarm.traceDigest, traceDigest);
+    assert.deepEqual(result.amos_swarm.inputEvidence, evidence, `${mode}: Platform must receive the served input identity`);
+    assert.equal(result.amos_swarm.requestDigest, traces[0].requestDigest, mode);
+    assert.equal(Object.hasOwn(result.amos_swarm, "treatmentSha256"), false);
     const recovery = result.amos_swarm.gatewayRecoveryEvidence;
     assert.deepEqual(recovery, gatewayRecoveryEvidenceFromTrace(traces[0]));
     assert.equal(recovery.scope, "gateway-turn");
@@ -612,7 +615,7 @@ test("shadow and trace input evidence follows the actual served response through
     assert.equal(recovery.corrections.length, recovery.unexpectedCorrections);
     assert.equal(shadows[0].servedToMission, "primary");
     assert.equal(shadows[0].textCaptured, false);
-    const logged = JSON.stringify({ traces, shadows });
+    const logged = JSON.stringify({ traces, shadows, returnedEvidence: result.amos_swarm });
     assert.equal(logged.includes("private-mission-text-1700"), false);
     assert.equal(logged.includes("private-backend-key-1700"), false);
   }
@@ -635,6 +638,8 @@ test("concurrent completions bind their own inputs even when upstream response I
     const trace = traces.find(t => t.digest === result.amos_swarm.traceDigest);
     const payload = calls.filter(c => c.messages.find(m => m.role === "user").content === tags[index]).at(-1);
     assert.equal(trace.inputEvidence.requestPayloadSha256, digestResearchValue(payload));
+    assert.equal(result.amos_swarm.inputEvidence.requestPayloadSha256, digestResearchValue(payload));
+    assert.equal(result.amos_swarm.requestDigest, trace.requestDigest);
     assert.equal(result.choices[0].message.content, tags[index]);
   }
   assert.notEqual(traces[0].inputEvidence.compiledInputSha256, traces[1].inputEvidence.compiledInputSha256);

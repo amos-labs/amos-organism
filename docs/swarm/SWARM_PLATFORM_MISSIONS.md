@@ -148,6 +148,17 @@ contains its own input evidence. The outer trace/shadow schema stays at v1;
 older records without this subrecord have unknown input provenance. The existing
 `messageDigest` remains the hash of the assistant output, never its input.
 
+The returned completion also carries `amos_swarm.inputEvidence` and
+`amos_swarm.requestDigest`, copied from the same sealed trace identified by
+`amos_swarm.traceDigest`. Platform can retain those fields with the originating
+planner attempt without reading the gateway's private log. The request digest
+identifies the redacted gateway input; the nested input evidence identifies the
+actual final backend request after compilation and any recovery or fallback.
+These are different boundaries and their hashes are not interchangeable.
+The additive response fields do not change the outer schema version. Legacy or
+failed responses without them remain unknown. Consumers should preserve the
+bounded input-evidence object when compacting planner-response metadata.
+
 `requestPayloadSha256` hashes the parsed JSON actually sent to the backend.
 `compiledInputSha256` hashes that same JSON with only `model` removed: messages,
 tools, seed, generation settings and all other serialized fields remain bound.
