@@ -1,22 +1,22 @@
 {
   "schema": "amos.serving-qualification-attempt",
-  "version": 1,
+  "version": 2,
   "runId": "sq-fp8-s5-20260907T0750Z",
   "outcome": "failed-before-inference",
   "manifest": "s5-serving-qualification-manifest-v7-recovery-20260906.json",
   "dispatchedBy": "fable-organism (Codex release 20260906T224754Z; reviewed v7 command, windows 90/95)",
   "timeline": {
     "trainerLaunch": "2026-09-07T07:50:31Z",
-    "controllerStartSsm": {"commandId": "5c147371-522d-423b-b978-d8091afac04c", "status": "InProgress past the launcher 120s wait", "cause": "the detached controller inherited the SSM command stdin, so the invocation never returned Success"},
-    "launcherStopRequest": "2026-07T07:53:21Z",
-    "controllerStatus": {"status": "failed", "reason": "production vllm image pull failed", "finishedAt": "2026-09-07T07:53:22Z", "note": "the ~9.1GB vLLM image pull was interrupted by the launcher stop-instances; docker socket connection reset"},
-    "stopRequested": "2026-09-07T07:53:21Z",
-    "trainerStopping": "confirmed 2026-09-07T07:5x"
+    "runnerStopTimer": {"triggerUtc": "2026-09-07T09:25:15Z", "cancelledAfterAbort": true, "amosSqDeadlineTimersRemaining": 0},
+    "controllerStartSsm": {"commandId": "5c147371-522d-423b-b978-d8091afac04c", "status": "InProgress past the launcher 120s wait", "cause": "the backgrounded controller was launched as part of a compound AND-list that retained the SSM command output pipe, so the invocation never returned"},
+    "launcherStopRequestUtc": "2026-09-07T07:53:21Z (CloudTrail StopInstances by the local CLI principal, per Codex 20260907T080032Z)",
+    "controllerStatus": {"status": "failed", "reason": "production vllm image pull failed", "finishedAtUtc": "2026-09-07T07:53:22Z", "note": "docker socket connection reset; the ~9.1GB vLLM image pull was in progress when the launcher stop-instances landed"},
+    "trainerStoppedObservedUtc": "2026-09-07T08:15Z (Codex independent read); fable-organism read 'stopped' by 08:02Z"
   },
-  "rootCause": "launcher controller-start payload did not detach the controller from the SSM command stdin; the SSM invocation stayed InProgress, the launcher hit its 120s wait, declared failure and requested stop-instances, which interrupted the in-progress vLLM image pull. The image digest sha256:c2f3b1b9… IS present in ECR (9110688401 bytes, pushed 2026-08-22), so the pull would have completed.",
-  "consumed": {"seed": "stage1-sealed-v5", "rule": "frozen protocol: consumed at dispatch regardless of outcome (Codex 20260906T224754Z)", "scenariosGenerated": 0, "inferenceRequests": 0},
-  "accounting": {"trainerRuntimeApproxMinutes": 3, "priorFailedAttempt": "sq-fp8-s5-20260906T2159Z (11 min charged)", "aggregateChargedMinutes": 14, "aggregateCapMinutes": 111},
+  "rootCause": "launcher controller-start payload backgrounded a compound AND-list (cd && env … nohup …) that retained the SSM command output pipe; the SSM invocation stayed InProgress, the launcher hit its 120s wait, declared failure and requested stop-instances, which interrupted the in-progress vLLM image pull. The image digest sha256:c2f3b1b9… is present in ECR (9110688401 bytes, pushed 2026-08-22); whether the pull would have completed within the window was NOT established, because the stop pre-empted it.",
+  "consumed": {"seed": "stage1-sealed-v5", "rule": "frozen protocol: consumed at dispatch regardless of outcome (Codex 20260906T224754Z; reaffirmed 20260907T080032Z)", "scenariosGenerated": 0, "inferenceRequests": 0},
+  "instanceTime": {"launchUtc": "2026-09-07T07:50:31Z", "stopRequestUtc": "2026-09-07T07:53:21Z", "conservativeStoppedUtc": "2026-09-07T08:15Z", "conservativeRunningMinutes": 25, "note": "launch-to-stop-request alone does not establish confirmed stopped time; the conservative figure uses Codex's 08:15 observation"},
   "seedsRemaining": {"reserved": ["stage1-sealed-v3"], "consumed": ["stage1-sealed-v4 (2159Z)", "stage1-sealed-v5 (0750Z)"]},
-  "fix": {"branch": "codex/sq-launcher-stdin-detach-selftest", "launcherChange": "controller start adds </dev/null so the SSM command returns while the controller runs on", "controllerChange": "SQ_SELF_TEST=1 proves image pull + checkpoint stage/verify + vLLM serve + one warm-up per arm, then stops, without gradeCurriculum and without consuming a seed"},
-  "evidence": ["s3 …/serving-qualification/sq-fp8-s5-20260907T0750Z/{status.json,vllm-tail.log}", "ssm 5c147371 (controller), 4cbabf56-class timer cancel"]
+  "fix": {"pr": "https://github.com/amos-labs/amos-organism/pull/51", "launcherChange": "cd is its own command; the controller is a simple backgrounded 'env … setsid nohup … </dev/null >log 2>&1 &' that releases the SSM pipe; the controller writes its own PID and the launcher checks that, not the async wrapper", "controllerChange": "SQ_SELF_TEST=1 proves image pull + checkpoint stage/verify + vLLM serve + adapter load + one well-formed warm-up per arm, then stops, without gradeCurriculum and without consuming a seed; image-pull output captured durably to S3"},
+  "evidence": ["s3 …/serving-qualification/sq-fp8-s5-20260907T0750Z/{status.json,vllm-tail.log}", "ssm 5c147371 (controller)", "coordination/messages/20260907T080032Z_codex_0750_failure_pipe_reproducer.md"]
 }
