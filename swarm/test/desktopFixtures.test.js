@@ -89,3 +89,23 @@ test("recover: paid but no completion answer -> fail", () => {
   const v = f.verify(execFrom("", ["mark_paid"]));
   assert.equal(v.verdict, "fail");
 });
+
+test("recover: trusted handlers signal ok:false on rejection and ok:true on acceptance (AgentLoop accounting)", async () => {
+  const f = buildFixture("recover-without-replaying-completed-actions");
+  const mark = findTool(f, "mark_paid").handler.bind(null);
+  const send = findTool(f, "send_invoice").handler.bind(null);
+  const status = findTool(f, "get_invoice_status").handler.bind(null);
+  // Rejected / invalid actions -> ok:false so result?.ok===false books a failed tool action.
+  assert.equal((await mark({ id: "INV-9" }, {})).ok, false); // wrong target
+  assert.equal((await send({ id: "INV-7" }, {})).ok, false); // forbidden resend of already-sent
+  assert.equal((await status({ id: "INV-9" }, {})).ok, false); // unknown invoice
+  // Accepted actions -> ok:true.
+  assert.equal((await mark({ id: "INV-7" }, {})).ok, true);
+  assert.equal((await status({ id: "INV-7" }, {})).ok, true);
+});
+
+test("numeric-reconciliation read handlers return ok:true", async () => {
+  const f = buildFixture("numeric-reconciliation");
+  assert.equal((await findTool(f, "read_ledger_a").handler({}, {})).ok, true);
+  assert.equal((await findTool(f, "read_ledger_b").handler({}, {})).ok, true);
+});
