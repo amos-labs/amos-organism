@@ -587,6 +587,24 @@ resource "aws_iam_role_policy" "trainer" {
           # (scripts/grade-fp8-serving-qualification.sh). The repository belongs to the serving stack.
           "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.inference_name}/vllm-openai",
         ]
+      },
+      {
+        # Read-only access to the served FP8 checkpoint in the inference model bucket, so the
+        # isolated serving qualification stages the exact served weights from S3 (no public
+        # internet / Hugging Face dependency). Scoped to the models/ prefix.
+        Sid      = "InferenceModelList"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = ["arn:aws:s3:::${local.model_bucket}"]
+        Condition = {
+          StringLike = { "s3:prefix" = ["models/*"] }
+        }
+      },
+      {
+        Sid      = "InferenceModelRead"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:GetObjectVersion"]
+        Resource = ["arn:aws:s3:::${local.model_bucket}/models/*"]
       }
     ]
   })
