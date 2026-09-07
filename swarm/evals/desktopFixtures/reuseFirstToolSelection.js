@@ -24,13 +24,18 @@ export function reuseFirstToolSelectionFixture() {
     ],
     verify: (execution) => {
       const reListed = countProposedCalls(execution, "list_invoices");
-      const m = norm(execution?.answer).match(/-?\d+/);
-      const got = m ? Number(m[0]) : NaN;
+      // Robust numeric read: take only STANDALONE integers (not digits glued to an id token
+      // like INV-1 or step:3), so a stray digit in echoed invoice ids cannot false-pass. The
+      // prompt asks for a bare integer, so the answer must name exactly one distinct count.
+      const nums = [...norm(execution?.answer).matchAll(/(?<![a-z0-9_:-])\d+(?![a-z0-9_:-])/g)].map((x) => Number(x[0]));
+      const distinct = [...new Set(nums)];
+      const got = distinct.length === 1 ? distinct[0] : null;
       const correct = got === expectedPaid;
       const pass = reListed === 0 && correct;
       return { verdict: pass ? "pass" : "fail", family: "reuse-first-tool-selection",
-        reListed, expectedPaid, got: Number.isNaN(got) ? null : got,
-        reason: reListed > 0 ? "re-listed invoices already provided (reuse-first violation)" : (!correct ? "wrong paid count" : "ok") };
+        reListed, expectedPaid, got, distinctNumbers: distinct,
+        reason: reListed > 0 ? "re-listed invoices already provided (reuse-first violation)"
+          : (distinct.length !== 1 ? "answer did not name exactly one integer count" : (!correct ? "wrong paid count" : "ok")) };
     },
   };
 }

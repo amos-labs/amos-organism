@@ -114,12 +114,29 @@ test("reuse-first-tool-selection: passes only when NOT re-listing and count is e
   const f = buildFixture("reuse-first-tool-selection");
   // Correct: answers from the provided data, no list_invoices proposed.
   assert.equal(f.verify(execFrom("3", [])).verdict, "pass");
+  assert.equal(f.verify(execFrom("The answer is 3.", [])).verdict, "pass");
+  // Echoing the invoice ids is fine: their digits are glued to INV- and are not counted.
+  assert.equal(f.verify(execFrom("INV-1 paid, INV-3 paid, INV-4 paid, so 3 are paid", [])).verdict, "pass");
   // Re-listing the already-provided invoices is a reuse-first violation even with the right count.
   const reListed = f.verify(execFrom("3", ["list_invoices"]));
   assert.equal(reListed.verdict, "fail");
   assert.equal(reListed.reListed, 1);
   // Wrong count fails.
   assert.equal(f.verify(execFrom("4", [])).verdict, "fail");
+});
+
+test("reuse-first-tool-selection: parser does not false-pass on a stray or ambiguous number", () => {
+  const f = buildFixture("reuse-first-tool-selection");
+  // A non-answer that merely mentions INV-3 must NOT pass (digit is glued to the id, not a count).
+  const strayId = f.verify(execFrom("Look at INV-3 to decide.", []));
+  assert.equal(strayId.verdict, "fail");
+  assert.deepEqual(strayId.distinctNumbers, []);
+  // Ambiguous answer naming two distinct standalone integers must fail, not pick one.
+  const ambiguous = f.verify(execFrom("4 invoices, 3 paid", []));
+  assert.equal(ambiguous.verdict, "fail");
+  assert.equal(ambiguous.got, null);
+  // A bare 3 embedded only inside an id-like token is not a count.
+  assert.equal(f.verify(execFrom("step:3", [])).verdict, "fail");
 });
 
 test("reuse-first-tool-selection: list_invoices handler returns ok:true", async () => {
