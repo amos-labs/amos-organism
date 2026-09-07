@@ -5,10 +5,12 @@
 // toward the 8 in coordination/artifacts/next-representative-eval-plan-20260907.md.
 import { numericReconciliationFixture } from "./numericReconciliation.js";
 import { recoverWithoutReplayingFixture } from "./recoverWithoutReplaying.js";
+import { reuseFirstToolSelectionFixture } from "./reuseFirstToolSelection.js";
 
 export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "numeric-reconciliation": numericReconciliationFixture,
-  "recover-without-replaying-completed-actions": recoverWithoutReplayingFixture
+  "recover-without-replaying-completed-actions": recoverWithoutReplayingFixture,
+  "reuse-first-tool-selection": reuseFirstToolSelectionFixture
 });
 
 export const FIXTURE_FAMILIES = Object.freeze([

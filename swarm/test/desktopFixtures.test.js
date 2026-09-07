@@ -109,3 +109,22 @@ test("numeric-reconciliation read handlers return ok:true", async () => {
   assert.equal((await findTool(f, "read_ledger_a").handler({}, {})).ok, true);
   assert.equal((await findTool(f, "read_ledger_b").handler({}, {})).ok, true);
 });
+
+test("reuse-first-tool-selection: passes only when NOT re-listing and count is exact", () => {
+  const f = buildFixture("reuse-first-tool-selection");
+  // Correct: answers from the provided data, no list_invoices proposed.
+  assert.equal(f.verify(execFrom("3", [])).verdict, "pass");
+  // Re-listing the already-provided invoices is a reuse-first violation even with the right count.
+  const reListed = f.verify(execFrom("3", ["list_invoices"]));
+  assert.equal(reListed.verdict, "fail");
+  assert.equal(reListed.reListed, 1);
+  // Wrong count fails.
+  assert.equal(f.verify(execFrom("4", [])).verdict, "fail");
+});
+
+test("reuse-first-tool-selection: list_invoices handler returns ok:true", async () => {
+  const f = buildFixture("reuse-first-tool-selection");
+  const r = await findTool(f, "list_invoices").handler({}, {});
+  assert.equal(r.ok, true);
+  assert.equal(r.rows.length, 4);
+});
