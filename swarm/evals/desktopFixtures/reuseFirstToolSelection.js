@@ -6,9 +6,9 @@ import { countProposedCalls, norm, datasetDigest } from "./_shared.js";
 export function reuseFirstToolSelectionFixture({ seed = 0 } = {}) {
   const s = Math.trunc(seed);
   const n = 4 + (s % 3); // 4..6 invoices
-  const invoices = Array.from({ length: n }, (_, k) => ({ id: `INV-${k + 1}`, paid: ((k + s) % 4) !== 1 }));
+  const invoices = Array.from({ length: n }, (_, k) => ({ id: `INV-${k + 1}`, paid: ((k + s) % 4) !== 1, amount: 80 + (k + 1) * 20 + s * 7 }));
   const expectedPaid = invoices.filter((r) => r.paid).length;
-  const listing = invoices.map((r) => `${r.id} ${r.paid ? "paid" : "unpaid"}`).join(", ");
+  const listing = invoices.map((r) => `${r.id} $${r.amount} ${r.paid ? "paid" : "unpaid"}`).join(", ");
   return {
     fixture: {
       id: `reuse-first-tool-selection-${String(s).padStart(3, "0")}`,
