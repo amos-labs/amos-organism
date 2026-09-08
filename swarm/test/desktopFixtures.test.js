@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, buildFixture } from "../evals/desktopFixtures/index.js";
+import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, buildFixture, buildFamilyCohort, selectHoldoutSeeds } from "../evals/desktopFixtures/index.js";
 import { countProposedCalls } from "../evals/desktopFixtures/_shared.js";
 
 // Build the canonical runner execution shape: proposed calls live only in
@@ -199,19 +199,47 @@ test("date-time: month_lengths reports a non-leap 2026 (Feb 28) and leap 2024 (F
   assert.equal(r2024.lengths[1], 29);
 });
 
-test("constrained-planning: passes within the call budget with the right total, fails over budget", () => {
+test("constrained-planning: passes only with exact coverage (each account read once) within budget", async () => {
   const f = buildFixture("constrained-planning");
   const total = f.verify(execFrom("x")).expected;
   const budget = f.verify(execFrom("x")).budget;
-  const withinBudget = Array.from({ length: budget }, () => "get_account_balance");
-  assert.equal(f.verify(execFrom(String(total), withinBudget)).verdict, "pass");
-  // Over the budget is a planning failure even with the right total.
-  const over = f.verify(execFrom(String(total), [...withinBudget, "get_account_balance"]));
+  const ids = ["ACC-1", "ACC-2", "ACC-3"].slice(0, budget);
+  const proposed = ids.map(() => "get_account_balance");
+  // Read each account exactly once (populates private coverage state), then verify.
+  for (const id of ids) await findTool(f, "get_account_balance").handler({ id }, {});
+  const pass = f.verify(execFrom(String(total), proposed));
+  assert.equal(pass.verdict, "pass");
+  assert.equal(pass.exactCoverage, true);
+});
+
+test("constrained-planning: zero reads, duplicate reads and rejected reads all FAIL (coverage)", async () => {
+  const total = buildFixture("constrained-planning").verify(execFrom("x")).expected;
+  const budget = buildFixture("constrained-planning").verify(execFrom("x")).budget;
+  const proposed = Array.from({ length: budget }, () => "get_account_balance");
+  // Zero successful reads but the right total (guessed) -> fail.
+  const zero = buildFixture("constrained-planning");
+  assert.equal(zero.verify(execFrom(String(total), proposed)).verdict, "fail");
+  // Duplicate reads of ACC-1 (budget calls, only one account covered) -> fail.
+  const dup = buildFixture("constrained-planning");
+  await findTool(dup, "get_account_balance").handler({ id: "ACC-1" }, {});
+  await findTool(dup, "get_account_balance").handler({ id: "ACC-1" }, {});
+  assert.equal(dup.verify(execFrom(String(total), proposed)).verdict, "fail");
+  // Only rejected reads (ACC-999) -> no coverage -> fail.
+  const rej = buildFixture("constrained-planning");
+  await findTool(rej, "get_account_balance").handler({ id: "ACC-999" }, {});
+  await findTool(rej, "get_account_balance").handler({ id: "ACC-999" }, {});
+  assert.equal(rej.verify(execFrom(String(total), proposed)).verdict, "fail");
+});
+
+test("constrained-planning: over budget fails even with full coverage and the right total", async () => {
+  const f = buildFixture("constrained-planning");
+  const total = f.verify(execFrom("x")).expected;
+  const budget = f.verify(execFrom("x")).budget;
+  const ids = ["ACC-1", "ACC-2", "ACC-3"].slice(0, budget);
+  for (const id of ids) await findTool(f, "get_account_balance").handler({ id }, {});
+  const over = f.verify(execFrom(String(total), [...ids.map(() => "get_account_balance"), "get_account_balance"]));
   assert.equal(over.verdict, "fail");
   assert.ok(over.calls > over.budget);
-  // Wrong total and prose fail (strict bare integer).
-  assert.equal(f.verify(execFrom(String(total + 1), withinBudget)).verdict, "fail");
-  assert.equal(f.verify(execFrom(`total is ${total}`, withinBudget)).verdict, "fail");
 });
 
 test("constrained-planning: get_account_balance returns known accounts and refuses unknown", async () => {
@@ -221,4 +249,29 @@ test("constrained-planning: get_account_balance returns known accounts and refus
   assert.ok(ok.balance > 0);
   const bad = await findTool(f, "get_account_balance").handler({ id: "ACC-999" }, {});
   assert.equal(bad.ok, false);
+});
+
+test("cohorts are semantically distinct (dataset digests), not just unique ids", () => {
+  for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) {
+    const cohort = buildFamilyCohort(key, 6);
+    const digests = new Set(cohort.map((c) => c.fixture.datasetDigest));
+    assert.equal(digests.size, 6, `${key} must yield 6 semantically distinct cases`);
+    assert.equal(new Set(cohort.map((c) => c.fixture.id)).size, 6);
+  }
+});
+
+test("reuse-first seeds 0 and 12 collide semantically, and the cohort builder skips the duplicate", () => {
+  assert.equal(buildFixture("reuse-first-tool-selection", { seed: 0 }).fixture.datasetDigest,
+    buildFixture("reuse-first-tool-selection", { seed: 12 }).fixture.datasetDigest);
+  const cohort = buildFamilyCohort("reuse-first-tool-selection", 8);
+  assert.equal(new Set(cohort.map((c) => c.fixture.datasetDigest)).size, 8);
+});
+
+test("holdout seeds are disjoint from the inspected development cohort's datasets", () => {
+  const dev = buildFamilyCohort("numeric-reconciliation", 6);
+  const devSeeds = dev.map((c) => c.fixture.seed);
+  const devDigests = new Set(dev.map((c) => c.fixture.datasetDigest));
+  const holdout = selectHoldoutSeeds("numeric-reconciliation", 6, { devSeeds });
+  assert.equal(holdout.digests.length, 6);
+  assert.ok(holdout.digests.every((d) => !devDigests.has(d)), "holdout datasets must be disjoint from dev");
 });

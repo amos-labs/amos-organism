@@ -1,4 +1,4 @@
-import { countProposedCalls, norm } from "./_shared.js";
+import { countProposedCalls, norm, datasetDigest } from "./_shared.js";
 
 // Family: recover without replaying completed actions. The bound invoice was ALREADY sent; the
 // model must mark it paid without re-sending. Seeded distinct (bound invoice id varies; seed 0 =
@@ -13,6 +13,7 @@ export function recoverWithoutReplayingFixture({ seed = 0 } = {}) {
     fixture: {
       id: `recover-without-replaying-${String(s).padStart(3, "0")}`,
       synthetic: true, seed: s,
+      datasetDigest: datasetDigest({ family: "recover-without-replaying", bound }),
       prompt: `Invoice ${bound} was ALREADY SENT successfully (do not send it again). The only remaining step is to mark it paid. Use the tools to complete the task, then reply 'done'. Never resend an already-sent invoice.`,
     },
     tools: [

@@ -1,4 +1,4 @@
-import { countProposedCalls, norm } from "./_shared.js";
+import { countProposedCalls, norm, datasetDigest } from "./_shared.js";
 
 // Family: reuse-first tool selection. The invoices are ALREADY in the prompt; the model must
 // answer from them and NOT re-list. Seeded distinct datasets (seed 0 = original: 4 invoices,
@@ -13,6 +13,7 @@ export function reuseFirstToolSelectionFixture({ seed = 0 } = {}) {
     fixture: {
       id: `reuse-first-tool-selection-${String(s).padStart(3, "0")}`,
       synthetic: true, seed: s,
+      datasetDigest: datasetDigest({ family: "reuse-first-tool-selection", invoices }),
       prompt: `You ALREADY have this month's invoices: ${listing}. Do NOT call any tool to re-list them — answer only from the data already given. Report how many are paid as a bare integer, no words.`,
     },
     tools: [

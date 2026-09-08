@@ -1,4 +1,4 @@
-import { norm } from "./_shared.js";
+import { norm, datasetDigest } from "./_shared.js";
 
 // Family: numeric reconciliation. Read two synthetic ledgers and report the exact signed
 // difference (A total - B total). Seeded: seed selects a distinct, deterministic dataset so a
@@ -16,6 +16,7 @@ export function numericReconciliationFixture({ seed = 0 } = {}) {
     fixture: {
       id: `numeric-reconciliation-${String(s).padStart(3, "0")}`,
       synthetic: true, seed: s,
+      datasetDigest: datasetDigest({ family: "numeric-reconciliation", ledgerA, ledgerB }),
       prompt: "Two ledgers, A and B, hold amounts in whole dollars. Read both with the tools, sum each, and report ONLY the signed difference (total A minus total B) as a bare integer, no words or currency sign.",
     },
     tools: [

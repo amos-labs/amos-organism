@@ -55,8 +55,10 @@ export const EVAL_STOP_BOUNDS = Object.freeze({
 // Cells beyond the primary, declared separately and included in the aggregate.
 export const AUX_CELLS = Object.freeze({
   warmup: { callsPerArm: 2, note: "16-token thinking-off served-identity warm-up per arm before scoring" },
-  regression: { cases: 28, arms: 2, note: "versioned live-review regression cohort; sealedHoldout false, missionComparisonEligible false, NEVER the gate" },
-  secondary: { fractionOfPrimaryCases: 0.25, note: "bounded-thinking config (reasoning <= 1024) on a declared subset; reported, not gated" },
+  regression: { cases: 28, arms: 2, expectedCallsPerCase: 3, note: "versioned live-review regression cohort; sealedHoldout false, missionComparisonEligible false, NEVER the gate" },
+  // Secondary applies ONLY to a fraction of the PRIMARY case-runs (not regression/warmup). Its
+  // reasoning allowance (<= boundedThinking) is accounted separately (Codex 20260908T023953Z).
+  secondary: { fractionOfPrimaryCaseRuns: 0.25, note: "bounded-thinking config (reasoning <= 1024) re-run on a declared subset of PRIMARY cases; reported, not gated" },
 });
 
 // Expected input tokens for one case with c expected calls: each call carries system+fixture
@@ -70,35 +72,53 @@ function expectedInputTokensForCase(expectedCalls) {
 
 /** Aggregate the planned cohort plus warmup/regression/secondary, with a feasible token projection. */
 export function aggregateWorkload({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, families = FIXTURE_FAMILIES, arms = EVAL_STOP_BOUNDS.arms.length } = {}) {
+  // Fail-closed at this level too: aggregateWorkload rejects invalid counts even without preflight.
+  if (!Number.isSafeInteger(casesPerFamily) || casesPerFamily < 1) throw new Error(`casesPerFamily must be a positive integer, got ${casesPerFamily}`);
+  if (arms !== EVAL_STOP_BOUNDS.arms.length) throw new Error(`arms must be exactly ${EVAL_STOP_BOUNDS.arms.length}, got ${arms}`);
   let expectedHttpCalls = 0;
   let worstCaseHttpCalls = 0;
-  let projectedInputTokens = 0;
-  let projectedOutputTokens = 0;
+  let primaryInputTokens = 0;
+  let primaryOutputTokens = 0;
   for (const key of families) {
     const b = PER_FAMILY_BOUNDS[key];
     if (!b) throw new Error(`no bounds declared for family ${key}`);
     const perFamilyCaseRuns = casesPerFamily * arms;
     expectedHttpCalls += b.expectedHttpCallsPerCase * perFamilyCaseRuns;
     worstCaseHttpCalls += b.maxHttpCallsPerCase * perFamilyCaseRuns;
-    projectedInputTokens += expectedInputTokensForCase(b.expectedHttpCallsPerCase) * perFamilyCaseRuns;
-    projectedOutputTokens += REQUEST_TOKEN_MODEL.avgOutputTokensPerCall * b.expectedHttpCallsPerCase * perFamilyCaseRuns;
+    primaryInputTokens += expectedInputTokensForCase(b.expectedHttpCallsPerCase) * perFamilyCaseRuns;
+    primaryOutputTokens += REQUEST_TOKEN_MODEL.avgOutputTokensPerCall * b.expectedHttpCallsPerCase * perFamilyCaseRuns;
   }
-  // Warmup + regression cells (regression uses the same per-request model, avg 3 calls/case).
+  const primaryCaseRuns = families.length * casesPerFamily * arms;
+  const primaryTokens = primaryInputTokens + primaryOutputTokens;
+
+  // Warmup cells (tiny; system prompt + 16 tokens per call).
   const warmupCalls = AUX_CELLS.warmup.callsPerArm * arms;
+  const warmupTokens = warmupCalls * (REQUEST_TOKEN_MODEL.systemPromptTokens + 16);
+
+  // Regression cohort (fixed 28 x 2), NOT scaled by the secondary factor.
   const regressionCaseRuns = AUX_CELLS.regression.cases * AUX_CELLS.regression.arms;
-  const regressionCalls = 3 * regressionCaseRuns;
-  const regressionInput = expectedInputTokensForCase(3) * regressionCaseRuns;
-  const regressionOutput = REQUEST_TOKEN_MODEL.avgOutputTokensPerCall * 3 * regressionCaseRuns;
-  const secondaryFactor = 1 + AUX_CELLS.secondary.fractionOfPrimaryCases;
-  const primaryTokens = projectedInputTokens + projectedOutputTokens;
-  const projectedHostedTokens = Math.ceil((primaryTokens + regressionInput + regressionOutput) * secondaryFactor
-    + warmupCalls * (REQUEST_TOKEN_MODEL.systemPromptTokens + 16));
-  const projectedHttpCalls = Math.ceil((expectedHttpCalls + regressionCalls + warmupCalls) * secondaryFactor);
+  const regressionCalls = AUX_CELLS.regression.expectedCallsPerCase * regressionCaseRuns;
+  const regressionTokens = (expectedInputTokensForCase(AUX_CELLS.regression.expectedCallsPerCase)
+    + REQUEST_TOKEN_MODEL.avgOutputTokensPerCall * AUX_CELLS.regression.expectedCallsPerCase) * regressionCaseRuns;
+
+  // Secondary cells: a fraction of PRIMARY case-runs only, with a separate reasoning allowance.
+  const avgCallsPerPrimaryCaseRun = primaryCaseRuns ? expectedHttpCalls / primaryCaseRuns : 0;
+  const secondaryCaseRuns = Math.round(AUX_CELLS.secondary.fractionOfPrimaryCaseRuns * primaryCaseRuns);
+  const secondaryCalls = Math.round(secondaryCaseRuns * avgCallsPerPrimaryCaseRun);
+  const perPrimaryCaseRunTokens = primaryCaseRuns ? primaryTokens / primaryCaseRuns : 0;
+  const secondaryReasoningTokens = secondaryCalls * PER_REQUEST_CAPS.maxReasoningTokensPerRequest.boundedThinking;
+  const secondaryTokens = Math.round(secondaryCaseRuns * perPrimaryCaseRunTokens) + secondaryReasoningTokens;
+
+  const projectedHttpCalls = expectedHttpCalls + regressionCalls + warmupCalls + secondaryCalls;
+  const projectedHostedTokens = Math.ceil(primaryTokens + regressionTokens + warmupTokens + secondaryTokens);
   return Object.freeze({
-    casesPerFamily, families: families.length, arms, caseRuns: families.length * casesPerFamily * arms,
-    expectedHttpCalls, worstCaseHttpCalls, primary: { httpCalls: expectedHttpCalls, hostedTokens: primaryTokens },
-    warmupCalls, regression: { caseRuns: regressionCaseRuns, httpCalls: regressionCalls, hostedTokens: regressionInput + regressionOutput },
-    secondaryFactor, projectedHttpCalls, projectedHostedTokens,
+    casesPerFamily, families: families.length, arms, caseRuns: primaryCaseRuns,
+    expectedHttpCalls, worstCaseHttpCalls,
+    primary: { caseRuns: primaryCaseRuns, httpCalls: expectedHttpCalls, hostedTokens: primaryTokens },
+    warmup: { httpCalls: warmupCalls, hostedTokens: warmupTokens },
+    regression: { caseRuns: regressionCaseRuns, httpCalls: regressionCalls, hostedTokens: regressionTokens },
+    secondary: { caseRuns: secondaryCaseRuns, httpCalls: secondaryCalls, reasoningTokens: secondaryReasoningTokens, hostedTokens: secondaryTokens },
+    projectedHttpCalls, projectedHostedTokens,
     tokenModel: REQUEST_TOKEN_MODEL.note,
     withinStopBounds: worstCaseHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsPrimary
       && projectedHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsTotal

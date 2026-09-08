@@ -11,15 +11,25 @@ test("every planned family and every built fixture has declared bounds", () => {
   for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) assert.ok(PER_FAMILY_BOUNDS[key], `built ${key} missing bounds`);
 });
 
-test("aggregate is feasible: primary worst-case, total projected calls and hosted tokens fit the ceilings", () => {
+test("aggregate is feasible; secondary scales PRIMARY only (532 total calls, not 575)", () => {
   const a = aggregateWorkload();
   assert.equal(a.arms, 2);
   assert.ok(a.worstCaseHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsPrimary, `primary worst ${a.worstCaseHttpCalls}`);
   assert.ok(a.projectedHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsTotal, `total ${a.projectedHttpCalls}`);
   assert.ok(a.projectedHostedTokens <= EVAL_STOP_BOUNDS.maxHostedTokens, `tokens ${a.projectedHostedTokens}`);
-  // Token projection must include the real Desktop system prompt (feasibility, not the old 400k).
   assert.ok(a.projectedHostedTokens > 1000000, "projection must reflect the ~3500-token system prompt");
+  // Secondary applies to primary only: total = primary 288 + regression 168 + warmup 4 + secondary 72 = 532.
+  assert.equal(a.projectedHttpCalls, a.primary.httpCalls + a.regression.httpCalls + a.warmup.httpCalls + a.secondary.httpCalls);
+  assert.equal(a.projectedHttpCalls, 532);
+  assert.ok(a.secondary.reasoningTokens > 0, "secondary reasoning accounted separately");
   assert.equal(a.withinStopBounds, true);
+});
+
+test("aggregateWorkload fails closed on invalid counts (not only preflight)", () => {
+  assert.throws(() => aggregateWorkload({ casesPerFamily: 0 }), /positive integer/);
+  assert.throws(() => aggregateWorkload({ casesPerFamily: -2 }), /positive integer/);
+  assert.throws(() => aggregateWorkload({ casesPerFamily: 1.5 }), /positive integer/);
+  assert.throws(() => aggregateWorkload({ arms: 1 }), /arms must be exactly 2/);
 });
 
 test("preflight FAILS CLOSED while families are unbuilt (constrained-planning/async-code/governed-context-dependent-state)", () => {
@@ -46,10 +56,12 @@ test("primary reasoning is zero (thinking off), retries disabled, arms are base 
 test("warmup/regression/secondary cells are declared separately and folded into the aggregate", () => {
   assert.ok(AUX_CELLS.warmup.callsPerArm >= 1);
   assert.equal(AUX_CELLS.regression.cases, 28);
+  assert.equal(AUX_CELLS.secondary.fractionOfPrimaryCaseRuns, 0.25);
   const a = aggregateWorkload();
-  assert.ok(a.warmupCalls >= 1);
+  assert.ok(a.warmup.httpCalls >= 1);
   assert.ok(a.regression.httpCalls > 0);
-  assert.ok(a.projectedHttpCalls >= a.expectedHttpCalls + a.regression.httpCalls, "aggregate includes regression + warmup");
+  assert.ok(a.secondary.httpCalls > 0);
+  assert.ok(a.projectedHttpCalls >= a.expectedHttpCalls + a.regression.httpCalls, "aggregate includes regression + warmup + secondary");
   assert.ok(REQUEST_TOKEN_MODEL.systemPromptTokens >= 3000, "token model carries the real system prompt");
 });
 

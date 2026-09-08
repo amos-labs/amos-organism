@@ -28,3 +28,20 @@ export function countProposedCalls(execution, name) {
 export function norm(answer) {
   return String(answer ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
+
+// Stable semantic digest of a fixture's seeded dataset (task/world content), independent of its
+// case id. The cohort builder deduplicates by this so two seeds that yield the same task are not
+// counted as distinct cases, and holdout seeds can be chosen disjoint from inspected development
+// cases (Codex 20260908T023953Z). FNV-1a over a canonical JSON with sorted keys.
+export function datasetDigest(value) {
+  const canonical = JSON.stringify(value, (_k, v) =>
+    (v && typeof v === "object" && !Array.isArray(v))
+      ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]]))
+      : v);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i += 1) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
