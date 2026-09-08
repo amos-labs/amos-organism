@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, allFamiliesBuilt } from "../evals/desktopFixtures/index.js";
 import {
   PER_FAMILY_BOUNDS, PER_REQUEST_CAPS, EVAL_STOP_BOUNDS, SERVING_PREFLIGHT, AUX_CELLS, REQUEST_TOKEN_MODEL,
-  aggregateWorkload, preflightEvalBounds,
+  aggregateWorkload, preflightEvalBounds, sealedSessionWorkload,
 } from "../evals/desktopFixtures/evalBounds.js";
 
 test("every planned family and every built fixture has declared bounds", () => {
@@ -29,7 +29,8 @@ test("aggregateWorkload fails closed on invalid counts (not only preflight)", ()
   assert.throws(() => aggregateWorkload({ casesPerFamily: 0 }), /positive integer/);
   assert.throws(() => aggregateWorkload({ casesPerFamily: -2 }), /positive integer/);
   assert.throws(() => aggregateWorkload({ casesPerFamily: 1.5 }), /positive integer/);
-  assert.throws(() => aggregateWorkload({ arms: 1 }), /arms must be exactly 2/);
+  assert.throws(() => aggregateWorkload({ arms: 1 }), /arms must be an integer 2\.\.3/);
+  assert.throws(() => aggregateWorkload({ arms: 4 }), /arms must be an integer 2\.\.3/);
 });
 
 test("preflight is READY now that all eight families are built and the cohort fits", () => {
@@ -49,7 +50,8 @@ test("preflight rejects invalid cohort counts and wrong arm counts", () => {
   assert.equal(preflightEvalBounds({ casesPerFamily: 0 }).ok, false);
   assert.ok(preflightEvalBounds({ casesPerFamily: -3 }).issues.some((i) => /positive integer/.test(i)));
   assert.ok(preflightEvalBounds({ casesPerFamily: 1.5 }).issues.some((i) => /positive integer/.test(i)));
-  assert.ok(preflightEvalBounds({ arms: 1 }).issues.some((i) => /arms must be exactly 2/.test(i)));
+  assert.ok(preflightEvalBounds({ arms: 1 }).issues.some((i) => /arms must be an integer 2\.\.3/.test(i)));
+  assert.ok(preflightEvalBounds({ arms: 4 }).issues.some((i) => /arms must be an integer 2\.\.3/.test(i)));
 });
 
 test("primary reasoning is zero (thinking off), retries disabled, arms are base vs S5", () => {
@@ -79,4 +81,18 @@ test("serving preflight uses direct-cortex response.model (not amos.served_model
   assert.match(joined, /INITIAL inputs/);
   assert.match(joined, /p95.*baseline|baseline.*p95/);
   assert.match(joined, /no automatic retry/);
+});
+
+test("sealed 3-arm pilot session fits the ceilings (708 total HTTP; regression/secondary excluded)", () => {
+  const s3 = sealedSessionWorkload({ arms: 3 });
+  assert.equal(s3.caseRuns, 6 * 8 * 3);
+  assert.equal(s3.worstCaseHttpCalls, 702);
+  assert.equal(s3.projectedHttpCalls, 708); // worst-case primary 702 + 6 warmups
+  assert.ok(s3.projectedHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsTotal);
+  assert.ok(s3.projectedHostedTokens <= EVAL_STOP_BOUNDS.maxHostedTokens);
+  assert.equal(s3.withinSealedBounds, true);
+  assert.match(s3.excludes, /regression \+ secondary/);
+  // arms are bounded 2..maxArms (3)
+  assert.throws(() => sealedSessionWorkload({ arms: 1 }), /2\.\.3/);
+  assert.throws(() => sealedSessionWorkload({ arms: 4 }), /2\.\.3/);
 });
