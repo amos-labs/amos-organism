@@ -136,8 +136,19 @@ test("the exporter produces immutable family-disjoint SFT and preference dataset
   await writeAmosNativeTrainingDataset(output, dataset);
 });
 
-test("licensed public development examples mix into training and remain excluded from evaluation", async () => {
+async function splitMembership(output, dataset) {
+  await writeAmosNativeTrainingDataset(output, dataset);
+  const ids = {};
+  for (const split of ["training", "validation", "holdout"]) {
+    const text = await readFile(join(output, `${split}.sft.jsonl`), "utf8");
+    ids[split] = new Set(text.split("\n").filter(Boolean).map((line) => JSON.parse(line).metadata.exampleId));
+  }
+  return ids;
+}
+
+test("licensed public development examples stay in training and never reach validation or holdout", async () => {
   const root = await mkdtemp(join(tmpdir(), "amos-native-mixed-"));
+  const output = await mkdtemp(join(tmpdir(), "amos-native-mixed-out-"));
   const store = await openSwarmLearningStore(root);
   await recordTrainingEpisode(store, 1, "tool-use", true, {
     sourceClass: "public-benchmark",
@@ -148,17 +159,48 @@ test("licensed public development examples mix into training and remain excluded
       "exclude-eval:terminal-bench-3.0.0:production-planning"
     ]
   });
-  await recordTrainingEpisode(store, 2, "artifact-build");
-  await recordTrainingEpisode(store, 3, "recovery");
+  // Enough evaluation-eligible families to populate validation and holdout.
+  for (const [index, family] of [[2, "artifact-build"], [3, "recovery"], [4, "async"], [5, "numeric"], [6, "governed"]]) {
+    await recordTrainingEpisode(store, index, family);
+  }
 
   const dataset = await compileAmosNativeTrainingDataset({ store, plan });
   assert.equal(dataset.ready, true);
   assert.equal(dataset.manifest.counts.publicBenchmarkEpisodes, 1);
-  assert.equal(dataset.manifest.safeguards.publicBenchmarksExcluded, false);
-  assert.equal(dataset.manifest.safeguards.publicBenchmarkEvaluationReuseForbidden, true);
   assert.deepEqual(dataset.manifest.evaluationExclusions, [
     "exclude-eval:terminal-bench-3.0.0:production-planning"
   ]);
+  const ids = await splitMembership(output, dataset);
+  assert.ok(ids.training.has("example-1"), "the development example is used for training");
+  assert.ok(!ids.validation.has("example-1") && !ids.holdout.has("example-1"), "and never held out for evaluation");
+  assert.ok(ids.validation.size > 0 && ids.holdout.size > 0, "evaluation splits are populated from eligible families");
+});
+
+test("nine-family probe: development/training-only families never contaminate the evaluation files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "amos-native-probe-"));
+  const output = await mkdtemp(join(tmpdir(), "amos-native-probe-out-"));
+  const store = await openSwarmLearningStore(root);
+  // One development-lineage family (rights-cleared synthetic, training-only, eval-excluded), like the
+  // calculator-runway derivatives, mixed with eight ordinary evaluation-eligible families.
+  await recordTrainingEpisode(store, 1, "calculator-runway", true, {
+    sourceClass: "rights-cleared-synthetic",
+    permittedUses: ["research", "training"],
+    trainingApproved: true,
+    contaminationTags: ["exclude-eval:live-review-runway-development-family"]
+  });
+  const evalFamilies = ["tool-use", "artifact-build", "recovery", "async", "numeric", "governed", "tenant", "reuse"];
+  for (const [offset, family] of evalFamilies.entries()) {
+    await recordTrainingEpisode(store, offset + 2, family);
+  }
+
+  const dataset = await compileAmosNativeTrainingDataset({ store, plan });
+  assert.equal(dataset.ready, true);
+  const ids = await splitMembership(output, dataset);
+  assert.ok(ids.training.has("example-1"), "the development example trains");
+  for (const split of ["validation", "holdout"]) {
+    assert.ok(!ids[split].has("example-1"), `no development example reaches ${split}`);
+    assert.ok(ids[split].size > 0, `${split} is populated from the eight eligible families`);
+  }
 });
 
 test("the current public-benchmark-only store stays safely data-gated", async () => {

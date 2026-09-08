@@ -81,12 +81,17 @@ export async function compileAmosNativeTrainingDataset({
 
   const examples = [];
   const sourceEpisodes = new Map();
+  // Whether each example's source permits it into an evaluation split (validation/holdout). Carried
+  // by example digest so mission-family split assignment can keep development/training-only and
+  // eval-excluded sources OUT of the held-out files, not merely flagged in the manifest.
+  const evaluationEligibleByDigest = new Map();
   for (const episode of episodes) {
     const references = episode.traces
       .filter(({ kind, status, digest }) =>
         kind === "amos-system-training-example" && status === "collected" && digest
       )
       .sort((left, right) => left.digest.localeCompare(right.digest));
+    const eligible = evaluationEligible(episode);
     for (const reference of references) {
       const parsed = JSON.parse((await store.readBlob(reference.digest)).toString("utf8"));
       const example = validateAmosSystemTrainingExample(parsed);
@@ -97,11 +102,14 @@ export async function compileAmosNativeTrainingDataset({
       }
       examples.push(example);
       sourceEpisodes.set(episode.digest, episode);
+      // Fail closed: if the same content is seen from several sources, one ineligible source wins.
+      const prior = evaluationEligibleByDigest.get(example.digest);
+      evaluationEligibleByDigest.set(example.digest, prior === undefined ? eligible : prior && eligible);
     }
   }
 
   const uniqueExamples = deduplicateExamples(examples);
-  const splits = splitByMissionFamily(uniqueExamples);
+  const splits = splitByMissionFamily(uniqueExamples, evaluationEligibleByDigest);
   const files = buildDatasetFiles(splits);
   const counts = {
     episodes: sourceEpisodes.size,
@@ -356,16 +364,36 @@ function deduplicateExamples(examples) {
   return [...byDigest.values()].sort((left, right) => left.digest.localeCompare(right.digest));
 }
 
-function splitByMissionFamily(examples) {
+// True when an episode's examples may enter an evaluation split. Development-partition sources,
+// sources that do not permit evaluation use, and sources tagged exclude-eval are training-only.
+function evaluationEligible(episode) {
+  const policy = episode?.dataPolicy ?? {};
+  if (episode?.partition === "development") return false;
+  if (!Array.isArray(policy.permittedUses) || !policy.permittedUses.includes("evaluation")) return false;
+  if (Array.isArray(policy.contaminationTags) && policy.contaminationTags.some((tag) => typeof tag === "string" && tag.startsWith("exclude-eval:"))) {
+    return false;
+  }
+  return true;
+}
+
+function splitByMissionFamily(examples, evaluationEligibleByDigest = new Map()) {
   const families = new Map();
   for (const example of examples) {
     const family = families.get(example.taskFamily) || [];
     family.push(example);
     families.set(example.taskFamily, family);
   }
-  const ordered = [...families.entries()].sort(([left], [right]) =>
-    sha256(left).localeCompare(sha256(right))
-  );
+  // A mission-family may only enter validation/holdout when EVERY one of its examples comes from an
+  // evaluation-eligible source. Any family carrying a development/training-only or eval-excluded
+  // example stays entirely in training — this enforces the exclusion before split assignment and
+  // preserves family disjointness (a family never spans training and evaluation).
+  const evalFamilies = [];
+  const trainingOnlyFamilies = [];
+  for (const entry of families.entries()) {
+    const eligible = entry[1].every((example) => evaluationEligibleByDigest.get(example.digest) !== false);
+    (eligible ? evalFamilies : trainingOnlyFamilies).push(entry);
+  }
+  const ordered = evalFamilies.sort(([left], [right]) => sha256(left).localeCompare(sha256(right)));
   const trainingFamilyCount = ordered.length < 3
     ? ordered.length
     : Math.max(1, Math.floor(ordered.length * 0.6));
@@ -373,6 +401,7 @@ function splitByMissionFamily(examples) {
     ? 0
     : Math.max(1, Math.floor(ordered.length * 0.2));
   const splits = { training: [], validation: [], holdout: [] };
+  for (const [, familyExamples] of trainingOnlyFamilies) splits.training.push(...familyExamples);
   for (const [index, [, familyExamples]] of ordered.entries()) {
     const split = index < trainingFamilyCount
       ? "training"
@@ -383,6 +412,14 @@ function splitByMissionFamily(examples) {
   }
   for (const values of Object.values(splits)) {
     values.sort((left, right) => left.digest.localeCompare(right.digest));
+  }
+  // Fail closed: no development/training-only example may ever reach a held-out evaluation file.
+  for (const split of ["validation", "holdout"]) {
+    for (const example of splits[split]) {
+      if (evaluationEligibleByDigest.get(example.digest) === false) {
+        throw new Error(`prohibited development/training-only example ${example.id} routed into ${split}`);
+      }
+    }
   }
   return splits;
 }
