@@ -48,7 +48,8 @@ export const EVAL_STOP_BOUNDS = Object.freeze({
   maxConcurrency: 2,
   maxHostedTokens: 3500000,        // headroom over ~2.9M projected with the measured initial footprint (estimate; re-measured with the pinned tokenizer at preflight)
   autoRetryAfterFailedRun: false,
-  arms: ["amos-qwen38-27b-fp8", "stage1-060408-r32-s5"],
+  arms: ["amos-qwen38-27b-fp8", "stage1-060408-r32-s5"], // dev 2-arm default (base vs S5)
+  maxArms: 3, // the targeted-pilot fresh comparison adds a 3rd arm (base, S5, pilot) per Codex 20260908T075808Z
   casesPerFamilyDefault: 6, // 6 x 8 families = 48 distinct seeded cases; worst-case HTTP calls fit 600
 });
 
@@ -74,7 +75,7 @@ function expectedInputTokensForCase(expectedCalls) {
 export function aggregateWorkload({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, families = FIXTURE_FAMILIES, arms = EVAL_STOP_BOUNDS.arms.length } = {}) {
   // Fail-closed at this level too: aggregateWorkload rejects invalid counts even without preflight.
   if (!Number.isSafeInteger(casesPerFamily) || casesPerFamily < 1) throw new Error(`casesPerFamily must be a positive integer, got ${casesPerFamily}`);
-  if (arms !== EVAL_STOP_BOUNDS.arms.length) throw new Error(`arms must be exactly ${EVAL_STOP_BOUNDS.arms.length}, got ${arms}`);
+  if (!Number.isSafeInteger(arms) || arms < 2 || arms > EVAL_STOP_BOUNDS.maxArms) throw new Error(`arms must be an integer 2..${EVAL_STOP_BOUNDS.maxArms}, got ${arms}`);
   let expectedHttpCalls = 0;
   let worstCaseHttpCalls = 0;
   let primaryInputTokens = 0;
@@ -126,6 +127,37 @@ export function aggregateWorkload({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFa
   });
 }
 
+/**
+ * The FRESH sealed comparison session (Codex 20260908T075808Z): primary + warmup cells ONLY, with
+ * the large optional regression/secondary cells EXCLUDED from this sealed run and counted
+ * separately. Supports the 3-arm pilot (base, S5, candidate). Development/settings traffic is
+ * counted against the same 12h/$50 pilot envelope, not here.
+ */
+export function sealedSessionWorkload({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, families = FIXTURE_FAMILIES, arms = EVAL_STOP_BOUNDS.maxArms } = {}) {
+  if (!Number.isSafeInteger(casesPerFamily) || casesPerFamily < 1) throw new Error(`casesPerFamily must be a positive integer, got ${casesPerFamily}`);
+  if (!Number.isSafeInteger(arms) || arms < 2 || arms > EVAL_STOP_BOUNDS.maxArms) throw new Error(`arms must be an integer 2..${EVAL_STOP_BOUNDS.maxArms}, got ${arms}`);
+  let expectedHttpCalls = 0, worstCaseHttpCalls = 0, primaryInputTokens = 0, primaryOutputTokens = 0;
+  for (const key of families) {
+    const b = PER_FAMILY_BOUNDS[key];
+    if (!b) throw new Error(`no bounds declared for family ${key}`);
+    const runs = casesPerFamily * arms;
+    expectedHttpCalls += b.expectedHttpCallsPerCase * runs;
+    worstCaseHttpCalls += b.maxHttpCallsPerCase * runs;
+    primaryInputTokens += expectedInputTokensForCase(b.expectedHttpCallsPerCase) * runs;
+    primaryOutputTokens += REQUEST_TOKEN_MODEL.avgOutputTokensPerCall * b.expectedHttpCallsPerCase * runs;
+  }
+  const warmupCalls = AUX_CELLS.warmup.callsPerArm * arms;
+  const warmupTokens = warmupCalls * (REQUEST_TOKEN_MODEL.systemPromptTokens + 16);
+  const projectedHttpCalls = worstCaseHttpCalls + warmupCalls; // sealed run counts worst-case primary + warmups
+  const projectedHostedTokens = Math.ceil(primaryInputTokens + primaryOutputTokens + warmupTokens);
+  return Object.freeze({
+    casesPerFamily, families: families.length, arms, caseRuns: families.length * casesPerFamily * arms,
+    expectedHttpCalls, worstCaseHttpCalls, warmupCalls, projectedHttpCalls, projectedHostedTokens,
+    excludes: "regression + secondary cells (counted separately, not in this sealed session)",
+    withinSealedBounds: projectedHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsTotal && projectedHostedTokens <= EVAL_STOP_BOUNDS.maxHostedTokens,
+  });
+}
+
 export const SERVING_PREFLIGHT = Object.freeze([
   "both-arm served-identity gate: base and S5 each serve a bounded 16-token thinking-OFF warm-up before scoring",
   "served-model identity is transport-specific (Platform 20260908T020000Z): the PRIMARY direct-cortex arms check top-level response.model (#265, AMOS metadata null); a hosted served-identity confirmation of the canary reads amos.served_model/amos.frontier_route. Never synthesize amos.served_model on the direct arm",
@@ -142,7 +174,7 @@ export const SERVING_PREFLIGHT = Object.freeze([
 export function preflightEvalBounds({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, arms = EVAL_STOP_BOUNDS.arms.length } = {}) {
   const issues = [];
   if (!Number.isSafeInteger(casesPerFamily) || casesPerFamily < 1) issues.push(`casesPerFamily must be a positive integer, got ${casesPerFamily}`);
-  if (arms !== EVAL_STOP_BOUNDS.arms.length) issues.push(`arms must be exactly ${EVAL_STOP_BOUNDS.arms.length} (base vs S5), got ${arms}`);
+  if (!Number.isSafeInteger(arms) || arms < 2 || arms > EVAL_STOP_BOUNDS.maxArms) issues.push(`arms must be an integer 2..${EVAL_STOP_BOUNDS.maxArms}, got ${arms}`);
   if (new Set(FIXTURE_FAMILIES).size !== FIXTURE_FAMILIES.length) issues.push("duplicate family names");
   for (const key of FIXTURE_FAMILIES) if (!PER_FAMILY_BOUNDS[key]) issues.push(`missing bounds for planned family ${key}`);
   for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) if (!PER_FAMILY_BOUNDS[key]) issues.push(`missing bounds for built fixture ${key}`);
