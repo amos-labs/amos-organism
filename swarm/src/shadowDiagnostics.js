@@ -76,10 +76,35 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
     if (seen.has(key)) continue;
     seen.add(key);
     const episodes = missionId ? (episodesByMission.get(missionId) ?? []) : [];
-    const terminal = episodes.at(-1) ?? null;
     // Primary request evidence is record.inputEvidence (SWARM_PLATFORM_MISSIONS.md); older records carried it on primary.
     const primaryInput = record.inputEvidence?.compiledInputSha256 ?? record.primary?.inputEvidence?.compiledInputSha256 ?? null;
     const shadowInput = record.shadow?.inputEvidence?.compiledInputSha256 ?? null;
+    const requestPayloadSha256 = record.inputEvidence?.requestPayloadSha256 ?? record.primary?.inputEvidence?.requestPayloadSha256 ?? null;
+    // A shadow row is attributed to a Mission's terminal episode ONLY when it matches EXACTLY ONE
+    // signed attempt identity in that episode's source.evidence: tenant + contract (when present on
+    // both sides) + plannerAttempt + requestDigest + compiledInputSha256 + requestPayloadSha256.
+    // Mission id alone is insufficient; any mismatch, ambiguity or missing evidence stays explicitly
+    // UNQUALIFIED (never a negative label). Comparator eligibility is decided elsewhere and unchanged.
+    const identityMatches = [];
+    for (const episode of episodes) {
+      const source = episode.payload?.source ?? {};
+      if (source.tenantId != null && mission?.tenantId != null && source.tenantId !== mission.tenantId) continue;
+      if (source.contractId != null && mission?.contractId != null && source.contractId !== mission.contractId) continue;
+      const identities = source.evidence?.attemptIdentities;
+      for (const identity of Array.isArray(identities) ? identities : []) {
+        if (
+          identity?.plannerAttempt != null && identity.plannerAttempt === plannerAttempt &&
+          identity?.requestDigest != null && identity.requestDigest === record.requestDigest &&
+          identity?.compiledInputSha256 != null && identity.compiledInputSha256 === primaryInput &&
+          identity?.requestPayloadSha256 != null && identity.requestPayloadSha256 === requestPayloadSha256
+        ) {
+          identityMatches.push({ episode, identity });
+        }
+      }
+    }
+    const identityVerified = identityMatches.length === 1;
+    const matched = identityVerified ? identityMatches[0] : null;
+    const terminal = matched ? matched.episode : null;
     rows.push({
       missionId,
       plannerAttempt,
@@ -96,6 +121,11 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
       compiledInputParity: primaryInput && shadowInput ? primaryInput === shadowInput : null,
       compiledInputSha256: shadowInput ?? primaryInput,
       planDecision: mission?.planDecision ?? null,
+      identityVerified,
+      identityMatchCount: identityMatches.length,
+      matchedAttempt: matched
+        ? { plannerAttempt: matched.identity.plannerAttempt ?? null, stepPosition: matched.identity.stepPosition ?? null }
+        : null,
       episode: terminal
         ? {
           eventId: terminal.id,
@@ -106,7 +136,13 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
           episodeCount: episodes.length
         }
         : null,
-      attribution: !missionId ? "no-mission" : terminal ? "mission-terminal-episode" : "mission-without-episode",
+      attribution: !missionId
+        ? "no-mission"
+        : identityVerified
+          ? "mission-terminal-episode"
+          : episodes.length
+            ? "mission-unverified-attempt"
+            : "mission-without-episode",
       evidenceClass: "diagnostic-only",
       executedArms: ["primary"],
       comparatorEligible: false
@@ -141,6 +177,7 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
       rows: rows.length,
       noMission: rows.filter((row) => row.attribution === "no-mission").length,
       missionWithoutEpisode: rows.filter((row) => row.attribution === "mission-without-episode").length,
+      missionUnverifiedAttempt: rows.filter((row) => row.attribution === "mission-unverified-attempt").length,
       attributed: attributed.length,
       agreementRate: withAgreement.length ? round(withAgreement.filter((row) => row.agreement === true).length / withAgreement.length) : null,
       compiledInputParityRate: parityKnown.length ? round(parityKnown.filter((row) => row.compiledInputParity).length / parityKnown.length) : null,
