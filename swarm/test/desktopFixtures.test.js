@@ -40,15 +40,27 @@ test("every fixture matches the runDesktopFixture factory shape", () => {
   }
 });
 
-test("numeric-reconciliation verifier is exact (75 = 5715 - 5640)", async () => {
+test("numeric-reconciliation verifier is a strict signed integer (seed 0 = 75 = 5715 - 5640)", async () => {
   const f = buildFixture("numeric-reconciliation");
   const a = await findTool(f, "read_ledger_a").handler({}, {});
   const b = await findTool(f, "read_ledger_b").handler({}, {});
   assert.equal(a.rows.reduce((s, r) => s + r.amount, 0) - b.rows.reduce((s, r) => s + r.amount, 0), 75);
   assert.equal(f.verify(execFrom("75")).verdict, "pass");
-  assert.equal(f.verify(execFrom("The difference is 75.")).verdict, "pass");
+  assert.equal(f.verify(execFrom("  75  ")).verdict, "pass"); // norm trims
+  // Codex 20260908T014430Z: prose, decimals, contradictions and trailing tokens must NOT pass.
+  assert.equal(f.verify(execFrom("The difference is 75.")).verdict, "fail");
+  assert.equal(f.verify(execFrom("75.9")).verdict, "fail");
+  assert.equal(f.verify(execFrom("75 is wrong; the answer is 74")).verdict, "fail");
+  assert.equal(f.verify(execFrom("not 75")).verdict, "fail");
+  assert.equal(f.verify(execFrom("75 0")).verdict, "fail");
   assert.equal(f.verify(execFrom("74")).verdict, "fail");
-  assert.equal(f.verify(execFrom("no idea")).verdict, "fail");
+});
+
+test("desktop fixtures build distinct seeded cases (unique ids per seed)", () => {
+  for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) {
+    const ids = new Set([0, 1, 2, 3].map((seed) => buildFixture(key, { seed }).fixture.id));
+    assert.equal(ids.size, 4, `${key} must yield 4 distinct case ids`);
+  }
 });
 
 test("recover: passes only on correct-target paid effect proven by private state + read-back", async () => {

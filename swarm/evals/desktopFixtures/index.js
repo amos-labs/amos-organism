@@ -23,8 +23,27 @@ export const FIXTURE_FAMILIES = Object.freeze([
   "recover-without-replaying-completed-actions", "reuse-first-tool-selection"
 ]);
 
-export function buildFixture(key) {
+export function buildFixture(key, options = {}) {
   const f = DESKTOP_EVAL_FIXTURES[key];
   if (!f) throw new Error(`unknown desktop-eval fixture: ${key}`);
-  return f();
+  return f(options);
+}
+
+/** True when every planned family has a built factory. */
+export function allFamiliesBuilt() {
+  return FIXTURE_FAMILIES.every((key) => key in DESKTOP_EVAL_FIXTURES);
+}
+
+/** Build a distinct seeded cohort for one family: seeds 0..count-1 must yield unique case ids. */
+export function buildFamilyCohort(key, count) {
+  if (!Number.isSafeInteger(count) || count < 1) throw new Error(`count must be a positive integer, got ${count}`);
+  const cases = [];
+  const ids = new Set();
+  for (let seed = 0; seed < count; seed += 1) {
+    const built = buildFixture(key, { seed });
+    if (ids.has(built.fixture.id)) throw new Error(`family ${key} produced a duplicate case id at seed ${seed}`);
+    ids.add(built.fixture.id);
+    cases.push(built);
+  }
+  return cases;
 }
