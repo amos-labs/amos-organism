@@ -1,0 +1,405 @@
+{
+  "schema": "amos.desktop-development-training-trace-fixtures",
+  "version": 1,
+  "createdAt": "2026-09-08T13:00:39.669100+00:00",
+  "frozenAgentRevision": "764847a031e3d95c3d98d0bdb8afb01a8dd52d62",
+  "sourceArtifact": "calculator-euro-review-20260908/verified-runway-examples.json",
+  "sourceChecks": [
+    {
+      "path": "src/tools/spreadsheets.js",
+      "sha256": "fe9edcd83f7cf38b23f211a1354b36c44480d76dd8db82fb2d4fa3e222b61c03",
+      "matchesExecutedSource": true
+    },
+    {
+      "path": "src/artifacts/spreadsheetFormula.js",
+      "sha256": "5c727ec49e4ccbd476d21ddc7a9459b32bc0bdfcd8eb228403e9c7e71c0be4ce",
+      "matchesExecutedSource": true
+    },
+    {
+      "path": "src/artifacts/spreadsheetSpec.js",
+      "sha256": "17ed7fdd1dd0f9edd20c5d5f376b11f318ebe206d4d4a770736ee98585f9d944",
+      "matchesExecutedSource": true
+    },
+    {
+      "path": "src/artifacts/spreadsheetRenderer.js",
+      "sha256": "ee7ff39324e4b28ee34016bb63b43848408e5b59974ac43c7d41e0310edcf92c",
+      "matchesExecutedSource": true
+    }
+  ],
+  "examples": [
+    {
+      "id": "development-runway-usd-native-trace-fixture",
+      "tools": [
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools to calculate consequential financial figures. Preserve units. If a tool reports an argument error, correct the call before stating the result."
+        },
+        {
+          "role": "user",
+          "content": "We have USD 120000 in cash, monthly costs of USD 80000 and monthly revenue of USD 60000. Calculate current net burn and runway, then show the change after adding USD 8000 in monthly costs. Use the calculator and keep currencies and time units explicit."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "dev_invalid_usd",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"bad_subtraction\",\"operation\":\"subtract\",\"operands\":[{\"value\":80000,\"unit\":\"usd_per_month\"},{\"value\":60000,\"unit\":\"usd_per_month\"},{\"value\":8000,\"unit\":\"usd_per_month\"}],\"unit\":\"usd_per_month\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "dev_invalid_usd",
+          "content": "{\"error\": \"steps[0].formula.subtract requires between 2 and 2 arguments\"}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "dev_correct_usd",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"burn\",\"operation\":\"subtract\",\"operands\":[{\"value\":80000,\"unit\":\"usd_per_month\"},{\"value\":60000,\"unit\":\"usd_per_month\"}],\"unit\":\"usd_per_month\"},{\"key\":\"runway\",\"operation\":\"divide\",\"operands\":[{\"value\":120000,\"unit\":\"usd\"},{\"step\":\"burn\"}],\"unit\":\"months\"},{\"key\":\"new_burn\",\"operation\":\"add\",\"operands\":[{\"step\":\"burn\"},{\"value\":8000,\"unit\":\"usd_per_month\"}],\"unit\":\"usd_per_month\"},{\"key\":\"new_runway\",\"operation\":\"divide\",\"operands\":[{\"value\":120000,\"unit\":\"usd\"},{\"step\":\"new_burn\"}],\"unit\":\"months\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "dev_correct_usd",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"burn\",\"label\":\"burn\",\"value\":20000,\"unit\":\"usd_per_month\",\"formula\":\"=(A1-A2)\"},{\"key\":\"runway\",\"label\":\"runway\",\"value\":6,\"unit\":\"months\",\"formula\":\"=(A3/B1)\"},{\"key\":\"new_burn\",\"label\":\"new_burn\",\"value\":28000,\"unit\":\"usd_per_month\",\"formula\":\"=(B1+A4)\"},{\"key\":\"new_runway\",\"label\":\"new_runway\",\"value\":4.285714285714286,\"unit\":\"months\",\"formula\":\"=(A5/B3)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "Current net burn is USD 20000/month, giving 6 months of runway. With the added costs, net burn is USD 28000/month and runway is approximately 4.285714 months."
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "development-runway-usd",
+        "lineageGroup": "live-review-runway-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Hand-constructed from recorded tool executions, not a model-generated successful episode.",
+        "toolResults": "Reused actual local executions; source hashes match frozen Agent revision.",
+        "independentChecker": "Decimal recomputation of burn and runway; tolerance 1e-12 months.",
+        "trainingEligibility": "Requires Organism compiler validation, target/prompt masking and source-lineage admission; not a ready export or holdout.",
+        "supervision": "For recovery, supervise corrected call only; mask rejected call and its prompt history. A separate final-answer target may follow the observed result. Do not supervise the rejected call as a positive."
+      }
+    },
+    {
+      "id": "development-runway-eur-native-trace-fixture",
+      "tools": [
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools to calculate consequential financial figures. Preserve units. If a tool reports an argument error, correct the call before stating the result."
+        },
+        {
+          "role": "user",
+          "content": "We have EUR 120000 in cash, monthly costs of EUR 80000 and monthly revenue of EUR 60000. Calculate current net burn and runway, then show the change after adding EUR 8000 in monthly costs. Use the calculator and keep currencies and time units explicit."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "dev_invalid_eur",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"bad_subtraction\",\"operation\":\"subtract\",\"operands\":[{\"value\":80000,\"unit\":\"eur_per_month\"},{\"value\":60000,\"unit\":\"eur_per_month\"},{\"value\":8000,\"unit\":\"eur_per_month\"}],\"unit\":\"eur_per_month\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "dev_invalid_eur",
+          "content": "{\"error\": \"steps[0].formula.subtract requires between 2 and 2 arguments\"}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "dev_correct_eur",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"burn\",\"operation\":\"subtract\",\"operands\":[{\"value\":80000,\"unit\":\"eur_per_month\"},{\"value\":60000,\"unit\":\"eur_per_month\"}],\"unit\":\"eur_per_month\"},{\"key\":\"runway\",\"operation\":\"divide\",\"operands\":[{\"value\":120000,\"unit\":\"eur\"},{\"step\":\"burn\"}],\"unit\":\"months\"},{\"key\":\"new_burn\",\"operation\":\"add\",\"operands\":[{\"step\":\"burn\"},{\"value\":8000,\"unit\":\"eur_per_month\"}],\"unit\":\"eur_per_month\"},{\"key\":\"new_runway\",\"operation\":\"divide\",\"operands\":[{\"value\":120000,\"unit\":\"eur\"},{\"step\":\"new_burn\"}],\"unit\":\"months\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "dev_correct_eur",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"burn\",\"label\":\"burn\",\"value\":20000,\"unit\":\"eur_per_month\",\"formula\":\"=(A1-A2)\"},{\"key\":\"runway\",\"label\":\"runway\",\"value\":6,\"unit\":\"months\",\"formula\":\"=(A3/B1)\"},{\"key\":\"new_burn\",\"label\":\"new_burn\",\"value\":28000,\"unit\":\"eur_per_month\",\"formula\":\"=(B1+A4)\"},{\"key\":\"new_runway\",\"label\":\"new_runway\",\"value\":4.285714285714286,\"unit\":\"months\",\"formula\":\"=(A5/B3)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "Current net burn is EUR 20000/month, giving 6 months of runway. With the added costs, net burn is EUR 28000/month and runway is approximately 4.285714 months."
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "development-runway-eur",
+        "lineageGroup": "live-review-runway-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Hand-constructed from recorded tool executions, not a model-generated successful episode.",
+        "toolResults": "Reused actual local executions; source hashes match frozen Agent revision.",
+        "independentChecker": "Decimal recomputation of burn and runway; tolerance 1e-12 months.",
+        "trainingEligibility": "Requires Organism compiler validation, target/prompt masking and source-lineage admission; not a ready export or holdout.",
+        "supervision": "For recovery, supervise corrected call only; mask rejected call and its prompt history. A separate final-answer target may follow the observed result. Do not supervise the rejected call as a positive."
+      }
+    }
+  ]
+}

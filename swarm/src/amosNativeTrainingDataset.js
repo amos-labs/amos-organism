@@ -18,6 +18,16 @@ const TARGET_KINDS = new Set([
 
 export function createAmosSystemTrainingExample(input) {
   const source = jsonObject(input, "training example");
+  // A native tool-trace, when present, adds MASKED intermediate turns (a failed call, its error, a
+  // tool result) between the user prompt and the final supervised assistant target, plus the tool
+  // schema passed to the pinned chat template. Absent, the example stays the three-message shape and
+  // keeps its previous digest byte-for-byte (the key is only added when a trace is supplied).
+  const exampleInput = {
+    system: requiredText(source.input?.system, "training example.input.system", 100_000),
+    user: requiredText(source.input?.user, "training example.input.user", 100_000)
+  };
+  const toolTrace = normalizeToolTrace(source.input?.toolTrace);
+  if (toolTrace) exampleInput.toolTrace = toolTrace;
   const example = {
     schema: AMOS_SYSTEM_TRAINING_EXAMPLE_SCHEMA,
     version: AMOS_NATIVE_DATASET_VERSION,
@@ -28,18 +38,8 @@ export function createAmosSystemTrainingExample(input) {
     ),
     taskFamily: requiredId(source.taskFamily, "training example.taskFamily"),
     role: requiredId(source.role, "training example.role"),
-    input: {
-      system: requiredText(source.input?.system, "training example.input.system", 100_000),
-      user: requiredText(source.input?.user, "training example.input.user", 100_000)
-    },
-    target: {
-      kind: enumValue(source.target?.kind, TARGET_KINDS, "training example.target.kind"),
-      content: requiredText(
-        source.target?.content,
-        "training example.target.content",
-        100_000
-      )
-    },
+    input: exampleInput,
+    target: normalizeTarget(source.target, Boolean(toolTrace)),
     correction: normalizeCorrection(source.correction),
     safeguards: normalizeSafeguards(source.safeguards)
   };
@@ -178,6 +178,108 @@ export async function writeAmosNativeTrainingDataset(outputPath, dataset) {
   return { output, manifest: stored };
 }
 
+const TOOL_TRACE_ROLES = new Set(["user", "assistant", "tool"]);
+
+// A single tool_call, preserving the native transcript shape. OpenAI string arguments are parsed
+// into an object so the pinned chat template renders them (a raw string throws in the template).
+function normalizeToolCall(call, label) {
+  const record = jsonObject(call, label);
+  const fn = jsonObject(record.function, `${label}.function`);
+  let args = fn.arguments;
+  if (typeof args === "string") {
+    try { args = JSON.parse(args); } catch { throw new Error(`${label}.function.arguments is not valid JSON`); }
+  }
+  const normalized = {
+    function: {
+      name: requiredId(fn.name, `${label}.function.name`),
+      arguments: jsonObject(args, `${label}.function.arguments`)
+    }
+  };
+  if (record.id !== undefined) normalized.id = requiredId(record.id, `${label}.id`);
+  if (record.type !== undefined) normalized.type = enumValue(record.type, new Set(["function"]), `${label}.type`);
+  return normalized;
+}
+
+// A masked context turn, preserving the native message shape (content may be null on an assistant
+// tool_call turn; tool turns carry tool_call_id). We never flatten into an invented training dialect.
+function normalizeContextTurn(turn, index) {
+  const label = `training example.input.toolTrace.contextTurns[${index}]`;
+  const message = jsonObject(turn, label);
+  const role = enumValue(message.role, TOOL_TRACE_ROLES, `${label}.role`);
+  const normalized = { role };
+  const hasToolCalls = message.tool_calls !== undefined;
+  if (message.content === null) {
+    if (role !== "assistant" || !hasToolCalls) throw new Error(`${label}.content may be null only on an assistant tool_calls turn`);
+    normalized.content = null;
+  } else {
+    normalized.content = requiredText(message.content, `${label}.content`, 100_000);
+  }
+  if (hasToolCalls) {
+    if (role !== "assistant") throw new Error(`${label}.tool_calls is only valid on an assistant turn`);
+    if (!Array.isArray(message.tool_calls) || message.tool_calls.length === 0) throw new Error(`${label}.tool_calls must be a non-empty array`);
+    normalized.tool_calls = message.tool_calls.map((call, i) => normalizeToolCall(call, `${label}.tool_calls[${i}]`));
+  }
+  if (message.tool_call_id !== undefined) {
+    if (role !== "tool") throw new Error(`${label}.tool_call_id is only valid on a tool turn`);
+    normalized.tool_call_id = requiredId(message.tool_call_id, `${label}.tool_call_id`);
+  }
+  return normalized;
+}
+
+function normalizeToolCalls(input, label) {
+  if (!Array.isArray(input) || input.length === 0) throw new Error(`${label} must be a non-empty array`);
+  return input.map((call, index) => normalizeToolCall(call, `${label}[${index}]`));
+}
+
+// A supervised final assistant target: either text content, or a structured tool_calls message (a
+// corrected/first tool call, content null). A text target keeps its {kind, content} shape byte-for-byte.
+function normalizeTarget(input, hasToolTrace) {
+  const target = jsonObject(input, "training example.target");
+  const kind = enumValue(target.kind, TARGET_KINDS, "training example.target.kind");
+  if (target.toolCalls !== undefined) {
+    if (!hasToolTrace) throw new Error("training example.target.toolCalls requires an input.toolTrace tool schema");
+    const content = target.content == null ? null : requiredText(target.content, "training example.target.content", 100_000);
+    return { kind, content, toolCalls: normalizeToolCalls(target.toolCalls, "training example.target.toolCalls") };
+  }
+  return { kind, content: requiredText(target.content, "training example.target.content", 100_000) };
+}
+
+function normalizeToolTrace(input) {
+  if (input === null || input === undefined) return null;
+  const trace = jsonObject(input, "training example.input.toolTrace");
+  // Context turns may be empty for a first-call example (the tool call is the target with no prior turns).
+  if (!Array.isArray(trace.contextTurns)) {
+    throw new Error("training example.input.toolTrace.contextTurns must be an array");
+  }
+  const contextTurns = trace.contextTurns.map((turn, index) => normalizeContextTurn(turn, index));
+  if (contextTurns.length > 0 && contextTurns.at(-1).role === "assistant") {
+    // The single supervised decision is the target; a trailing assistant context turn is ambiguous.
+    throw new Error("training example.input.toolTrace.contextTurns must not end with an assistant turn");
+  }
+  if (!Array.isArray(trace.tools) || trace.tools.length === 0) {
+    throw new Error("training example.input.toolTrace.tools must be a non-empty array");
+  }
+  const tools = trace.tools.map((tool, index) => normalizeServingTool(tool, `training example.input.toolTrace.tools[${index}]`));
+  return { contextTurns, tools };
+}
+
+// Rebuild each tool in the frozen serving_tools v2 order — {type:"function", function:{name,
+// description, parameters}} — so the row the trainer tokenizes matches what the served model saw.
+// (The train_stage0 encoder passes row.tools to the pinned chat template verbatim.)
+function normalizeServingTool(tool, label) {
+  const record = jsonObject(tool, label);
+  if (record.type !== "function") throw new Error(`${label}.type must be "function"`);
+  const fn = jsonObject(record.function, `${label}.function`);
+  return {
+    type: "function",
+    function: {
+      name: requiredId(fn.name, `${label}.function.name`),
+      description: requiredText(fn.description, `${label}.function.description`, 20_000),
+      parameters: jsonObject(fn.parameters, `${label}.function.parameters`)
+    }
+  };
+}
+
 function normalizeCorrection(input) {
   if (input === null || input === undefined) return null;
   const correction = jsonObject(input, "training example.correction");
@@ -308,13 +410,24 @@ function buildDatasetFiles(splits) {
   return files;
 }
 
-function sftRow(example) {
-  return {
-    messages: [
-      { role: "system", content: example.input.system },
-      { role: "user", content: example.input.user },
-      { role: "assistant", content: example.target.content }
-    ],
+export function sftRow(example) {
+  const toolTrace = example.input.toolTrace ?? null;
+  // A tool-trace example renders system + user + the masked context turns + the final supervised
+  // assistant target, and forwards its tool schema; a plain example is byte-identical to before
+  // (no tools key). The train_stage0 encoder masks everything before the final assistant.
+  // The supervised final assistant is either text content or a structured tool_calls message.
+  const finalAssistant = example.target.toolCalls
+    ? { role: "assistant", content: example.target.content ?? null, tool_calls: example.target.toolCalls }
+    : { role: "assistant", content: example.target.content };
+  const messages = [
+    { role: "system", content: example.input.system },
+    { role: "user", content: example.input.user },
+    // Emit the masked context turns verbatim, preserving native tool_calls / tool_call_id.
+    ...(toolTrace ? toolTrace.contextTurns.map((turn) => ({ ...turn })) : []),
+    finalAssistant
+  ];
+  const row = {
+    messages,
     metadata: {
       exampleId: example.id,
       exampleDigest: example.digest,
@@ -324,6 +437,8 @@ function sftRow(example) {
       targetKind: example.target.kind
     }
   };
+  if (toolTrace) row.tools = toolTrace.tools;
+  return row;
 }
 
 function preferenceRow(example) {
