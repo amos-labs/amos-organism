@@ -48,7 +48,7 @@ export function desktopTraceExamples(trajectory, { idPrefix, taskFamily = "calcu
   }
   const prefix = idPrefix ?? trajectory.id ?? "desktop-trace";
   const tools = trajectory.tools;
-  const base = { sourceEpisodeId: `desktop-trace:${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  const base = { sourceEpisodeId: `desktop-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
   const correctedTarget = { content: correctedCall.content ?? null, toolCalls: correctedCall.tool_calls };
   return [
     {
