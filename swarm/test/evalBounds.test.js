@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, allFamiliesBuilt } from "../evals/desktopFixtures/index.js";
 import {
   PER_FAMILY_BOUNDS, PER_REQUEST_CAPS, EVAL_STOP_BOUNDS, SERVING_PREFLIGHT, AUX_CELLS, REQUEST_TOKEN_MODEL,
-  aggregateWorkload, preflightEvalBounds, sealedSessionWorkload,
+  aggregateWorkload, preflightEvalBounds, sealedSessionWorkload, sealedSessionPreflight,
 } from "../evals/desktopFixtures/evalBounds.js";
 
 test("every planned family and every built fixture has declared bounds", () => {
@@ -95,4 +95,18 @@ test("sealed 3-arm pilot session fits the ceilings (708 total HTTP; regression/s
   // arms are bounded 2..maxArms (3)
   assert.throws(() => sealedSessionWorkload({ arms: 1 }), /2\.\.3/);
   assert.throws(() => sealedSessionWorkload({ arms: 4 }), /2\.\.3/);
+});
+
+test("sealedSessionPreflight passes the 3-arm sealed session while keeping fixture-readiness checks", () => {
+  // The dev whole-session preflight is intentionally false for 3 arms (its aggregate exceeds); the
+  // sealed preflight uses the sealed-session cap (708 <= 900) and passes with all readiness checks kept.
+  assert.equal(preflightEvalBounds({ arms: 3 }).ok, false);
+  const sp = sealedSessionPreflight({ arms: 3 });
+  assert.equal(sp.ok, true, `unexpected issues: ${sp.issues.join("; ")}`);
+  assert.equal(sp.sealed.projectedHttpCalls, 708);
+  assert.ok(sp.sealed.withinSealedBounds);
+  // Fixture-readiness is NOT disabled: invalid counts/arms still fail closed.
+  assert.equal(sealedSessionPreflight({ casesPerFamily: 0 }).ok, false);
+  assert.equal(sealedSessionPreflight({ arms: 4 }).ok, false);
+  assert.equal(sealedSessionPreflight({ arms: 1 }).ok, false);
 });
