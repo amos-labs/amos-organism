@@ -1,0 +1,417 @@
+{
+  "producerHead": "65edd833b8a350d0dcb1a58782b9fd39c0d4bccd",
+  "source": "Exact Rust terminal_assessment_from output from independent replay; development fixture only, not signed real episodes",
+  "cases": [
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 0,
+          "extraneousResults": 0,
+          "fail": 0,
+          "noEvidence": 1,
+          "pass": 1,
+          "recordedResults": 1,
+          "requirements": 2,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [
+          "b"
+        ],
+        "policyDigest": "2cc2bb72ced46d86ae5e2f002fb84cd2d48f8f96aae696f65c8b6641e664d172",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": null,
+            "latestRecorded": {
+              "authority": "deterministic",
+              "checkerId": "fixture",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 1.0,
+              "definitionDigest": "pinned",
+              "evidenceRefsDigest": "b894fc7d3e2fd86b633f6866e4e1b26591c3004151ab2f408dfe05a874632c91",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000005",
+              "verdict": "pass"
+            },
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": "pass",
+            "recordedResults": 1,
+            "requirementId": "a",
+            "state": "pass"
+          },
+          {
+            "disqualifiedReason": null,
+            "latestRecorded": null,
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": null,
+            "recordedResults": 0,
+            "requirementId": "b",
+            "state": "no_evidence"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "pending",
+        "version": 1
+      },
+      "case": "codex_1_missing_required_b",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 0,
+          "extraneousResults": 1,
+          "fail": 0,
+          "noEvidence": 0,
+          "pass": 1,
+          "recordedResults": 2,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [],
+        "policyDigest": "48166092e68d9712afb821727aa6f52262cf24508a4d973e2b03b1f063021938",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": null,
+            "latestRecorded": {
+              "authority": "deterministic",
+              "checkerId": "fixture",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 1.0,
+              "definitionDigest": "pinned",
+              "evidenceRefsDigest": "b894fc7d3e2fd86b633f6866e4e1b26591c3004151ab2f408dfe05a874632c91",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000005",
+              "verdict": "pass"
+            },
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": "pass",
+            "recordedResults": 1,
+            "requirementId": "a",
+            "state": "pass"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "complete",
+        "version": 1
+      },
+      "case": "codex_2_extraneous_failure_b",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 1,
+          "extraneousResults": 0,
+          "fail": 0,
+          "noEvidence": 0,
+          "pass": 0,
+          "recordedResults": 2,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [
+          "a"
+        ],
+        "policyDigest": "48166092e68d9712afb821727aa6f52262cf24508a4d973e2b03b1f063021938",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": "not_pinned",
+            "latestRecorded": {
+              "authority": "deterministic",
+              "checkerId": "fixture",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 1.0,
+              "definitionDigest": "other-definition",
+              "evidenceRefsDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000005",
+              "verdict": "fail"
+            },
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": null,
+            "recordedResults": 2,
+            "requirementId": "a",
+            "state": "disqualified"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "pending",
+        "version": 1
+      },
+      "case": "codex_3_wrong_pin_fail",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 1,
+          "extraneousResults": 0,
+          "fail": 0,
+          "noEvidence": 0,
+          "pass": 0,
+          "recordedResults": 1,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [
+          "a"
+        ],
+        "policyDigest": "48166092e68d9712afb821727aa6f52262cf24508a4d973e2b03b1f063021938",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": "partial_coverage",
+            "latestRecorded": {
+              "authority": "deterministic",
+              "checkerId": "fixture",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 0.5,
+              "definitionDigest": "pinned",
+              "evidenceRefsDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000005",
+              "verdict": "fail"
+            },
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": null,
+            "recordedResults": 1,
+            "requirementId": "a",
+            "state": "disqualified"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "pending",
+        "version": 1
+      },
+      "case": "codex_4_partial_coverage_fail",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 0,
+          "extraneousResults": 0,
+          "fail": 0,
+          "noEvidence": 0,
+          "pass": 1,
+          "recordedResults": 5,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [],
+        "policyDigest": "e6a434034fbc699e5151a62296580dec7b4ed8a91ace32a83f8ad40e9a2dafbd",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": null,
+            "latestRecorded": {
+              "authority": "real_world",
+              "checkerId": "platform.owner_acceptance",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 1.0,
+              "definitionDigest": "d7709fca73ea5f9ae8dc6ed672bf3167ef04c30e17b36f55b8ec9caf58f9b671",
+              "evidenceRefsDigest": "b894fc7d3e2fd86b633f6866e4e1b26591c3004151ab2f408dfe05a874632c91",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000018",
+              "verdict": "pass"
+            },
+            "pin": {
+              "checkerId": "platform.owner_acceptance",
+              "checkerVersion": "1",
+              "definitionDigest": "d7709fca73ea5f9ae8dc6ed672bf3167ef04c30e17b36f55b8ec9caf58f9b671",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": "pass",
+            "recordedResults": 5,
+            "requirementId": "completion_condition",
+            "state": "pass"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "complete",
+        "version": 1
+      },
+      "case": "northwind_e152bd9b_completed",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 1,
+          "extraneousResults": 0,
+          "fail": 0,
+          "noEvidence": 0,
+          "pass": 0,
+          "recordedResults": 13,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [
+          "completion_condition"
+        ],
+        "policyDigest": "e6a434034fbc699e5151a62296580dec7b4ed8a91ace32a83f8ad40e9a2dafbd",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": "partial_coverage",
+            "latestRecorded": {
+              "authority": "real_world",
+              "checkerId": "platform.owner_acceptance",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 0.0,
+              "definitionDigest": "d7709fca73ea5f9ae8dc6ed672bf3167ef04c30e17b36f55b8ec9caf58f9b671",
+              "evidenceRefsDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "resultDigest": "000000000000000000000000000000000000000000000000000000000000001b",
+              "verdict": "unknown"
+            },
+            "pin": {
+              "checkerId": "platform.owner_acceptance",
+              "checkerVersion": "1",
+              "definitionDigest": "d7709fca73ea5f9ae8dc6ed672bf3167ef04c30e17b36f55b8ec9caf58f9b671",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": null,
+            "recordedResults": 13,
+            "requirementId": "completion_condition",
+            "state": "disqualified"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "pending",
+        "version": 1
+      },
+      "case": "northwind_8541ebc6_failed_mission_unknowns_only",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "disqualified": 0,
+          "extraneousResults": 0,
+          "fail": 1,
+          "noEvidence": 0,
+          "pass": 0,
+          "recordedResults": 2,
+          "requirements": 1,
+          "unknown": 0
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "failedRequirements": [
+          "a"
+        ],
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "pendingRequirements": [],
+        "policyDigest": "48166092e68d9712afb821727aa6f52262cf24508a4d973e2b03b1f063021938",
+        "requirementAssessments": [
+          {
+            "disqualifiedReason": null,
+            "latestRecorded": {
+              "authority": "deterministic",
+              "checkerId": "fixture",
+              "checkerRunId": null,
+              "checkerVersion": "1",
+              "coverage": 1.0,
+              "definitionDigest": "pinned",
+              "evidenceRefsDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "resultDigest": "0000000000000000000000000000000000000000000000000000000000000005",
+              "verdict": "fail"
+            },
+            "pin": {
+              "checkerId": "fixture",
+              "checkerVersion": "1",
+              "definitionDigest": "pinned",
+              "minimumAuthority": "deterministic"
+            },
+            "qualifyingVerdict": "fail",
+            "recordedResults": 2,
+            "requirementId": "a",
+            "state": "fail"
+          }
+        ],
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "failed",
+        "version": 1
+      },
+      "case": "latest_qualifying_fail",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "reason": "no contract verification policy",
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "unqualified",
+        "version": 1
+      },
+      "case": "no_policy",
+      "pass": true
+    },
+    {
+      "assessment": {
+        "contractId": "00000000-0000-0000-0000-000000000000",
+        "counts": {
+          "recordedResults": 1
+        },
+        "evaluator": "mission_checks::assess (latest recorded result per POLICY requirement; qualifies only if pinned, authoritative, fully covered and without unknown requirements; unknown distinct from fail)",
+        "missionId": "00000000-0000-0000-0000-000000000000",
+        "policyDigest": "e6dae1aa9429dcb28eacf18a41aef4ab9040975fefacfe9c3dbc62b58bc7201e",
+        "reason": "requirement 'a' allows worker self-certification",
+        "schema": "amos.platform-mission-terminal-assessment",
+        "status": "invalid_policy",
+        "version": 1
+      },
+      "case": "invalid_policy_self_check",
+      "pass": true
+    }
+  ]
+}
