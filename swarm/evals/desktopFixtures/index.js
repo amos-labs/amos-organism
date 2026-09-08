@@ -45,21 +45,28 @@ export function allFamiliesBuilt() {
  * a case whose datasetDigest was already seen (in this cohort or in excludeDigests) is skipped, so
  * two seeds that yield the same task/world are never counted as distinct (Codex 20260908T023953Z).
  */
-export function buildFamilyCohort(key, count, { startSeed = 0, excludeDigests = new Set() } = {}) {
+/** The answer-relevant identity of a case: its decisionDigest when the fixture declares one
+ * (distractor fields excluded), else its full datasetDigest. Holdout disjointness is checked on
+ * this projection so a held-out case has a genuinely new DECISION, not just new distractors. */
+export function caseDecisionKey(built) {
+  return built.fixture.decisionDigest ?? built.fixture.datasetDigest;
+}
+
+export function buildFamilyCohort(key, count, { startSeed = 0, excludeKeys = new Set() } = {}) {
   if (!Number.isSafeInteger(count) || count < 1) throw new Error(`count must be a positive integer, got ${count}`);
   if (!Number.isSafeInteger(startSeed) || startSeed < 0) throw new Error(`startSeed must be a non-negative integer, got ${startSeed}`);
   const cases = [];
   const seen = new Set();
-  const limit = startSeed + count * 100; // bounded search for distinct datasets
+  const limit = startSeed + count * 100; // bounded search for decision-distinct cases
   for (let seed = startSeed; seed < limit && cases.length < count; seed += 1) {
     const built = buildFixture(key, { seed });
-    const digest = built.fixture.datasetDigest;
-    if (!digest) throw new Error(`family ${key} fixture is missing datasetDigest`);
-    if (seen.has(digest) || excludeDigests.has(digest)) continue;
-    seen.add(digest);
+    if (!built.fixture.datasetDigest) throw new Error(`family ${key} fixture is missing datasetDigest`);
+    const dkey = caseDecisionKey(built);
+    if (seen.has(dkey) || excludeKeys.has(dkey)) continue;
+    seen.add(dkey);
     cases.push(built);
   }
-  if (cases.length < count) throw new Error(`family ${key} could not produce ${count} semantically distinct cases`);
+  if (cases.length < count) throw new Error(`family ${key} could not produce ${count} decision-distinct cases`);
   return cases;
 }
 
@@ -69,8 +76,13 @@ export function buildFamilyCohort(key, count, { startSeed = 0, excludeDigests = 
  * range and semantically deduplicated against the dev digests.
  */
 export function selectHoldoutSeeds(key, count, { devSeeds = [] } = {}) {
-  const devDigests = new Set(devSeeds.map((seed) => buildFixture(key, { seed }).fixture.datasetDigest));
+  const devKeys = new Set(devSeeds.map((seed) => caseDecisionKey(buildFixture(key, { seed }))));
   const startSeed = (devSeeds.length ? Math.max(...devSeeds) : -1) + 1;
-  const cases = buildFamilyCohort(key, count, { startSeed, excludeDigests: devDigests });
-  return { seeds: cases.map((c) => c.fixture.seed), digests: cases.map((c) => c.fixture.datasetDigest), cases };
+  const cases = buildFamilyCohort(key, count, { startSeed, excludeKeys: devKeys });
+  return {
+    seeds: cases.map((c) => c.fixture.seed),
+    datasetDigests: cases.map((c) => c.fixture.datasetDigest),
+    decisionKeys: cases.map((c) => caseDecisionKey(c)),
+    cases,
+  };
 }

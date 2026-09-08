@@ -124,15 +124,16 @@ test("numeric-reconciliation read handlers return ok:true", async () => {
 
 test("reuse-first-tool-selection: passes ONLY on a bare integer equal to the count, no re-list", () => {
   const f = buildFixture("reuse-first-tool-selection");
+  const paid = String(f.verify(execFrom("x")).expectedPaid); // seeded paid count (mask-derived)
   // The prompt demands a bare integer; plain and whitespace variants pass.
-  assert.equal(f.verify(execFrom("3", [])).verdict, "pass");
-  assert.equal(f.verify(execFrom("  3  ", [])).verdict, "pass"); // norm() trims/collapses
-  // Re-listing the already-provided invoices is a reuse-first violation even with "3".
-  const reListed = f.verify(execFrom("3", ["list_invoices"]));
+  assert.equal(f.verify(execFrom(paid, [])).verdict, "pass");
+  assert.equal(f.verify(execFrom(`  ${paid}  `, [])).verdict, "pass"); // norm() trims/collapses
+  // Re-listing the already-provided invoices is a reuse-first violation even with the right count.
+  const reListed = f.verify(execFrom(paid, ["list_invoices"]));
   assert.equal(reListed.verdict, "fail");
   assert.equal(reListed.reListed, 1);
   // Wrong integer fails.
-  assert.equal(f.verify(execFrom("4", [])).verdict, "fail");
+  assert.equal(f.verify(execFrom(String(f.verify(execFrom("x")).expectedPaid + 1), [])).verdict, "fail");
 });
 
 test("reuse-first-tool-selection: prose, decimals, contradictions and ids never false-pass", () => {
@@ -276,8 +277,8 @@ test("holdout seeds are disjoint from the inspected development cohort's dataset
   const devSeeds = dev.map((c) => c.fixture.seed);
   const devDigests = new Set(dev.map((c) => c.fixture.datasetDigest));
   const holdout = selectHoldoutSeeds("numeric-reconciliation", 6, { devSeeds });
-  assert.equal(holdout.digests.length, 6);
-  assert.ok(holdout.digests.every((d) => !devDigests.has(d)), "holdout datasets must be disjoint from dev");
+  assert.equal(holdout.datasetDigests.length, 6);
+  assert.ok(holdout.datasetDigests.every((d) => !devDigests.has(d)), "holdout datasets must be disjoint from dev");
 });
 
 test("async-code: passes on the concurrent max, fails on the sequential sum and prose", async () => {
@@ -335,13 +336,13 @@ test("governed-context-dependent-state: correct action flips on the READ status 
   assert.equal(heldAttempt.verify(execFrom("declined", ["get_order_status", "approve_refund"])).verdict, "fail");
 });
 
-test("reuse-first supplies a large distinct-dataset space; a holdout is disjoint from a big dev cohort", () => {
-  // Broadened so a fresh holdout does not exhaust or overlap the development cohort.
+test("reuse-first holdout is DECISION-disjoint from a big dev cohort (not just distractor amounts)", () => {
+  // Codex 20260908T053845Z: the held-out DECISIONS (paid pattern/count) must be new, not repeats.
   const dev = buildFamilyCohort("reuse-first-tool-selection", 30);
-  assert.equal(new Set(dev.map((c) => c.fixture.datasetDigest)).size, 30);
+  assert.equal(new Set(dev.map((c) => c.fixture.decisionDigest)).size, 30); // 30 distinct decisions
   const devSeeds = dev.map((c) => c.fixture.seed);
-  const devDigests = new Set(dev.map((c) => c.fixture.datasetDigest));
+  const devDecisions = new Set(dev.map((c) => c.fixture.decisionDigest));
   const holdout = selectHoldoutSeeds("reuse-first-tool-selection", 20, { devSeeds });
-  assert.equal(holdout.digests.length, 20);
-  assert.ok(holdout.digests.every((d) => !devDigests.has(d)), "holdout must be disjoint from dev");
+  assert.equal(holdout.decisionKeys.length, 20);
+  assert.ok(holdout.decisionKeys.every((k) => !devDecisions.has(k)), "holdout DECISIONS must be disjoint from dev");
 });
