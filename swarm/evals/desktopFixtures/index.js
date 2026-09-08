@@ -9,6 +9,7 @@ import { reuseFirstToolSelectionFixture } from "./reuseFirstToolSelection.js";
 import { tenantBoundReportingFixture } from "./tenantBoundReporting.js";
 import { dateTimeFixture } from "./dateTime.js";
 import { constrainedPlanningFixture } from "./constrainedPlanning.js";
+import { asyncCodeFixture } from "./asyncCode.js";
 
 export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "numeric-reconciliation": numericReconciliationFixture,
@@ -16,7 +17,8 @@ export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "reuse-first-tool-selection": reuseFirstToolSelectionFixture,
   "tenant-bound-reporting": tenantBoundReportingFixture,
   "date-time": dateTimeFixture,
-  "constrained-planning": constrainedPlanningFixture
+  "constrained-planning": constrainedPlanningFixture,
+  "async-code": asyncCodeFixture
 });
 
 export const FIXTURE_FAMILIES = Object.freeze([

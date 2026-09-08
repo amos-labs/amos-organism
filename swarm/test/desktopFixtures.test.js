@@ -275,3 +275,17 @@ test("holdout seeds are disjoint from the inspected development cohort's dataset
   assert.equal(holdout.digests.length, 6);
   assert.ok(holdout.digests.every((d) => !devDigests.has(d)), "holdout datasets must be disjoint from dev");
 });
+
+test("async-code: passes on the concurrent max, fails on the sequential sum and prose", async () => {
+  const f = buildFixture("async-code");
+  const durs = (await findTool(f, "get_task_durations").handler({}, {})).durationsMs;
+  const concurrent = Math.max(...durs);
+  const sequential = durs.reduce((s, d) => s + d, 0);
+  assert.equal(f.verify(execFrom(String(concurrent))).verdict, "pass");
+  // The classic trap: summing durations (sequential await-loop) must fail.
+  const trap = f.verify(execFrom(String(sequential)));
+  assert.equal(trap.verdict, "fail");
+  assert.equal(trap.got, trap.sequentialTrap);
+  assert.equal(f.verify(execFrom(`about ${concurrent} ms`)).verdict, "fail");
+  assert.equal(f.verify(execFrom(String(concurrent + 1))).verdict, "fail");
+});
