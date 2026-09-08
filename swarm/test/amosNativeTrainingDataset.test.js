@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import {
   compileAmosNativeTrainingDataset,
   createAmosSystemTrainingExample,
-  writeAmosNativeTrainingDataset
+  writeAmosNativeTrainingDataset,
+  sftRow
 } from "../src/amosNativeTrainingDataset.js";
 import { createSwarmLearningEpisode } from "../src/swarmLearningArena.js";
 import { openSwarmLearningStore } from "../src/swarmLearningStore.js";
@@ -170,4 +171,55 @@ test("the current public-benchmark-only store stays safely data-gated", async ()
     () => writeAmosNativeTrainingDataset(join(root, "output"), dataset),
     /unqualified/
   );
+});
+
+const toolTraceInput = (id, episodeId, family) => ({
+  ...exampleInput(id, episodeId, family),
+  target: { kind: "tool-call", content: `{"tool":"calc","operation":"${family}"}` },
+  input: {
+    system: "Follow the governed AMOS tool contract.",
+    user: `Convert the ${family} figure.`,
+    toolTrace: {
+      contextTurns: [
+        { role: "assistant", content: `{"name":"calc","arguments":{"op":"${family}"}}` },
+        { role: "tool", content: "error: missing required argument 'amount'" }
+      ],
+      tools: [{ type: "function", function: { name: "calc", parameters: { type: "object" } } }]
+    }
+  }
+});
+
+test("a plain example still renders three messages with no tools key and an unchanged digest", () => {
+  const withoutTrace = createAmosSystemTrainingExample(exampleInput("example-plain", "episode-plain", "revenue"));
+  assert.equal(withoutTrace.input.toolTrace, undefined, "no toolTrace key is added when none is supplied");
+  const row = sftRow(withoutTrace);
+  assert.deepEqual(row.messages.map((m) => m.role), ["system", "user", "assistant"]);
+  assert.ok(!("tools" in row), "a tool-free row carries no tools key");
+});
+
+test("a tool-trace example renders masked context then one supervised assistant target plus tools", () => {
+  const example = createAmosSystemTrainingExample(toolTraceInput("example-trace", "episode-trace", "runway"));
+  assert.ok(example.input.toolTrace, "the toolTrace is normalized onto the example");
+  const row = sftRow(example);
+  assert.deepEqual(row.messages.map((m) => m.role), ["system", "user", "assistant", "tool", "assistant"]);
+  assert.equal(row.messages.at(-1).content, example.target.content, "the final assistant message is the supervised target");
+  assert.equal(row.messages[2].content, '{"name":"calc","arguments":{"op":"runway"}}', "the failed call is preserved as masked context");
+  assert.deepEqual(row.tools, example.input.toolTrace.tools);
+  // The example digest is deterministic and self-validating with the trace included.
+  assert.equal(createAmosSystemTrainingExample(toolTraceInput("example-trace", "episode-trace", "runway")).digest, example.digest);
+});
+
+test("a tool-trace whose context ends in an assistant turn is rejected (ambiguous supervised target)", () => {
+  const bad = toolTraceInput("example-bad", "episode-bad", "runway");
+  bad.input.toolTrace.contextTurns.push({ role: "assistant", content: "premature answer" });
+  assert.throws(() => createAmosSystemTrainingExample(bad), /must not end with an assistant turn/);
+});
+
+test("a tool-trace requires non-empty context turns and tools", () => {
+  const noTools = toolTraceInput("example-nt", "episode-nt", "runway");
+  noTools.input.toolTrace.tools = [];
+  assert.throws(() => createAmosSystemTrainingExample(noTools), /tools must be a non-empty array/);
+  const noTurns = toolTraceInput("example-nc", "episode-nc", "runway");
+  noTurns.input.toolTrace.contextTurns = [];
+  assert.throws(() => createAmosSystemTrainingExample(noTurns), /contextTurns must be a non-empty array/);
 });

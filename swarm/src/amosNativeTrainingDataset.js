@@ -18,6 +18,16 @@ const TARGET_KINDS = new Set([
 
 export function createAmosSystemTrainingExample(input) {
   const source = jsonObject(input, "training example");
+  // A native tool-trace, when present, adds MASKED intermediate turns (a failed call, its error, a
+  // tool result) between the user prompt and the final supervised assistant target, plus the tool
+  // schema passed to the pinned chat template. Absent, the example stays the three-message shape and
+  // keeps its previous digest byte-for-byte (the key is only added when a trace is supplied).
+  const exampleInput = {
+    system: requiredText(source.input?.system, "training example.input.system", 100_000),
+    user: requiredText(source.input?.user, "training example.input.user", 100_000)
+  };
+  const toolTrace = normalizeToolTrace(source.input?.toolTrace);
+  if (toolTrace) exampleInput.toolTrace = toolTrace;
   const example = {
     schema: AMOS_SYSTEM_TRAINING_EXAMPLE_SCHEMA,
     version: AMOS_NATIVE_DATASET_VERSION,
@@ -28,10 +38,7 @@ export function createAmosSystemTrainingExample(input) {
     ),
     taskFamily: requiredId(source.taskFamily, "training example.taskFamily"),
     role: requiredId(source.role, "training example.role"),
-    input: {
-      system: requiredText(source.input?.system, "training example.input.system", 100_000),
-      user: requiredText(source.input?.user, "training example.input.user", 100_000)
-    },
+    input: exampleInput,
     target: {
       kind: enumValue(source.target?.kind, TARGET_KINDS, "training example.target.kind"),
       content: requiredText(
@@ -178,6 +185,33 @@ export async function writeAmosNativeTrainingDataset(outputPath, dataset) {
   return { output, manifest: stored };
 }
 
+const TOOL_TRACE_ROLES = new Set(["user", "assistant", "tool"]);
+
+function normalizeToolTrace(input) {
+  if (input === null || input === undefined) return null;
+  const trace = jsonObject(input, "training example.input.toolTrace");
+  if (!Array.isArray(trace.contextTurns) || trace.contextTurns.length === 0) {
+    throw new Error("training example.input.toolTrace.contextTurns must be a non-empty array");
+  }
+  const contextTurns = trace.contextTurns.map((turn, index) => {
+    const message = jsonObject(turn, `training example.input.toolTrace.contextTurns[${index}]`);
+    return {
+      role: enumValue(message.role, TOOL_TRACE_ROLES, `training example.input.toolTrace.contextTurns[${index}].role`),
+      content: requiredText(message.content, `training example.input.toolTrace.contextTurns[${index}].content`, 100_000)
+    };
+  });
+  if (contextTurns.at(-1).role === "assistant") {
+    // The final supervised assistant target is target.content; a trailing assistant context turn
+    // would make the single supervised decision ambiguous.
+    throw new Error("training example.input.toolTrace.contextTurns must not end with an assistant turn");
+  }
+  if (!Array.isArray(trace.tools) || trace.tools.length === 0) {
+    throw new Error("training example.input.toolTrace.tools must be a non-empty array");
+  }
+  const tools = trace.tools.map((tool, index) => jsonObject(tool, `training example.input.toolTrace.tools[${index}]`));
+  return { contextTurns, tools };
+}
+
 function normalizeCorrection(input) {
   if (input === null || input === undefined) return null;
   const correction = jsonObject(input, "training example.correction");
@@ -308,13 +342,19 @@ function buildDatasetFiles(splits) {
   return files;
 }
 
-function sftRow(example) {
-  return {
-    messages: [
-      { role: "system", content: example.input.system },
-      { role: "user", content: example.input.user },
-      { role: "assistant", content: example.target.content }
-    ],
+export function sftRow(example) {
+  const toolTrace = example.input.toolTrace ?? null;
+  // A tool-trace example renders system + user + the masked context turns + the final supervised
+  // assistant target, and forwards its tool schema; a plain example is byte-identical to before
+  // (no tools key). The train_stage0 encoder masks everything before the final assistant.
+  const messages = [
+    { role: "system", content: example.input.system },
+    { role: "user", content: example.input.user },
+    ...(toolTrace ? toolTrace.contextTurns.map((turn) => ({ role: turn.role, content: turn.content })) : []),
+    { role: "assistant", content: example.target.content }
+  ];
+  const row = {
+    messages,
     metadata: {
       exampleId: example.id,
       exampleDigest: example.digest,
@@ -324,6 +364,8 @@ function sftRow(example) {
       targetKind: example.target.kind
     }
   };
+  if (toolTrace) row.tools = toolTrace.tools;
+  return row;
 }
 
 function preferenceRow(example) {
