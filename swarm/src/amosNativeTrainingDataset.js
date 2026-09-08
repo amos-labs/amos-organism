@@ -187,22 +187,61 @@ export async function writeAmosNativeTrainingDataset(outputPath, dataset) {
 
 const TOOL_TRACE_ROLES = new Set(["user", "assistant", "tool"]);
 
+// A single tool_call, preserving the native transcript shape. OpenAI string arguments are parsed
+// into an object so the pinned chat template renders them (a raw string throws in the template).
+function normalizeToolCall(call, label) {
+  const record = jsonObject(call, label);
+  const fn = jsonObject(record.function, `${label}.function`);
+  let args = fn.arguments;
+  if (typeof args === "string") {
+    try { args = JSON.parse(args); } catch { throw new Error(`${label}.function.arguments is not valid JSON`); }
+  }
+  const normalized = {
+    function: {
+      name: requiredId(fn.name, `${label}.function.name`),
+      arguments: jsonObject(args, `${label}.function.arguments`)
+    }
+  };
+  if (record.id !== undefined) normalized.id = requiredId(record.id, `${label}.id`);
+  if (record.type !== undefined) normalized.type = enumValue(record.type, new Set(["function"]), `${label}.type`);
+  return normalized;
+}
+
+// A masked context turn, preserving the native message shape (content may be null on an assistant
+// tool_call turn; tool turns carry tool_call_id). We never flatten into an invented training dialect.
+function normalizeContextTurn(turn, index) {
+  const label = `training example.input.toolTrace.contextTurns[${index}]`;
+  const message = jsonObject(turn, label);
+  const role = enumValue(message.role, TOOL_TRACE_ROLES, `${label}.role`);
+  const normalized = { role };
+  const hasToolCalls = message.tool_calls !== undefined;
+  if (message.content === null) {
+    if (role !== "assistant" || !hasToolCalls) throw new Error(`${label}.content may be null only on an assistant tool_calls turn`);
+    normalized.content = null;
+  } else {
+    normalized.content = requiredText(message.content, `${label}.content`, 100_000);
+  }
+  if (hasToolCalls) {
+    if (role !== "assistant") throw new Error(`${label}.tool_calls is only valid on an assistant turn`);
+    if (!Array.isArray(message.tool_calls) || message.tool_calls.length === 0) throw new Error(`${label}.tool_calls must be a non-empty array`);
+    normalized.tool_calls = message.tool_calls.map((call, i) => normalizeToolCall(call, `${label}.tool_calls[${i}]`));
+  }
+  if (message.tool_call_id !== undefined) {
+    if (role !== "tool") throw new Error(`${label}.tool_call_id is only valid on a tool turn`);
+    normalized.tool_call_id = requiredId(message.tool_call_id, `${label}.tool_call_id`);
+  }
+  return normalized;
+}
+
 function normalizeToolTrace(input) {
   if (input === null || input === undefined) return null;
   const trace = jsonObject(input, "training example.input.toolTrace");
   if (!Array.isArray(trace.contextTurns) || trace.contextTurns.length === 0) {
     throw new Error("training example.input.toolTrace.contextTurns must be a non-empty array");
   }
-  const contextTurns = trace.contextTurns.map((turn, index) => {
-    const message = jsonObject(turn, `training example.input.toolTrace.contextTurns[${index}]`);
-    return {
-      role: enumValue(message.role, TOOL_TRACE_ROLES, `training example.input.toolTrace.contextTurns[${index}].role`),
-      content: requiredText(message.content, `training example.input.toolTrace.contextTurns[${index}].content`, 100_000)
-    };
-  });
+  const contextTurns = trace.contextTurns.map((turn, index) => normalizeContextTurn(turn, index));
   if (contextTurns.at(-1).role === "assistant") {
-    // The final supervised assistant target is target.content; a trailing assistant context turn
-    // would make the single supervised decision ambiguous.
+    // The single supervised decision is target.content; a trailing assistant context turn is ambiguous.
     throw new Error("training example.input.toolTrace.contextTurns must not end with an assistant turn");
   }
   if (!Array.isArray(trace.tools) || trace.tools.length === 0) {
@@ -350,7 +389,8 @@ export function sftRow(example) {
   const messages = [
     { role: "system", content: example.input.system },
     { role: "user", content: example.input.user },
-    ...(toolTrace ? toolTrace.contextTurns.map((turn) => ({ role: turn.role, content: turn.content })) : []),
+    // Emit the masked context turns verbatim, preserving native tool_calls / tool_call_id.
+    ...(toolTrace ? toolTrace.contextTurns.map((turn) => ({ ...turn })) : []),
     { role: "assistant", content: example.target.content }
   ];
   const row = {

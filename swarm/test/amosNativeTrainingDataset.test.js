@@ -173,18 +173,60 @@ test("the current public-benchmark-only store stays safely data-gated", async ()
   );
 });
 
-const toolTraceInput = (id, episodeId, family) => ({
-  ...exampleInput(id, episodeId, family),
-  target: { kind: "tool-call", content: `{"tool":"calc","operation":"${family}"}` },
-  input: {
-    system: "Follow the governed AMOS tool contract.",
-    user: `Convert the ${family} figure.`,
-    toolTrace: {
-      contextTurns: [
-        { role: "assistant", content: `{"name":"calc","arguments":{"op":"${family}"}}` },
-        { role: "tool", content: "error: missing required argument 'amount'" }
-      ],
-      tools: [{ type: "function", function: { name: "calc", parameters: { type: "object" } } }]
+// Actual native Desktop tool-trajectory fixtures (frozen Agent 764847a0), copied byte-for-byte from
+// coordination/artifacts/pilot-dataset-review-20260908/desktop-training-trace-fixtures.json.
+const NATIVE_TRACE = JSON.parse(
+  await readFile(new URL("./fixtures/desktop-training-trace-fixtures-20260908.json", import.meta.url), "utf8"),
+);
+
+// Map a native trajectory (system, user, [assistant call, tool result]..., final assistant) to an
+// AMOS training-example input: everything before the final assistant is masked context.
+function traceExampleInput(fixture, id) {
+  const messages = fixture.messages;
+  const final = messages.at(-1);
+  return {
+    id, sourceEpisodeId: `episode-${id}`, taskFamily: "calculator-runway", role: "tool-specialist",
+    input: {
+      system: messages[0].content,
+      user: messages[1].content,
+      toolTrace: { contextTurns: structuredClone(messages.slice(2, -1)), tools: structuredClone(fixture.tools) }
+    },
+    target: { kind: "tool-call", content: final.content },
+    correction: null,
+    safeguards: { credentialsRemoved: true, tenantFactsRemoved: true, hiddenReasoningExcluded: true, independentVerifierSelected: true, licensedForTraining: true }
+  };
+}
+
+test("the compiler emits a real native Desktop tool trajectory verbatim with parsed tool arguments", () => {
+  const fixture = NATIVE_TRACE.examples[0];
+  const example = createAmosSystemTrainingExample(traceExampleInput(fixture, "example-native-usd"));
+  const row = sftRow(example);
+  // system, user, (assistant call, tool result) x2, final assistant target.
+  assert.deepEqual(row.messages.map((m) => m.role), ["system", "user", "assistant", "tool", "assistant", "tool", "assistant"]);
+  const call = row.messages[2];
+  assert.equal(call.content, null, "an assistant tool-call turn keeps its null content");
+  assert.equal(typeof call.tool_calls[0].function.arguments, "object", "string arguments are parsed to an object for the template");
+  assert.equal(call.tool_calls[0].function.name, "desktop_calculate");
+  assert.equal(row.messages[3].role, "tool");
+  assert.ok(typeof row.messages[3].tool_call_id === "string" && row.messages[3].tool_call_id.length > 0, "tool turns keep their tool_call_id");
+  assert.equal(row.messages.at(-1).content, fixture.messages.at(-1).content, "the final assistant is the supervised target");
+  assert.deepEqual(row.tools, fixture.tools);
+  // Deterministic, self-validating digest.
+  assert.equal(createAmosSystemTrainingExample(traceExampleInput(fixture, "example-native-usd")).digest, example.digest);
+});
+
+test("both native trace fixtures compile and preserve their masked tool context", () => {
+  for (const fixture of NATIVE_TRACE.examples) {
+    const example = createAmosSystemTrainingExample(traceExampleInput(fixture, `example-${fixture.id}`));
+    const row = sftRow(example);
+    assert.equal(row.messages[0].role, "system");
+    assert.equal(row.messages.at(-1).role, "assistant");
+    assert.ok(row.tools.length >= 1);
+    // Every masked assistant call preserves a parsed-object arguments payload.
+    for (const m of row.messages.slice(2, -1)) {
+      if (m.role === "assistant" && m.tool_calls) {
+        for (const c of m.tool_calls) assert.equal(typeof c.function.arguments, "object");
+      }
     }
   }
 });
@@ -197,29 +239,13 @@ test("a plain example still renders three messages with no tools key and an unch
   assert.ok(!("tools" in row), "a tool-free row carries no tools key");
 });
 
-test("a tool-trace example renders masked context then one supervised assistant target plus tools", () => {
-  const example = createAmosSystemTrainingExample(toolTraceInput("example-trace", "episode-trace", "runway"));
-  assert.ok(example.input.toolTrace, "the toolTrace is normalized onto the example");
-  const row = sftRow(example);
-  assert.deepEqual(row.messages.map((m) => m.role), ["system", "user", "assistant", "tool", "assistant"]);
-  assert.equal(row.messages.at(-1).content, example.target.content, "the final assistant message is the supervised target");
-  assert.equal(row.messages[2].content, '{"name":"calc","arguments":{"op":"runway"}}', "the failed call is preserved as masked context");
-  assert.deepEqual(row.tools, example.input.toolTrace.tools);
-  // The example digest is deterministic and self-validating with the trace included.
-  assert.equal(createAmosSystemTrainingExample(toolTraceInput("example-trace", "episode-trace", "runway")).digest, example.digest);
-});
-
-test("a tool-trace whose context ends in an assistant turn is rejected (ambiguous supervised target)", () => {
-  const bad = toolTraceInput("example-bad", "episode-bad", "runway");
-  bad.input.toolTrace.contextTurns.push({ role: "assistant", content: "premature answer" });
-  assert.throws(() => createAmosSystemTrainingExample(bad), /must not end with an assistant turn/);
-});
-
-test("a tool-trace requires non-empty context turns and tools", () => {
-  const noTools = toolTraceInput("example-nt", "episode-nt", "runway");
-  noTools.input.toolTrace.tools = [];
-  assert.throws(() => createAmosSystemTrainingExample(noTools), /tools must be a non-empty array/);
-  const noTurns = toolTraceInput("example-nc", "episode-nc", "runway");
-  noTurns.input.toolTrace.contextTurns = [];
-  assert.throws(() => createAmosSystemTrainingExample(noTurns), /contextTurns must be a non-empty array/);
+test("malformed tool traces are rejected: trailing assistant, empty turns/tools, non-JSON args, misplaced fields", () => {
+  const fixture = NATIVE_TRACE.examples[0];
+  const base = () => traceExampleInput(fixture, "example-bad");
+  const withTrace = (mutate) => { const input = base(); mutate(input.input.toolTrace); return () => createAmosSystemTrainingExample(input); };
+  assert.throws(withTrace((t) => t.contextTurns.push({ role: "assistant", content: "premature" })), /must not end with an assistant turn/);
+  assert.throws(withTrace((t) => { t.tools = []; }), /tools must be a non-empty array/);
+  assert.throws(withTrace((t) => { t.contextTurns = []; }), /contextTurns must be a non-empty array/);
+  assert.throws(withTrace((t) => { t.contextTurns[0].tool_calls[0].function.arguments = "{not json"; }), /arguments is not valid JSON/);
+  assert.throws(withTrace((t) => { t.contextTurns[1].tool_calls = [{ function: { name: "x", arguments: {} } }]; }), /tool_calls is only valid on an assistant turn/);
 });
