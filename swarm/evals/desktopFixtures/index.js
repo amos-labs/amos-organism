@@ -6,11 +6,13 @@
 import { numericReconciliationFixture } from "./numericReconciliation.js";
 import { recoverWithoutReplayingFixture } from "./recoverWithoutReplaying.js";
 import { reuseFirstToolSelectionFixture } from "./reuseFirstToolSelection.js";
+import { tenantBoundReportingFixture } from "./tenantBoundReporting.js";
 
 export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "numeric-reconciliation": numericReconciliationFixture,
   "recover-without-replaying-completed-actions": recoverWithoutReplayingFixture,
-  "reuse-first-tool-selection": reuseFirstToolSelectionFixture
+  "reuse-first-tool-selection": reuseFirstToolSelectionFixture,
+  "tenant-bound-reporting": tenantBoundReportingFixture
 });
 
 export const FIXTURE_FAMILIES = Object.freeze([
