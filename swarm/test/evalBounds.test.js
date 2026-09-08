@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DESKTOP_EVAL_FIXTURES, buildFixture, FIXTURE_FAMILIES } from "../evals/desktopFixtures/index.js";
+import { DESKTOP_EVAL_FIXTURES, FIXTURE_FAMILIES, allFamiliesBuilt } from "../evals/desktopFixtures/index.js";
 import {
-  PER_FAMILY_BOUNDS, PER_REQUEST_CAPS, EVAL_STOP_BOUNDS, SERVING_PREFLIGHT,
-  aggregateWorkload, preflightEvalBounds, estimateFixtureInputTokens,
+  PER_FAMILY_BOUNDS, PER_REQUEST_CAPS, EVAL_STOP_BOUNDS, SERVING_PREFLIGHT, AUX_CELLS, REQUEST_TOKEN_MODEL,
+  aggregateWorkload, preflightEvalBounds,
 } from "../evals/desktopFixtures/evalBounds.js";
 
 test("every planned family and every built fixture has declared bounds", () => {
@@ -11,39 +11,54 @@ test("every planned family and every built fixture has declared bounds", () => {
   for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) assert.ok(PER_FAMILY_BOUNDS[key], `built ${key} missing bounds`);
 });
 
-test("the default cohort fits the preregistered stop bounds, worst-case included", () => {
-  const agg = aggregateWorkload();
-  assert.equal(agg.arms, 2);
-  assert.ok(agg.expectedHttpCalls <= agg.worstCaseHttpCalls);
-  assert.ok(agg.worstCaseHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsPrimary, `worst-case ${agg.worstCaseHttpCalls} must fit ${EVAL_STOP_BOUNDS.maxHttpCallsPrimary}`);
-  assert.ok(agg.maxOutputTokens <= EVAL_STOP_BOUNDS.maxHostedTokens);
-  assert.equal(agg.withinStopBounds, true);
-  assert.equal(preflightEvalBounds().ok, true);
+test("aggregate is feasible: primary worst-case, total projected calls and hosted tokens fit the ceilings", () => {
+  const a = aggregateWorkload();
+  assert.equal(a.arms, 2);
+  assert.ok(a.worstCaseHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsPrimary, `primary worst ${a.worstCaseHttpCalls}`);
+  assert.ok(a.projectedHttpCalls <= EVAL_STOP_BOUNDS.maxHttpCallsTotal, `total ${a.projectedHttpCalls}`);
+  assert.ok(a.projectedHostedTokens <= EVAL_STOP_BOUNDS.maxHostedTokens, `tokens ${a.projectedHostedTokens}`);
+  // Token projection must include the real Desktop system prompt (feasibility, not the old 400k).
+  assert.ok(a.projectedHostedTokens > 1000000, "projection must reflect the ~3500-token system prompt");
+  assert.equal(a.withinStopBounds, true);
 });
 
-test("primary reasoning tokens are zero (thinking off) and retries are disabled", () => {
+test("preflight FAILS CLOSED while families are unbuilt (constrained-planning/async-code/governed-context-dependent-state)", () => {
+  assert.equal(allFamiliesBuilt(), false);
+  const p = preflightEvalBounds();
+  assert.equal(p.ok, false);
+  assert.ok(p.issues.some((i) => /not all families are built/.test(i)));
+});
+
+test("preflight rejects invalid cohort counts and wrong arm counts", () => {
+  assert.equal(preflightEvalBounds({ casesPerFamily: 0 }).ok, false);
+  assert.ok(preflightEvalBounds({ casesPerFamily: -3 }).issues.some((i) => /positive integer/.test(i)));
+  assert.ok(preflightEvalBounds({ casesPerFamily: 1.5 }).issues.some((i) => /positive integer/.test(i)));
+  assert.ok(preflightEvalBounds({ arms: 1 }).issues.some((i) => /arms must be exactly 2/.test(i)));
+});
+
+test("primary reasoning is zero (thinking off), retries disabled, arms are base vs S5", () => {
   assert.equal(PER_REQUEST_CAPS.maxReasoningTokensPerRequest.primary, 0);
   assert.equal(EVAL_STOP_BOUNDS.autoRetryAfterFailedRun, false);
   assert.equal(EVAL_STOP_BOUNDS.maxConcurrency, 2);
+  assert.deepEqual(EVAL_STOP_BOUNDS.arms, ["amos-qwen38-27b-fp8", "stage1-060408-r32-s5"]);
 });
 
-test("each built fixture's own input footprint is small and within the per-request cap", () => {
-  for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) {
-    const est = estimateFixtureInputTokens(buildFixture(key));
-    assert.ok(est > 0 && est < PER_REQUEST_CAPS.maxInputTokensPerRequest, `${key} input ${est}`);
-  }
+test("warmup/regression/secondary cells are declared separately and folded into the aggregate", () => {
+  assert.ok(AUX_CELLS.warmup.callsPerArm >= 1);
+  assert.equal(AUX_CELLS.regression.cases, 28);
+  const a = aggregateWorkload();
+  assert.ok(a.warmupCalls >= 1);
+  assert.ok(a.regression.httpCalls > 0);
+  assert.ok(a.projectedHttpCalls >= a.expectedHttpCalls + a.regression.httpCalls, "aggregate includes regression + warmup");
+  assert.ok(REQUEST_TOKEN_MODEL.systemPromptTokens >= 3000, "token model carries the real system prompt");
 });
 
-test("a cohort too large to fit the call ceiling is rejected by preflight", () => {
-  const bad = preflightEvalBounds({ casesPerFamily: 40 });
-  assert.equal(bad.ok, false);
-  assert.ok(bad.issues.some((i) => /exceeds stop bounds/.test(i)));
-});
-
-test("the serving preflight names the both-arm gate, served_model check and load guard", () => {
+test("serving preflight uses direct-cortex response.model (not amos.served_model) and a concrete load guard", () => {
   const joined = SERVING_PREFLIGHT.join(" | ");
+  assert.match(joined, /response\.model/);
+  assert.match(joined, /never synthesize amos\.served_model/); // present only as an explicit prohibition
   assert.match(joined, /both-arm served-identity gate/);
-  assert.match(joined, /served_model check/);
-  assert.match(joined, /load guard/);
+  assert.match(joined, /INITIAL inputs/);
+  assert.match(joined, /p95.*baseline|baseline.*p95/);
   assert.match(joined, /no automatic retry/);
 });

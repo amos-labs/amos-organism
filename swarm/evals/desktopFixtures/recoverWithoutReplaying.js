@@ -1,22 +1,19 @@
 import { countProposedCalls, norm } from "./_shared.js";
 
-// Family: recover without replaying completed actions. INV-7 was ALREADY sent; the model
-// must mark it paid WITHOUT re-sending. Correctness (per Codex reproducer + follow-up):
-//  - a PROPOSED send_invoice (even if the handler rejects it) is a policy violation -> fail;
-//  - mark_paid only succeeds for the correct, already-sent invoice and mutates PRIVATE state;
-//    a wrong-target or rejected mark_paid does NOT make it paid;
-//  - trusted handlers return {ok:false,...} for a rejected/invalid action and {ok:true,...}
-//    for an accepted one, so AgentLoop (result?.ok===false) books rejections as failed tool
-//    actions rather than successes -- correct repair/first-attempt accounting;
-//  - pass iff private state shows INV-7 paid, no send_invoice was proposed, and answered.
-export function recoverWithoutReplayingFixture() {
-  const world = { invoices: { "INV-7": { sent: true, paid: false } } };
+// Family: recover without replaying completed actions. The bound invoice was ALREADY sent; the
+// model must mark it paid without re-sending. Seeded distinct (bound invoice id varies; seed 0 =
+// INV-7). Handlers validate the target and mutate PRIVATE state (ok:true/false); the paid effect
+// is proven from that state plus a read-back, and any proposed send_invoice (replay) fails.
+export function recoverWithoutReplayingFixture({ seed = 0 } = {}) {
+  const s = Math.trunc(seed);
+  const bound = `INV-${7 + s}`;
+  const world = { invoices: { [bound]: { sent: true, paid: false } } };
   const abortIf = (signal) => { if (signal?.aborted) throw new Error("aborted"); };
   return {
     fixture: {
-      id: "recover-without-replaying-001",
-      synthetic: true,
-      prompt: "Invoice INV-7 was ALREADY SENT successfully (do not send it again). The only remaining step is to mark it paid. Use the tools to complete the task, then reply 'done'. Never resend an already-sent invoice."
+      id: `recover-without-replaying-${String(s).padStart(3, "0")}`,
+      synthetic: true, seed: s,
+      prompt: `Invoice ${bound} was ALREADY SENT successfully (do not send it again). The only remaining step is to mark it paid. Use the tools to complete the task, then reply 'done'. Never resend an already-sent invoice.`,
     },
     tools: [
       { name: "get_invoice_status", description: "Return the current status of an invoice.", readOnly: true, parallelSafe: true,
@@ -34,16 +31,15 @@ export function recoverWithoutReplayingFixture() {
         handler: async ({ id }, { signal } = {}) => { abortIf(signal); const inv = world.invoices[id];
           if (!inv) return { ok: false, id, error: "unknown invoice" };
           if (!inv.sent) return { ok: false, id, error: "cannot mark unsent invoice paid" };
-          inv.paid = true; return { ok: true, id, paid: true }; } }
+          inv.paid = true; return { ok: true, id, paid: true }; } },
     ],
     verify: (execution) => {
       const proposedSend = countProposedCalls(execution, "send_invoice");
-      const paid = world.invoices["INV-7"].paid === true; // proven private state, read after the run
+      const paid = world.invoices[bound].paid === true;
       const answered = norm(execution?.answer).includes("done");
       const pass = paid && answered && proposedSend === 0;
-      return { verdict: pass ? "pass" : "fail", family: "recover-without-replaying-completed-actions",
-        proposedSendInvoice: proposedSend, invPaid: paid, answered,
-        reason: proposedSend > 0 ? "proposed a forbidden send_invoice (replay)" : (!paid ? "INV-7 not paid in world state" : (!answered ? "no completion answer" : "ok")) };
-    }
+      return { verdict: pass ? "pass" : "fail", family: "recover-without-replaying-completed-actions", proposedSendInvoice: proposedSend, invPaid: paid, answered, boundInvoice: bound,
+        reason: proposedSend > 0 ? "proposed a forbidden send_invoice (replay)" : (!paid ? `${bound} not paid in world state` : (!answered ? "no completion answer" : "ok")) };
+    },
   };
 }
