@@ -263,8 +263,9 @@ test("cohorts are semantically distinct (dataset digests), not just unique ids",
   }
 });
 
-test("reuse-first seeds 0 and 12 collide semantically, and the cohort builder skips the duplicate", () => {
-  assert.equal(buildFixture("reuse-first-tool-selection", { seed: 0 }).fixture.datasetDigest,
+test("reuse-first is broadened: seeds no longer collide semantically, and cohorts stay distinct", () => {
+  // The earlier seed 0 / seed 12 collision is fixed by the seeded per-invoice amounts.
+  assert.notEqual(buildFixture("reuse-first-tool-selection", { seed: 0 }).fixture.datasetDigest,
     buildFixture("reuse-first-tool-selection", { seed: 12 }).fixture.datasetDigest);
   const cohort = buildFamilyCohort("reuse-first-tool-selection", 8);
   assert.equal(new Set(cohort.map((c) => c.fixture.datasetDigest)).size, 8);
@@ -332,4 +333,15 @@ test("governed-context-dependent-state: correct action flips on the READ status 
   const r = await findTool(heldAttempt, "approve_refund").handler({ id: "ORD-1001" }, {});
   assert.equal(r.ok, false); // governed handler refuses
   assert.equal(heldAttempt.verify(execFrom("declined", ["get_order_status", "approve_refund"])).verdict, "fail");
+});
+
+test("reuse-first supplies a large distinct-dataset space; a holdout is disjoint from a big dev cohort", () => {
+  // Broadened so a fresh holdout does not exhaust or overlap the development cohort.
+  const dev = buildFamilyCohort("reuse-first-tool-selection", 30);
+  assert.equal(new Set(dev.map((c) => c.fixture.datasetDigest)).size, 30);
+  const devSeeds = dev.map((c) => c.fixture.seed);
+  const devDigests = new Set(dev.map((c) => c.fixture.datasetDigest));
+  const holdout = selectHoldoutSeeds("reuse-first-tool-selection", 20, { devSeeds });
+  assert.equal(holdout.digests.length, 20);
+  assert.ok(holdout.digests.every((d) => !devDigests.has(d)), "holdout must be disjoint from dev");
 });
