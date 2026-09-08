@@ -98,6 +98,42 @@ test("shadow rows attribute only on a verified signed attempt identity and never
   assert.equal(again.digest, report.digest);
 });
 
+test("a missing tenant or contract scope never acquires a verified identity", () => {
+  const missionId = "scope-mission";
+  const completedAt = "2026-09-05T20:00:00.000Z";
+  // Record with no tenant on the mission -> cannot verify even against a fully-scoped episode.
+  const recordNoTenant = shadowRecord({ missionId, plannerAttempt: 1, tenantId: null, completedAt });
+  const fullyScoped = [episodeEvent(missionId, true, { tenantId: "tenant-a", contractId: "contract-1", attempts: [{ plannerAttempt: 1, completedAt }] })];
+  const r1 = joinShadowWithEpisodes({ shadowRecords: [recordNoTenant], episodeEvents: fullyScoped });
+  assert.equal(r1.rows[0].attribution, "mission-unverified-attempt");
+  assert.equal(r1.counts.attributed, 0);
+  // Episode whose source omits the contract -> a scoped record cannot verify against it.
+  const eventNoContract = episodeEvent(missionId, true, { tenantId: "tenant-a", contractId: null, attempts: [{ plannerAttempt: 1, completedAt }] });
+  eventNoContract.payload.source.contractId = null;
+  const r2 = joinShadowWithEpisodes({ shadowRecords: [shadowRecord({ missionId, plannerAttempt: 1, tenantId: "tenant-a", completedAt })], episodeEvents: [eventNoContract] });
+  assert.equal(r2.rows[0].attribution, "mission-unverified-attempt");
+  assert.equal(r2.counts.attributed, 0);
+});
+
+test("tasksObserved uses the exact identity-matched episode, not the mission's last episode", () => {
+  const missionId = "multi-episode";
+  const completedAt = "2026-09-05T20:00:00.000Z";
+  const taskMatched = { objectiveDigest: sha("obj-matched"), completionConditionDigest: sha("cc-m"), contractDigest: sha("con-m"), operationKeys: ["finance.read"] };
+  const taskLater = { objectiveDigest: sha("obj-later"), completionConditionDigest: sha("cc-l"), contractDigest: sha("con-l"), operationKeys: ["finance.write"] };
+  // Earlier episode carries the matching attempt (task A); a later episode for the same mission
+  // carries a DIFFERENT attempt and task B and would win a naive .at(-1) lookup.
+  const earlierMatched = episodeEvent(missionId, true, { tenantId: "tenant-a", attempts: [{ plannerAttempt: 1, completedAt }], task: taskMatched });
+  const laterUnmatched = episodeEvent(missionId, false, { tenantId: "tenant-a", attempts: [{ plannerAttempt: 2, completedAt: "2026-09-05T20:05:00.000Z" }], task: taskLater });
+  const report = joinShadowWithEpisodes({ shadowRecords: [shadowRecord({ missionId, plannerAttempt: 1, tenantId: "tenant-a", completedAt })], episodeEvents: [earlierMatched, laterUnmatched] });
+  assert.equal(report.counts.attributed, 1);
+  assert.equal(report.rows[0].episode.eventId, earlierMatched.id, "attributed to the identity-matched episode");
+  const matchedTaskSha = digestResearchValue({ objectiveDigest: taskMatched.objectiveDigest, completionConditionDigest: taskMatched.completionConditionDigest, contractDigest: taskMatched.contractDigest });
+  const laterTaskSha = digestResearchValue({ objectiveDigest: taskLater.objectiveDigest, completionConditionDigest: taskLater.completionConditionDigest, contractDigest: taskLater.contractDigest });
+  assert.equal(report.tasksObserved.length, 1);
+  assert.equal(report.tasksObserved[0].taskSha256, matchedTaskSha, "task comes from the matched episode");
+  assert.notEqual(report.tasksObserved[0].taskSha256, laterTaskSha);
+});
+
 test("adversarial: mission-id alone never attributes; only the exact signed identity tuple does", () => {
   const missionId = "adv-mission";
   const completedAt = "2026-09-05T20:00:00.000Z";

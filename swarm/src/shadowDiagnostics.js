@@ -88,8 +88,10 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
     const identityMatches = [];
     for (const episode of episodes) {
       const source = episode.payload?.source ?? {};
-      if (source.tenantId != null && mission?.tenantId != null && source.tenantId !== mission.tenantId) continue;
-      if (source.contractId != null && mission?.contractId != null && source.contractId !== mission.contractId) continue;
+      // Tenant and contract must both be present and equal on the record and the episode. A missing
+      // scope on either side never acquires a verified identity (it stays unqualified, not a match).
+      if (!mission?.tenantId || !source.tenantId || source.tenantId !== mission.tenantId) continue;
+      if (!mission?.contractId || !source.contractId || source.contractId !== mission.contractId) continue;
       const identities = source.evidence?.attemptIdentities;
       for (const identity of Array.isArray(identities) ? identities : []) {
         if (
@@ -161,8 +163,12 @@ export function joinShadowWithEpisodes({ shadowRecords, episodeEvents = [], trea
     else if (row.agreement === false) bucket.disagree += 1;
     if (row.shadowError) bucket.shadowErrors += 1;
   }
+  // Resolve the EXACT identity-matched episode per attributed row (row.episode.eventId), not the
+  // mission's last episode, so an earlier matched episode is not shadowed by a later unmatched one.
+  const episodeById = new Map();
+  for (const list of episodesByMission.values()) for (const episode of list) episodeById.set(episode.id, episode);
   const tasksObserved = [...new Map(attributed.map((row) => {
-    const source = episodesByMission.get(row.missionId).at(-1).payload?.source ?? {};
+    const source = episodeById.get(row.episode.eventId)?.payload?.source ?? {};
     const task = source.task ?? {};
     const taskSha256 = digestResearchValue({ objectiveDigest: task.objectiveDigest ?? null, completionConditionDigest: task.completionConditionDigest ?? null, contractDigest: task.contractDigest ?? null });
     return [taskSha256, { taskSha256, missionId: row.missionId, tenantId: row.tenantId, operationKeys: task.operationKeys ?? [], terminalStatus: row.episode.terminalStatus }];
