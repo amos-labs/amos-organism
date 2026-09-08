@@ -20,11 +20,11 @@ export function estimateFixtureInputTokens(fixture) {
 // Compiled-request token model. An ESTIMATE (chars/4-scale); the controller re-measures with the
 // pinned Qwen tokenizer at preflight over full compiled requests, including growing history.
 export const REQUEST_TOKEN_MODEL = Object.freeze({
-  systemPromptTokens: 3500,            // measured ~14000 chars at Desktop 8ba4801c (Codex 014430Z)
-  fixtureAndSchemaTokens: 400,         // per-request fixture prompt + tool-schema manifest
+  systemPromptTokens: 4300,            // system + 3 injected conversation/scratchpad tools
+  fixtureAndSchemaTokens: 600,          // per-request fixture prompt + fixture tool schemas; measured full initial 4782-4933 tok (Codex compiled-input-manifest 20260908T031940Z, ~4900)
   avgHistoryTokensPerPriorCall: 250,   // accumulated tool results + prior turns
   avgOutputTokensPerCall: 160,
-  note: "chars/4-scale estimate; RECONCILE with actual usage: every hosted call writes a provider_usage_events row (sku + metadata.model_id/input_tokens/output_tokens, per Platform 20260908T020000Z), so per-case cost is MEASURED from a pilot case rather than this estimate; the controller also re-measures direct-cortex requests with the pinned tokenizer at preflight (system prompt + schemas + growing history)",
+  note: "measured initial 4782-4933 tok/request from Codex compiled Desktop inputs (031940Z); chars/4-scale estimate; RECONCILE with actual usage: every hosted call writes a provider_usage_events row (sku + metadata.model_id/input_tokens/output_tokens, per Platform 20260908T020000Z), so per-case cost is MEASURED from a pilot case rather than this estimate; the controller also re-measures direct-cortex requests with the pinned tokenizer at preflight (system prompt + schemas + growing history)",
 });
 
 // maxHttpCallsPerCase = initial turn + up to maxToolCalls tool round-trips + final answer turn.
@@ -46,7 +46,7 @@ export const EVAL_STOP_BOUNDS = Object.freeze({
   maxHttpCallsTotal: 900,          // incl. warmup + regression + secondary cells
   wallCeilingSeconds: 3600,
   maxConcurrency: 2,
-  maxHostedTokens: 3000000,        // feasible: ~2.5M projected primary+aux with headroom (estimate; re-measured at preflight)
+  maxHostedTokens: 3500000,        // headroom over ~2.9M projected with the measured initial footprint (estimate; re-measured with the pinned tokenizer at preflight)
   autoRetryAfterFailedRun: false,
   arms: ["amos-qwen38-27b-fp8", "stage1-060408-r32-s5"],
   casesPerFamilyDefault: 6, // 6 x 8 families = 48 distinct seeded cases; worst-case HTTP calls fit 600
