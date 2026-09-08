@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   TRANSPORT_VALIDATION_EPISODE_IDS,
@@ -8,8 +9,16 @@ import {
   realPlatformEpisodes,
   classifyEpisodeCredit,
   creditableEpisodes,
+  TERMINAL_ASSESSMENT_SCHEMA,
   type OrganismEvent,
 } from "../src/index.ts";
+
+// The shared producer/consumer fixture merged with Platform PR #877, copied byte-for-byte from
+// coordination/artifacts/platform-terminal-assessment-cases-20260908.json (sha256 9c9bc505...).
+const FIXTURE = JSON.parse(readFileSync(new URL("./fixtures/terminal-assessment-cases-20260908.json", import.meta.url), "utf8")) as {
+  consumerRule: string;
+  cases: { case: string; expected: { status: string; counts?: { fail?: number } } }[];
+};
 
 const SYNTHETIC = "platform-mission:7f80fdb1-a26d-41e8-95ac-451aeaa54e32:a10c9080-71f9-48e3-96b9-f6e2185332a0:completed:v1";
 
@@ -68,34 +77,58 @@ test("realPlatformEpisodes filters out the transport-validation id, keeps real o
   assert.ok(kept.every((e) => e.type.startsWith("platform.experience-")));
 });
 
-test("credit binds to terminalAssessment.status, not terminalStatus or event type", () => {
-  // A completed terminal assessment with no latest-fail is the only creditable case.
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { latestFail: 0 } })), "creditable");
-  // A genuine latest fail is failed (via status, or defensively via counts even if status is stale).
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { latestFail: 1 } })), "failed");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { latestFail: 1 } })), "failed", "fail closed: a latest fail never reads as creditable");
+// The consumerRule maps a projected status to a credit outcome; derive the expectation from it so
+// the test tracks the shared fixture's own stated rule rather than a hand-copied table.
+function expectedCredit(status: string): "creditable" | "failed" | "unqualified" {
+  if (status === "complete") return "creditable";
+  if (status === "failed") return "failed";
+  return "unqualified";
+}
+
+test("classifyEpisodeCredit replays the shared #877 terminal-assessment fixture", () => {
+  assert.match(FIXTURE.consumerRule, /credit only when status == complete/);
+  assert.match(FIXTURE.consumerRule, /failed only when status == failed/);
+  assert.equal(FIXTURE.cases.length, 9);
+  for (const c of FIXTURE.cases) {
+    const got = classifyEpisodeCredit(evWithAssessment(REAL, c.expected));
+    assert.equal(got, expectedCredit(c.expected.status), `case ${c.case} (status ${c.expected.status})`);
+  }
+  // Concretely: the completed Northwind mission is the only creditable real episode among the pair;
+  // the unknowns-only failed mission is pending -> unqualified, never a model-negative.
+  const completed = FIXTURE.cases.find((c) => c.case === "northwind_e152bd9b_completed")!;
+  const failedMission = FIXTURE.cases.find((c) => c.case === "northwind_8541ebc6_failed_mission_unknowns_only")!;
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, completed.expected)), "creditable");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, failedMission.expected)), "unqualified");
 });
 
-test("pending / invalid_policy / unqualified and a MISSING assessment all stay unqualified", () => {
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "pending", counts: { latestFail: 0 } })), "unqualified");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "invalid_policy" })), "unqualified");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "unqualified" })), "unqualified");
-  // Legacy event (the two delivered episodes): no terminalAssessment, and a completed terminalStatus never substitutes.
+test("failed requires a qualifying policy fail; contradictions and missing assessments are unqualified", () => {
+  // failed only when status is failed AND counts.fail is a qualifying policy fail.
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { fail: 1 } })), "failed");
+  // Contradictions never become a model-negative: complete-with-fail and failed-without-fail -> unqualified.
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { fail: 1 } })), "unqualified");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { fail: 0 } })), "unqualified");
+  // A missing assessment (legacy events, incl. the two delivered episodes) never substitutes completed status.
   assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, undefined, "platform.experience-verified")), "unqualified");
+});
+
+test("a wrong-schema or wrong-version assessment is refused", () => {
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { schema: TERMINAL_ASSESSMENT_SCHEMA, version: 1, status: "complete", counts: { fail: 0 } })), "creditable");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { schema: "something.else", status: "complete", counts: { fail: 0 } })), "unqualified");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { version: 2, status: "complete", counts: { fail: 0 } })), "unqualified");
 });
 
 test("credit classification excludes transport-validation and non-platform events", () => {
   // Even a 'complete' assessment on the transport-validation id is unqualified (never real experience).
-  assert.equal(classifyEpisodeCredit(evWithAssessment(SYNTHETIC, { status: "complete", counts: { latestFail: 0 } })), "unqualified");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(SYNTHETIC, { status: "complete", counts: { fail: 0 } })), "unqualified");
   assert.equal(classifyEpisodeCredit(ev("gene.admitted")), "unqualified");
 });
 
 test("creditableEpisodes keeps only the complete-assessment real episodes", () => {
   const chain = [
-    evWithAssessment(REAL, { status: "complete", counts: { latestFail: 0 } }),
-    evWithAssessment("platform-mission:real2:t:m:failed:v1", { status: "failed", counts: { latestFail: 2 } }),
-    evWithAssessment("platform-mission:real3:t:m:completed:v1", { status: "pending", counts: { latestFail: 0 } }),
-    evWithAssessment(SYNTHETIC, { status: "complete", counts: { latestFail: 0 } }),
+    evWithAssessment(REAL, { status: "complete", counts: { fail: 0 } }),
+    evWithAssessment("platform-mission:real2:t:m:failed:v1", { status: "failed", counts: { fail: 2 } }),
+    evWithAssessment("platform-mission:real3:t:m:completed:v1", { status: "pending", counts: { fail: 0 } }),
+    evWithAssessment(SYNTHETIC, { status: "complete", counts: { fail: 0 } }),
   ];
   const kept = creditableEpisodes(chain);
   assert.equal(kept.length, 1);

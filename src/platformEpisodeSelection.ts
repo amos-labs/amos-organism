@@ -65,9 +65,15 @@ export function realPlatformEpisodes(events: readonly OrganismEvent[]): Organism
  */
 export type EpisodeCredit = "creditable" | "failed" | "unqualified";
 
+/** The pinned schema of the signed terminal verification assessment (Platform PR #877). */
+export const TERMINAL_ASSESSMENT_SCHEMA = "amos.platform-mission-terminal-assessment";
+export const TERMINAL_ASSESSMENT_VERSION = 1;
+
 interface TerminalAssessmentView {
+  readonly schema?: unknown;
+  readonly version?: unknown;
   readonly status?: unknown;
-  readonly counts?: { readonly latestFail?: unknown } | undefined;
+  readonly counts?: { readonly fail?: unknown } | undefined;
 }
 
 function terminalAssessmentOf(event: OrganismEvent): TerminalAssessmentView | null {
@@ -79,27 +85,34 @@ function terminalAssessmentOf(event: OrganismEvent): TerminalAssessmentView | nu
 /**
  * Bind learning credit to the signed terminal verification assessment
  * (`source.verification.terminalAssessment`, schema amos.platform-mission-terminal-assessment v1),
- * NOT to the episode's terminalStatus or event type. Per the producer/consumer
- * contract in docs/ORGANISM-LEARNING-HANDOFF.md ("Terminal assessment"):
+ * NOT to the episode's terminalStatus or event type. Per the producer/consumer contract in
+ * docs/ORGANISM-LEARNING-HANDOFF.md and the shared fixture terminal-assessment-cases (Platform #877):
  *
- * - `creditable` ONLY when `status === "complete"` and no requirement's latest verdict is fail;
- * - `failed` ONLY when a requirement's latest verdict is fail (`status === "failed"`, or a
- *   defensive `counts.latestFail > 0` even if a stale status says otherwise — fail closed);
- * - `pending` / `invalid_policy` / `unqualified`, and a MISSING assessment (legacy events,
- *   including the first two delivered episodes) stay `unqualified`.
+ * - `creditable` ONLY when `status === "complete"`;
+ * - `failed` ONLY when `status === "failed"` — i.e. a policy requirement's latest QUALIFYING verdict
+ *   is fail (`counts.fail` counts only qualifying policy fails; extraneous/disqualified never count);
+ * - `pending` / `invalid_policy` / `unqualified` (disqualified pins, partial coverage, missing or
+ *   unknown requirements) and a MISSING assessment (legacy events, incl. the two delivered episodes)
+ *   stay `unqualified`.
  *
- * A completed terminalStatus alone never substitutes for the assessment, `unknown` is never
- * `fail`, and a transport-validation or non-platform event is `unqualified` here. Reclassification
- * always references the original immutable event plus this assessment; this function derives, it
- * never mutates the event.
+ * Contradictions are never a model-negative: a `complete` carrying a qualifying fail, or a `failed`
+ * with no qualifying fail, resolve to `unqualified` (fail safe, never spurious blame). A completed
+ * terminalStatus alone never substitutes, a wrong-schema/version assessment is rejected, and a
+ * transport-validation or non-platform event is `unqualified`. The assessment's authenticity and
+ * binding to this mission are established upstream by the signed, intake-verified episode; this
+ * function derives credit and never mutates the event.
  */
 export function classifyEpisodeCredit(event: OrganismEvent): EpisodeCredit {
   if (!isLearningEligiblePlatformEpisode(event)) return "unqualified";
   const assessment = terminalAssessmentOf(event);
   if (assessment === null) return "unqualified";
-  const latestFail = Number((assessment.counts?.latestFail as number | undefined) ?? 0);
-  if (assessment.status === "failed" || latestFail > 0) return "failed";
-  if (assessment.status === "complete") return "creditable";
+  // Reject an assessment that is not the pinned schema/version (a real signed episode carries it;
+  // a minimal projection that omits them is accepted, but a wrong value is refused).
+  if (assessment.schema !== undefined && assessment.schema !== TERMINAL_ASSESSMENT_SCHEMA) return "unqualified";
+  if (assessment.version !== undefined && assessment.version !== TERMINAL_ASSESSMENT_VERSION) return "unqualified";
+  const qualifyingFails = Number((assessment.counts?.fail as number | undefined) ?? 0);
+  if (assessment.status === "complete") return qualifyingFails > 0 ? "unqualified" : "creditable";
+  if (assessment.status === "failed") return qualifyingFails > 0 ? "failed" : "unqualified";
   return "unqualified";
 }
 
