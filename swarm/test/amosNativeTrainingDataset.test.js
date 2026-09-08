@@ -245,7 +245,56 @@ test("malformed tool traces are rejected: trailing assistant, empty turns/tools,
   const withTrace = (mutate) => { const input = base(); mutate(input.input.toolTrace); return () => createAmosSystemTrainingExample(input); };
   assert.throws(withTrace((t) => t.contextTurns.push({ role: "assistant", content: "premature" })), /must not end with an assistant turn/);
   assert.throws(withTrace((t) => { t.tools = []; }), /tools must be a non-empty array/);
-  assert.throws(withTrace((t) => { t.contextTurns = []; }), /contextTurns must be a non-empty array/);
   assert.throws(withTrace((t) => { t.contextTurns[0].tool_calls[0].function.arguments = "{not json"; }), /arguments is not valid JSON/);
   assert.throws(withTrace((t) => { t.contextTurns[1].tool_calls = [{ function: { name: "x", arguments: {} } }]; }), /tool_calls is only valid on an assistant turn/);
+});
+
+// A corrected-tool-call example: mask the failed call + its error, supervise the corrected call.
+function correctedCallExampleInput(fixture, id) {
+  const m = fixture.messages;
+  return {
+    id, sourceEpisodeId: `episode-${id}`, taskFamily: "calculator-runway", role: "tool-specialist",
+    input: { system: m[0].content, user: m[1].content, toolTrace: { contextTurns: structuredClone(m.slice(2, 4)), tools: structuredClone(fixture.tools) } },
+    target: { kind: "tool-call", content: m[4].content, toolCalls: structuredClone(m[4].tool_calls) },
+    correction: null,
+    safeguards: { credentialsRemoved: true, tenantFactsRemoved: true, hiddenReasoningExcluded: true, independentVerifierSelected: true, licensedForTraining: true }
+  };
+}
+
+test("a structured corrected-tool-call target supervises the tool_calls message with parsed args", () => {
+  const fixture = NATIVE_TRACE.examples[0];
+  const example = createAmosSystemTrainingExample(correctedCallExampleInput(fixture, "example-corrected-usd"));
+  const row = sftRow(example);
+  assert.deepEqual(row.messages.map((m) => m.role), ["system", "user", "assistant", "tool", "assistant"]);
+  const final = row.messages.at(-1);
+  assert.equal(final.content, null, "the corrected-call target keeps null content");
+  assert.equal(typeof final.tool_calls[0].function.arguments, "object", "the target's string arguments are parsed to an object");
+  assert.equal(final.tool_calls[0].function.name, "desktop_calculate");
+  assert.deepEqual(row.tools, example.input.toolTrace.tools);
+});
+
+test("a first-call example (zero intermediate turns) supervises the tool call directly", () => {
+  const fixture = NATIVE_TRACE.examples[0];
+  const m = fixture.messages;
+  const example = createAmosSystemTrainingExample({
+    id: "example-firstcall", sourceEpisodeId: "e", taskFamily: "calc", role: "tool-specialist",
+    input: { system: m[0].content, user: m[1].content, toolTrace: { contextTurns: [], tools: structuredClone(fixture.tools) } },
+    target: { kind: "tool-call", toolCalls: structuredClone(m[2].tool_calls) },
+    correction: null,
+    safeguards: { credentialsRemoved: true, tenantFactsRemoved: true, hiddenReasoningExcluded: true, independentVerifierSelected: true, licensedForTraining: true }
+  });
+  const row = sftRow(example);
+  assert.deepEqual(row.messages.map((mm) => mm.role), ["system", "user", "assistant"]);
+  assert.ok(row.messages.at(-1).tool_calls.length >= 1);
+  assert.equal(row.messages.at(-1).content, null);
+});
+
+test("a structured target requires a toolTrace tool schema", () => {
+  assert.throws(() => createAmosSystemTrainingExample({
+    id: "x", sourceEpisodeId: "e", taskFamily: "calc", role: "tool-specialist",
+    input: { system: "s", user: "u" },
+    target: { kind: "tool-call", toolCalls: [{ function: { name: "calc", arguments: {} } }] },
+    correction: null,
+    safeguards: { credentialsRemoved: true, tenantFactsRemoved: true, hiddenReasoningExcluded: true, independentVerifierSelected: true, licensedForTraining: true }
+  }), /toolCalls requires an input.toolTrace/);
 });

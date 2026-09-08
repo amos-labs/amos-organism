@@ -39,14 +39,7 @@ export function createAmosSystemTrainingExample(input) {
     taskFamily: requiredId(source.taskFamily, "training example.taskFamily"),
     role: requiredId(source.role, "training example.role"),
     input: exampleInput,
-    target: {
-      kind: enumValue(source.target?.kind, TARGET_KINDS, "training example.target.kind"),
-      content: requiredText(
-        source.target?.content,
-        "training example.target.content",
-        100_000
-      )
-    },
+    target: normalizeTarget(source.target, Boolean(toolTrace)),
     correction: normalizeCorrection(source.correction),
     safeguards: normalizeSafeguards(source.safeguards)
   };
@@ -233,15 +226,34 @@ function normalizeContextTurn(turn, index) {
   return normalized;
 }
 
+function normalizeToolCalls(input, label) {
+  if (!Array.isArray(input) || input.length === 0) throw new Error(`${label} must be a non-empty array`);
+  return input.map((call, index) => normalizeToolCall(call, `${label}[${index}]`));
+}
+
+// A supervised final assistant target: either text content, or a structured tool_calls message (a
+// corrected/first tool call, content null). A text target keeps its {kind, content} shape byte-for-byte.
+function normalizeTarget(input, hasToolTrace) {
+  const target = jsonObject(input, "training example.target");
+  const kind = enumValue(target.kind, TARGET_KINDS, "training example.target.kind");
+  if (target.toolCalls !== undefined) {
+    if (!hasToolTrace) throw new Error("training example.target.toolCalls requires an input.toolTrace tool schema");
+    const content = target.content == null ? null : requiredText(target.content, "training example.target.content", 100_000);
+    return { kind, content, toolCalls: normalizeToolCalls(target.toolCalls, "training example.target.toolCalls") };
+  }
+  return { kind, content: requiredText(target.content, "training example.target.content", 100_000) };
+}
+
 function normalizeToolTrace(input) {
   if (input === null || input === undefined) return null;
   const trace = jsonObject(input, "training example.input.toolTrace");
-  if (!Array.isArray(trace.contextTurns) || trace.contextTurns.length === 0) {
-    throw new Error("training example.input.toolTrace.contextTurns must be a non-empty array");
+  // Context turns may be empty for a first-call example (the tool call is the target with no prior turns).
+  if (!Array.isArray(trace.contextTurns)) {
+    throw new Error("training example.input.toolTrace.contextTurns must be an array");
   }
   const contextTurns = trace.contextTurns.map((turn, index) => normalizeContextTurn(turn, index));
-  if (contextTurns.at(-1).role === "assistant") {
-    // The single supervised decision is target.content; a trailing assistant context turn is ambiguous.
+  if (contextTurns.length > 0 && contextTurns.at(-1).role === "assistant") {
+    // The single supervised decision is the target; a trailing assistant context turn is ambiguous.
     throw new Error("training example.input.toolTrace.contextTurns must not end with an assistant turn");
   }
   if (!Array.isArray(trace.tools) || trace.tools.length === 0) {
@@ -403,12 +415,16 @@ export function sftRow(example) {
   // A tool-trace example renders system + user + the masked context turns + the final supervised
   // assistant target, and forwards its tool schema; a plain example is byte-identical to before
   // (no tools key). The train_stage0 encoder masks everything before the final assistant.
+  // The supervised final assistant is either text content or a structured tool_calls message.
+  const finalAssistant = example.target.toolCalls
+    ? { role: "assistant", content: example.target.content ?? null, tool_calls: example.target.toolCalls }
+    : { role: "assistant", content: example.target.content };
   const messages = [
     { role: "system", content: example.input.system },
     { role: "user", content: example.input.user },
     // Emit the masked context turns verbatim, preserving native tool_calls / tool_call_id.
     ...(toolTrace ? toolTrace.contextTurns.map((turn) => ({ ...turn })) : []),
-    { role: "assistant", content: example.target.content }
+    finalAssistant
   ];
   const row = {
     messages,
