@@ -324,23 +324,40 @@ def train(
     return report
 
 
+_ALLOWED_ROLES = ("system", "user", "assistant", "tool")
+
+
 def encode_example(tokenizer: Any, row: dict[str, Any], maximum_tokens: int) -> dict[str, Any]:
     messages = row.get("messages")
-    if not isinstance(messages, list) or [message.get("role") for message in messages] != [
-        "system",
-        "user",
-        "assistant",
-    ]:
-        raise ValueError("each stage-zero SFT row must contain system, user, assistant messages")
+    # An SFT row is one or more MASKED context turns followed by exactly one
+    # supervised assistant target (the final message). The legacy
+    # [system, user, assistant] shape is the three-message special case of this
+    # rule and is encoded byte-identically. Tool-trace rows carry intermediate
+    # assistant/tool turns (a failed call, its error, a tool result) as masked
+    # context so the model is supervised only on the final corrected call or
+    # checked answer, never on a rejected call.
+    if not isinstance(messages, list) or len(messages) < 2:
+        raise ValueError("each SFT row needs at least one context turn and a final assistant target")
+    roles = [message.get("role") for message in messages]
+    if any(role not in _ALLOWED_ROLES for role in roles):
+        raise ValueError(f"each SFT row message role must be one of {_ALLOWED_ROLES}")
+    if roles[-1] != "assistant":
+        raise ValueError("the final SFT row message must be the supervised assistant target")
+    # Only tokens after the prompt (every message except the final assistant
+    # target) are supervised; row.tools, when present, is forwarded to the same
+    # pinned chat template for both the prompt and the full render.
+    tools = row.get("tools")
     prompt_ids = _chat_template_input_ids(
         tokenizer,
-        messages[:2],
+        messages[:-1],
         add_generation_prompt=True,
+        tools=tools,
     )
     full_ids = _chat_template_input_ids(
         tokenizer,
         messages,
         add_generation_prompt=False,
+        tools=tools,
     )
     if full_ids[: len(prompt_ids)] != prompt_ids:
         raise ValueError("assistant-token loss boundary is not a prefix of the full chat template")
@@ -362,15 +379,23 @@ def _chat_template_input_ids(
     messages: list[dict[str, Any]],
     *,
     add_generation_prompt: bool,
+    tools: Any = None,
 ) -> list[int]:
     """Normalize Transformers 4.x lists and 5.x BatchEncoding results."""
 
-    rendered = tokenizer.apply_chat_template(
-        messages,
+    template_kwargs: dict[str, Any] = dict(
         tokenize=True,
         add_generation_prompt=add_generation_prompt,
         enable_thinking=False,
         reasoning_effort="low",
+    )
+    # Only pass tools when the row carries them so tool-free rows render exactly
+    # as before (no implicit tools=None keyword to the pinned template).
+    if tools is not None:
+        template_kwargs["tools"] = tools
+    rendered = tokenizer.apply_chat_template(
+        messages,
+        **template_kwargs,
     )
     if isinstance(rendered, Mapping):
         rendered = rendered.get("input_ids")

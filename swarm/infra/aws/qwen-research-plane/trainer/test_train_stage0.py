@@ -44,6 +44,54 @@ ROW = {
 }
 
 
+class ToolTraceTokenizer(FakeTokenizer):
+    """Renders a multi-turn tool trace: three masked context turns then the
+    supervised final assistant target. Records every apply_chat_template call
+    so the test can assert row.tools is forwarded."""
+
+    def __init__(self):
+        self.calls = []
+
+    def apply_chat_template(self, messages, **kwargs):
+        self.calls.append(
+            {
+                "count": len(messages),
+                "add_generation_prompt": kwargs.get("add_generation_prompt"),
+                "tools": kwargs.get("tools"),
+            }
+        )
+        if len(messages) == 3 and kwargs.get("add_generation_prompt"):
+            return [10, 11, 12, 13]
+        if len(messages) == 4 and not kwargs.get("add_generation_prompt"):
+            return [10, 11, 12, 13, 30, 31]
+        raise AssertionError("unexpected chat-template call")
+
+
+class ToolKwargSpyTokenizer(FakeTokenizer):
+    """Legacy-row guard: records whether a tools keyword ever reached the
+    pinned chat template so tool-free rows can be proven to render as before."""
+
+    def __init__(self):
+        self.saw_tools_kwarg = False
+
+    def apply_chat_template(self, messages, **kwargs):
+        if "tools" in kwargs:
+            self.saw_tools_kwarg = True
+        return super().apply_chat_template(messages, **kwargs)
+
+
+TOOL_ROW = {
+    "messages": [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "compute 21 + 21"},
+        {"role": "tool", "content": "result=42"},
+        {"role": "assistant", "content": "the answer is 42"},
+    ],
+    "tools": [{"type": "function", "function": {"name": "calc"}}],
+    "metadata": {"exampleId": "tool-1"},
+}
+
+
 class StageZeroTrainerTests(unittest.TestCase):
     def _contract(self, purpose, stage, **overrides):
         contract = {
@@ -148,6 +196,57 @@ class StageZeroTrainerTests(unittest.TestCase):
         encoded = TRAINER.encode_example(BatchEncodingTokenizer(), ROW, 32)
         self.assertEqual(encoded["input_ids"], [10, 11, 12, 20, 21])
         self.assertEqual(encoded["labels"][-2:], [20, 21])
+
+    def test_encode_tool_trace_masks_context_and_supervises_only_final_assistant(self):
+        encoded = TRAINER.encode_example(ToolTraceTokenizer(), TOOL_ROW, 32)
+        self.assertEqual(encoded["input_ids"], [10, 11, 12, 13, 30, 31])
+        # System, user and tool-result context are masked; only the final
+        # assistant target tokens are supervised.
+        self.assertEqual(
+            encoded["labels"],
+            [
+                TRAINER.IGNORE_INDEX,
+                TRAINER.IGNORE_INDEX,
+                TRAINER.IGNORE_INDEX,
+                TRAINER.IGNORE_INDEX,
+                30,
+                31,
+            ],
+        )
+
+    def test_encode_forwards_row_tools_to_chat_template(self):
+        tokenizer = ToolTraceTokenizer()
+        TRAINER.encode_example(tokenizer, TOOL_ROW, 32)
+        self.assertTrue(tokenizer.calls)
+        self.assertTrue(
+            all(call["tools"] == TOOL_ROW["tools"] for call in tokenizer.calls)
+        )
+
+    def test_encode_does_not_pass_tools_for_tool_free_rows(self):
+        tokenizer = ToolKwargSpyTokenizer()
+        TRAINER.encode_example(tokenizer, ROW, 32)
+        self.assertFalse(tokenizer.saw_tools_kwarg)
+
+    def test_encode_rejects_row_whose_final_message_is_not_assistant(self):
+        row = {
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "user"},
+            ]
+        }
+        with self.assertRaisesRegex(ValueError, "final SFT row message"):
+            TRAINER.encode_example(FakeTokenizer(), row, 32)
+
+    def test_encode_rejects_unknown_message_role(self):
+        row = {
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "reviewer", "content": "nope"},
+                {"role": "assistant", "content": "target"},
+            ]
+        }
+        with self.assertRaisesRegex(ValueError, "message role"):
+            TRAINER.encode_example(FakeTokenizer(), row, 32)
 
     def test_file_receipt_checks_digest_rows_and_size(self):
         with tempfile.TemporaryDirectory() as directory:
