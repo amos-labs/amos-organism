@@ -247,8 +247,25 @@ function normalizeToolTrace(input) {
   if (!Array.isArray(trace.tools) || trace.tools.length === 0) {
     throw new Error("training example.input.toolTrace.tools must be a non-empty array");
   }
-  const tools = trace.tools.map((tool, index) => jsonObject(tool, `training example.input.toolTrace.tools[${index}]`));
+  const tools = trace.tools.map((tool, index) => normalizeServingTool(tool, `training example.input.toolTrace.tools[${index}]`));
   return { contextTurns, tools };
+}
+
+// Rebuild each tool in the frozen serving_tools v2 order — {type:"function", function:{name,
+// description, parameters}} — so the row the trainer tokenizes matches what the served model saw.
+// (The train_stage0 encoder passes row.tools to the pinned chat template verbatim.)
+function normalizeServingTool(tool, label) {
+  const record = jsonObject(tool, label);
+  if (record.type !== "function") throw new Error(`${label}.type must be "function"`);
+  const fn = jsonObject(record.function, `${label}.function`);
+  return {
+    type: "function",
+    function: {
+      name: requiredId(fn.name, `${label}.function.name`),
+      description: requiredText(fn.description, `${label}.function.description`, 20_000),
+      parameters: jsonObject(fn.parameters, `${label}.function.parameters`)
+    }
+  };
 }
 
 function normalizeCorrection(input) {
