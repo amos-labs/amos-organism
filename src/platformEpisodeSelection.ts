@@ -55,3 +55,55 @@ export function isLearningEligiblePlatformEpisode(event: OrganismEvent): boolean
 export function realPlatformEpisodes(events: readonly OrganismEvent[]): OrganismEvent[] {
   return events.filter(isLearningEligiblePlatformEpisode);
 }
+
+/**
+ * Credit classification of a real Platform Mission episode.
+ *
+ * - `creditable`   — a positive, learnable terminal outcome.
+ * - `failed`       — a genuine terminal failure (a negative outcome).
+ * - `unqualified`  — not usable as a credit signal in either direction.
+ */
+export type EpisodeCredit = "creditable" | "failed" | "unqualified";
+
+interface TerminalAssessmentView {
+  readonly status?: unknown;
+  readonly counts?: { readonly latestFail?: unknown } | undefined;
+}
+
+function terminalAssessmentOf(event: OrganismEvent): TerminalAssessmentView | null {
+  const source = (event.payload as { source?: { verification?: { terminalAssessment?: unknown } } } | undefined)?.source;
+  const assessment = source?.verification?.terminalAssessment;
+  return assessment !== null && typeof assessment === "object" ? (assessment as TerminalAssessmentView) : null;
+}
+
+/**
+ * Bind learning credit to the signed terminal verification assessment
+ * (`source.verification.terminalAssessment`, schema amos.platform-mission-terminal-assessment v1),
+ * NOT to the episode's terminalStatus or event type. Per the producer/consumer
+ * contract in docs/ORGANISM-LEARNING-HANDOFF.md ("Terminal assessment"):
+ *
+ * - `creditable` ONLY when `status === "complete"` and no requirement's latest verdict is fail;
+ * - `failed` ONLY when a requirement's latest verdict is fail (`status === "failed"`, or a
+ *   defensive `counts.latestFail > 0` even if a stale status says otherwise — fail closed);
+ * - `pending` / `invalid_policy` / `unqualified`, and a MISSING assessment (legacy events,
+ *   including the first two delivered episodes) stay `unqualified`.
+ *
+ * A completed terminalStatus alone never substitutes for the assessment, `unknown` is never
+ * `fail`, and a transport-validation or non-platform event is `unqualified` here. Reclassification
+ * always references the original immutable event plus this assessment; this function derives, it
+ * never mutates the event.
+ */
+export function classifyEpisodeCredit(event: OrganismEvent): EpisodeCredit {
+  if (!isLearningEligiblePlatformEpisode(event)) return "unqualified";
+  const assessment = terminalAssessmentOf(event);
+  if (assessment === null) return "unqualified";
+  const latestFail = Number((assessment.counts?.latestFail as number | undefined) ?? 0);
+  if (assessment.status === "failed" || latestFail > 0) return "failed";
+  if (assessment.status === "complete") return "creditable";
+  return "unqualified";
+}
+
+/** The real episodes whose terminal assessment binds a positive, creditable learning signal. */
+export function creditableEpisodes(events: readonly OrganismEvent[]): OrganismEvent[] {
+  return events.filter((event) => classifyEpisodeCredit(event) === "creditable");
+}

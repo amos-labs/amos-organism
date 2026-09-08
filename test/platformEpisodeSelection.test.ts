@@ -6,6 +6,8 @@ import {
   isTransportValidationEpisodeId,
   isLearningEligiblePlatformEpisode,
   realPlatformEpisodes,
+  classifyEpisodeCredit,
+  creditableEpisodes,
   type OrganismEvent,
 } from "../src/index.ts";
 
@@ -15,6 +17,21 @@ function ev(type: string, episodeId?: string): OrganismEvent {
   return {
     id: `platform-episode:${episodeId ?? "x"}`, type, missionId: "m", occurredAt: "2026-09-07T00:00:00Z",
     authority: "host", hostReceiptId: "r", payload: episodeId ? { episodeId } : {}, digest: "d",
+  } as unknown as OrganismEvent;
+}
+
+const REAL = "platform-mission:real:t:m:completed:v1";
+
+function evWithAssessment(
+  episodeId: string,
+  assessment: unknown,
+  type = "platform.experience-negative",
+): OrganismEvent {
+  return {
+    id: `platform-episode:${episodeId}`, type, missionId: "m", occurredAt: "2026-09-07T00:00:00Z",
+    authority: "host", hostReceiptId: "r",
+    payload: { episodeId, source: { verification: assessment === undefined ? {} : { terminalAssessment: assessment } } },
+    digest: "d",
   } as unknown as OrganismEvent;
 }
 
@@ -49,4 +66,38 @@ test("realPlatformEpisodes filters out the transport-validation id, keeps real o
   assert.equal(kept.length, 2);
   assert.ok(kept.every((e) => (e.payload as { episodeId: string }).episodeId !== SYNTHETIC));
   assert.ok(kept.every((e) => e.type.startsWith("platform.experience-")));
+});
+
+test("credit binds to terminalAssessment.status, not terminalStatus or event type", () => {
+  // A completed terminal assessment with no latest-fail is the only creditable case.
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { latestFail: 0 } })), "creditable");
+  // A genuine latest fail is failed (via status, or defensively via counts even if status is stale).
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { latestFail: 1 } })), "failed");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { latestFail: 1 } })), "failed", "fail closed: a latest fail never reads as creditable");
+});
+
+test("pending / invalid_policy / unqualified and a MISSING assessment all stay unqualified", () => {
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "pending", counts: { latestFail: 0 } })), "unqualified");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "invalid_policy" })), "unqualified");
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "unqualified" })), "unqualified");
+  // Legacy event (the two delivered episodes): no terminalAssessment, and a completed terminalStatus never substitutes.
+  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, undefined, "platform.experience-verified")), "unqualified");
+});
+
+test("credit classification excludes transport-validation and non-platform events", () => {
+  // Even a 'complete' assessment on the transport-validation id is unqualified (never real experience).
+  assert.equal(classifyEpisodeCredit(evWithAssessment(SYNTHETIC, { status: "complete", counts: { latestFail: 0 } })), "unqualified");
+  assert.equal(classifyEpisodeCredit(ev("gene.admitted")), "unqualified");
+});
+
+test("creditableEpisodes keeps only the complete-assessment real episodes", () => {
+  const chain = [
+    evWithAssessment(REAL, { status: "complete", counts: { latestFail: 0 } }),
+    evWithAssessment("platform-mission:real2:t:m:failed:v1", { status: "failed", counts: { latestFail: 2 } }),
+    evWithAssessment("platform-mission:real3:t:m:completed:v1", { status: "pending", counts: { latestFail: 0 } }),
+    evWithAssessment(SYNTHETIC, { status: "complete", counts: { latestFail: 0 } }),
+  ];
+  const kept = creditableEpisodes(chain);
+  assert.equal(kept.length, 1);
+  assert.equal((kept[0]!.payload as { episodeId: string }).episodeId, REAL);
 });
