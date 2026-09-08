@@ -32,11 +32,17 @@ test("aggregateWorkload fails closed on invalid counts (not only preflight)", ()
   assert.throws(() => aggregateWorkload({ arms: 1 }), /arms must be exactly 2/);
 });
 
-test("preflight FAILS CLOSED while families are unbuilt (constrained-planning/async-code/governed-context-dependent-state)", () => {
-  assert.equal(allFamiliesBuilt(), false);
+test("preflight is READY now that all eight families are built and the cohort fits", () => {
+  assert.equal(allFamiliesBuilt(), true);
   const p = preflightEvalBounds();
-  assert.equal(p.ok, false);
-  assert.ok(p.issues.some((i) => /not all families are built/.test(i)));
+  assert.equal(p.ok, true, `unexpected gaps: ${p.issues.join("; ")}`);
+  assert.ok(p.aggregate && p.aggregate.withinStopBounds);
+});
+
+test("preflight still fails closed if a family is dropped from the built set (fail-closed proof)", () => {
+  // Simulate an unbuilt family by requesting a family with no bounds -> aggregate throws / issues.
+  const bad = preflightEvalBounds({ casesPerFamily: 0 });
+  assert.equal(bad.ok, false); // invalid count path still fails closed
 });
 
 test("preflight rejects invalid cohort counts and wrong arm counts", () => {

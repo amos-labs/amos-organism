@@ -10,6 +10,7 @@ import { tenantBoundReportingFixture } from "./tenantBoundReporting.js";
 import { dateTimeFixture } from "./dateTime.js";
 import { constrainedPlanningFixture } from "./constrainedPlanning.js";
 import { asyncCodeFixture } from "./asyncCode.js";
+import { governedContextDependentStateFixture } from "./governedContextDependentState.js";
 
 export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "numeric-reconciliation": numericReconciliationFixture,
@@ -18,7 +19,8 @@ export const DESKTOP_EVAL_FIXTURES = Object.freeze({
   "tenant-bound-reporting": tenantBoundReportingFixture,
   "date-time": dateTimeFixture,
   "constrained-planning": constrainedPlanningFixture,
-  "async-code": asyncCodeFixture
+  "async-code": asyncCodeFixture,
+  "governed-context-dependent-state": governedContextDependentStateFixture
 });
 
 export const FIXTURE_FAMILIES = Object.freeze([
