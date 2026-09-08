@@ -166,3 +166,23 @@ test("tenant-bound-reporting: authorized handler returns the bound tenant; cross
   assert.equal(other.ok, false);
   assert.match(other.error, /cross-tenant access denied/);
 });
+
+test("date-time: passes only on the exact resulting date in YYYY-MM-DD, no prose", () => {
+  const f = buildFixture("date-time");
+  assert.equal(f.verify(execFrom("2026-03-02", [])).verdict, "pass");
+  assert.equal(f.verify(execFrom("  2026-03-02  ", [])).verdict, "pass"); // norm trims
+  // Off-by-one / wrong rollover and prose all fail.
+  assert.equal(f.verify(execFrom("2026-03-01", [])).verdict, "fail"); // treated Feb as 29 days
+  assert.equal(f.verify(execFrom("2026-02-30", [])).verdict, "fail");
+  assert.equal(f.verify(execFrom("The date is 2026-03-02.", [])).verdict, "fail"); // not bare
+  assert.equal(f.verify(execFrom("March 2, 2026", [])).verdict, "fail"); // wrong format
+});
+
+test("date-time: month_lengths reports a non-leap 2026 (Feb 28) and leap 2024 (Feb 29)", async () => {
+  const f = buildFixture("date-time");
+  const r2026 = await findTool(f, "month_lengths").handler({ year: 2026 }, {});
+  assert.equal(r2026.ok, true);
+  assert.equal(r2026.lengths[1], 28);
+  const r2024 = await findTool(f, "month_lengths").handler({ year: 2024 }, {});
+  assert.equal(r2024.lengths[1], 29);
+});
