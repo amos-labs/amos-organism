@@ -198,3 +198,27 @@ test("date-time: month_lengths reports a non-leap 2026 (Feb 28) and leap 2024 (F
   const r2024 = await findTool(f, "month_lengths").handler({ year: 2024 }, {});
   assert.equal(r2024.lengths[1], 29);
 });
+
+test("constrained-planning: passes within the call budget with the right total, fails over budget", () => {
+  const f = buildFixture("constrained-planning");
+  const total = f.verify(execFrom("x")).expected;
+  const budget = f.verify(execFrom("x")).budget;
+  const withinBudget = Array.from({ length: budget }, () => "get_account_balance");
+  assert.equal(f.verify(execFrom(String(total), withinBudget)).verdict, "pass");
+  // Over the budget is a planning failure even with the right total.
+  const over = f.verify(execFrom(String(total), [...withinBudget, "get_account_balance"]));
+  assert.equal(over.verdict, "fail");
+  assert.ok(over.calls > over.budget);
+  // Wrong total and prose fail (strict bare integer).
+  assert.equal(f.verify(execFrom(String(total + 1), withinBudget)).verdict, "fail");
+  assert.equal(f.verify(execFrom(`total is ${total}`, withinBudget)).verdict, "fail");
+});
+
+test("constrained-planning: get_account_balance returns known accounts and refuses unknown", async () => {
+  const f = buildFixture("constrained-planning");
+  const ok = await findTool(f, "get_account_balance").handler({ id: "ACC-1" }, {});
+  assert.equal(ok.ok, true);
+  assert.ok(ok.balance > 0);
+  const bad = await findTool(f, "get_account_balance").handler({ id: "ACC-999" }, {});
+  assert.equal(bad.ok, false);
+});

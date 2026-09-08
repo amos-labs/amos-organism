@@ -56,7 +56,7 @@ test("warmup/regression/secondary cells are declared separately and folded into 
 test("serving preflight uses direct-cortex response.model (not amos.served_model) and a concrete load guard", () => {
   const joined = SERVING_PREFLIGHT.join(" | ");
   assert.match(joined, /response\.model/);
-  assert.match(joined, /never synthesize amos\.served_model/); // present only as an explicit prohibition
+  assert.match(joined, /[Nn]ever synthesize amos\.served_model/); // present only as an explicit prohibition
   assert.match(joined, /both-arm served-identity gate/);
   assert.match(joined, /INITIAL inputs/);
   assert.match(joined, /p95.*baseline|baseline.*p95/);

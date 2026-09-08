@@ -24,7 +24,7 @@ export const REQUEST_TOKEN_MODEL = Object.freeze({
   fixtureAndSchemaTokens: 400,         // per-request fixture prompt + tool-schema manifest
   avgHistoryTokensPerPriorCall: 250,   // accumulated tool results + prior turns
   avgOutputTokensPerCall: 160,
-  note: "chars/4-scale estimate; controller re-measures with the pinned tokenizer at preflight, full compiled requests + growing history",
+  note: "chars/4-scale estimate; RECONCILE with actual usage: every hosted call writes a provider_usage_events row (sku + metadata.model_id/input_tokens/output_tokens, per Platform 20260908T020000Z), so per-case cost is MEASURED from a pilot case rather than this estimate; the controller also re-measures direct-cortex requests with the pinned tokenizer at preflight (system prompt + schemas + growing history)",
 });
 
 // maxHttpCallsPerCase = initial turn + up to maxToolCalls tool round-trips + final answer turn.
@@ -108,7 +108,7 @@ export function aggregateWorkload({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFa
 
 export const SERVING_PREFLIGHT = Object.freeze([
   "both-arm served-identity gate: base and S5 each serve a bounded 16-token thinking-OFF warm-up before scoring",
-  "served-model identity: direct-cortex checks the top-level provider response.model (#265) against the pinned arm model/weight/config; AMOS routing metadata stays null (never synthesize amos.served_model)",
+  "served-model identity is transport-specific (Platform 20260908T020000Z): the PRIMARY direct-cortex arms check top-level response.model (#265, AMOS metadata null); a hosted served-identity confirmation of the canary reads amos.served_model/amos.frontier_route. Never synthesize amos.served_model on the direct arm",
   "thinking OFF on both arms (enable_thinking=false, reasoning tokens 0) for the PRIMARY comparison",
   "byte-identical INITIAL inputs/config per arm except model; later transcripts may diverge legitimately with model/tool decisions and each is retained",
   "measure full compiled requests with the pinned tokenizer (system prompt + schemas + growing history) and reserve input+max output for all in-flight requests before dispatch",
