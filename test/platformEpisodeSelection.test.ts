@@ -10,17 +10,33 @@ import {
   classifyEpisodeCredit,
   creditableEpisodes,
   TERMINAL_ASSESSMENT_SCHEMA,
+  TERMINAL_ASSESSMENT_VERSION,
   type OrganismEvent,
 } from "../src/index.ts";
 
-// The shared producer/consumer fixture merged with Platform PR #877, copied byte-for-byte from
-// coordination/artifacts/platform-terminal-assessment-cases-20260908.json (sha256 9c9bc505...).
-const FIXTURE = JSON.parse(readFileSync(new URL("./fixtures/terminal-assessment-cases-20260908.json", import.meta.url), "utf8")) as {
-  consumerRule: string;
-  cases: { case: string; expected: { status: string; counts?: { fail?: number } } }[];
+// Actual serialized terminal_assessment_from producer outputs (independent Rust replay), copied
+// byte-for-byte from coordination/artifacts/organism-86-review-20260908/serialized-producer-cases.json.
+const PRODUCER = JSON.parse(
+  readFileSync(new URL("./fixtures/terminal-assessment-serialized-producer-cases-20260908.json", import.meta.url), "utf8"),
+) as { cases: { case: string; assessment: Record<string, unknown> }[] };
+
+// Codex's independent expected consumer credit for each real producer case (organism-86 review proof.json).
+const EXPECTED_CREDIT: Record<string, "creditable" | "failed" | "unqualified"> = {
+  codex_1_missing_required_b: "unqualified",
+  codex_2_extraneous_failure_b: "creditable",
+  codex_3_wrong_pin_fail: "unqualified",
+  codex_4_partial_coverage_fail: "unqualified",
+  northwind_e152bd9b_completed: "creditable",
+  northwind_8541ebc6_failed_mission_unknowns_only: "unqualified",
+  latest_qualifying_fail: "failed",
+  no_policy: "unqualified",
+  invalid_policy_self_check: "unqualified",
 };
 
 const SYNTHETIC = "platform-mission:7f80fdb1-a26d-41e8-95ac-451aeaa54e32:a10c9080-71f9-48e3-96b9-f6e2185332a0:completed:v1";
+const REAL = "platform-mission:real:t:m:completed:v1";
+const MISSION = "72154c44-5b9f-443b-8dd4-866543c2d7ca";
+const CONTRACT = "c36f3027-d692-4436-9560-2b6db865dd71";
 
 function ev(type: string, episodeId?: string): OrganismEvent {
   return {
@@ -29,19 +45,25 @@ function ev(type: string, episodeId?: string): OrganismEvent {
   } as unknown as OrganismEvent;
 }
 
-const REAL = "platform-mission:real:t:m:completed:v1";
-
-function evWithAssessment(
-  episodeId: string,
+// A real Platform episode whose OUTER identity (event.missionId + source.missionId/contractId) is
+// MISSION/CONTRACT, carrying the given nested terminalAssessment (or none).
+function episodeFor(
   assessment: unknown,
-  type = "platform.experience-negative",
+  { missionId = MISSION, contractId = CONTRACT, episodeId = REAL, type = "platform.experience-negative" as string } = {},
 ): OrganismEvent {
   return {
-    id: `platform-episode:${episodeId}`, type, missionId: "m", occurredAt: "2026-09-07T00:00:00Z",
-    authority: "host", hostReceiptId: "r",
-    payload: { episodeId, source: { verification: assessment === undefined ? {} : { terminalAssessment: assessment } } },
+    id: `platform-episode:${episodeId}`, type, missionId, occurredAt: "2026-09-07T00:00:00Z", authority: "host", hostReceiptId: "r",
+    payload: { episodeId, source: { missionId, contractId, verification: assessment === undefined ? {} : { terminalAssessment: assessment } } },
     digest: "d",
   } as unknown as OrganismEvent;
+}
+
+// A valid, creditable assessment (matched ids) used as the base for adversarial mutation.
+function creditableAssessment(): Record<string, unknown> {
+  return {
+    schema: TERMINAL_ASSESSMENT_SCHEMA, version: TERMINAL_ASSESSMENT_VERSION, status: "complete", missionId: MISSION, contractId: CONTRACT,
+    counts: { fail: 0, unknown: 0, noEvidence: 0, disqualified: 0, extraneousResults: 0, pass: 1, recordedResults: 1, requirements: 1 },
+  };
 }
 
 test("the deployed-receiver proof episode id is registered as transport-validation", () => {
@@ -77,58 +99,70 @@ test("realPlatformEpisodes filters out the transport-validation id, keeps real o
   assert.ok(kept.every((e) => e.type.startsWith("platform.experience-")));
 });
 
-// The consumerRule maps a projected status to a credit outcome; derive the expectation from it so
-// the test tracks the shared fixture's own stated rule rather than a hand-copied table.
-function expectedCredit(status: string): "creditable" | "failed" | "unqualified" {
-  if (status === "complete") return "creditable";
-  if (status === "failed") return "failed";
-  return "unqualified";
-}
-
-test("classifyEpisodeCredit replays the shared #877 terminal-assessment fixture", () => {
-  assert.match(FIXTURE.consumerRule, /credit only when status == complete/);
-  assert.match(FIXTURE.consumerRule, /failed only when status == failed/);
-  assert.equal(FIXTURE.cases.length, 9);
-  for (const c of FIXTURE.cases) {
-    const got = classifyEpisodeCredit(evWithAssessment(REAL, c.expected));
-    assert.equal(got, expectedCredit(c.expected.status), `case ${c.case} (status ${c.expected.status})`);
+test("classifyEpisodeCredit replays every real #877 serialized producer output", () => {
+  assert.equal(PRODUCER.cases.length, 9);
+  for (const c of PRODUCER.cases) {
+    // Normalize the fixture's placeholder ids to this episode's outer identity so a valid
+    // assessment matches; status and counts are the producer's own.
+    const assessment = { ...c.assessment, missionId: MISSION, contractId: CONTRACT };
+    const got = classifyEpisodeCredit(episodeFor(assessment));
+    assert.equal(got, EXPECTED_CREDIT[c.case], `producer case ${c.case}`);
   }
-  // Concretely: the completed Northwind mission is the only creditable real episode among the pair;
-  // the unknowns-only failed mission is pending -> unqualified, never a model-negative.
-  const completed = FIXTURE.cases.find((c) => c.case === "northwind_e152bd9b_completed")!;
-  const failedMission = FIXTURE.cases.find((c) => c.case === "northwind_8541ebc6_failed_mission_unknowns_only")!;
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, completed.expected)), "creditable");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, failedMission.expected)), "unqualified");
+  // Concretely, among the delivered Northwind pair only the completed mission is creditable.
+  const completed = { ...PRODUCER.cases.find((c) => c.case === "northwind_e152bd9b_completed")!.assessment, missionId: MISSION, contractId: CONTRACT };
+  const failedMission = { ...PRODUCER.cases.find((c) => c.case === "northwind_8541ebc6_failed_mission_unknowns_only")!.assessment, missionId: MISSION, contractId: CONTRACT };
+  assert.equal(classifyEpisodeCredit(episodeFor(completed)), "creditable");
+  assert.equal(classifyEpisodeCredit(episodeFor(failedMission)), "unqualified");
 });
 
-test("failed requires a qualifying policy fail; contradictions and missing assessments are unqualified", () => {
-  // failed only when status is failed AND counts.fail is a qualifying policy fail.
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { fail: 1 } })), "failed");
-  // Contradictions never become a model-negative: complete-with-fail and failed-without-fail -> unqualified.
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "complete", counts: { fail: 1 } })), "unqualified");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { status: "failed", counts: { fail: 0 } })), "unqualified");
-  // A missing assessment (legacy events, incl. the two delivered episodes) never substitutes completed status.
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, undefined, "platform.experience-verified")), "unqualified");
+test("adversarial: schema, version, nested identity, counts are all enforced (never spurious credit)", () => {
+  // The unmutated base is creditable.
+  assert.equal(classifyEpisodeCredit(episodeFor(creditableAssessment())), "creditable");
+
+  const mutate = (fn: (a: Record<string, unknown>) => void, outer?: { missionId?: string; contractId?: string }): "creditable" | "failed" | "unqualified" => {
+    const a = creditableAssessment();
+    fn(a);
+    return classifyEpisodeCredit(episodeFor(a, outer));
+  };
+
+  assert.equal(mutate((a) => delete a.schema), "unqualified", "missing-schema");
+  assert.equal(mutate((a) => delete a.version), "unqualified", "missing-version");
+  assert.equal(mutate((a) => delete a.missionId), "unqualified", "missing-assessment-mission");
+  assert.equal(mutate((a) => delete a.contractId), "unqualified", "missing-assessment-contract");
+  // wrong nested mission/contract vs the episode's outer identity.
+  assert.equal(mutate((a) => { a.missionId = "different-mission"; }), "unqualified", "wrong-assessment-mission");
+  assert.equal(mutate((a) => { a.contractId = "different-contract"; }), "unqualified", "wrong-assessment-contract");
+  // malformed fail count on a complete assessment.
+  assert.equal(mutate((a) => { (a.counts as Record<string, unknown>).fail = "1"; }), "unqualified", "invalid-fail-count");
+  // a complete assessment carrying residual missing evidence is contradictory.
+  assert.equal(mutate((a) => { (a.counts as Record<string, unknown>).noEvidence = 1; }), "unqualified", "contradictory-missing-evidence");
+  // a completed terminalStatus with no assessment at all never substitutes.
+  assert.equal(classifyEpisodeCredit(episodeFor(undefined, { type: "platform.experience-verified" })), "unqualified");
 });
 
-test("a wrong-schema or wrong-version assessment is refused", () => {
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { schema: TERMINAL_ASSESSMENT_SCHEMA, version: 1, status: "complete", counts: { fail: 0 } })), "creditable");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { schema: "something.else", status: "complete", counts: { fail: 0 } })), "unqualified");
-  assert.equal(classifyEpisodeCredit(evWithAssessment(REAL, { version: 2, status: "complete", counts: { fail: 0 } })), "unqualified");
+test("a failed assessment needs a qualifying policy fail; a wrong schema/version is refused", () => {
+  const failed = { ...creditableAssessment(), status: "failed", counts: { fail: 1, unknown: 0, noEvidence: 0, disqualified: 0 } };
+  assert.equal(classifyEpisodeCredit(episodeFor(failed)), "failed");
+  const failedNoQualifier = { ...creditableAssessment(), status: "failed", counts: { fail: 0, unknown: 0, noEvidence: 0, disqualified: 0 } };
+  assert.equal(classifyEpisodeCredit(episodeFor(failedNoQualifier)), "unqualified");
+  assert.equal(classifyEpisodeCredit(episodeFor({ ...creditableAssessment(), schema: "other.schema" })), "unqualified");
+  assert.equal(classifyEpisodeCredit(episodeFor({ ...creditableAssessment(), version: 2 })), "unqualified");
 });
 
 test("credit classification excludes transport-validation and non-platform events", () => {
-  // Even a 'complete' assessment on the transport-validation id is unqualified (never real experience).
-  assert.equal(classifyEpisodeCredit(evWithAssessment(SYNTHETIC, { status: "complete", counts: { fail: 0 } })), "unqualified");
+  // Even a valid complete assessment on the transport-validation id is unqualified (never real experience).
+  assert.equal(classifyEpisodeCredit(episodeFor(creditableAssessment(), { episodeId: SYNTHETIC })), "unqualified");
   assert.equal(classifyEpisodeCredit(ev("gene.admitted")), "unqualified");
 });
 
-test("creditableEpisodes keeps only the complete-assessment real episodes", () => {
+test("creditableEpisodes keeps only the clean-complete, identity-matched real episodes", () => {
+  const failed = { ...creditableAssessment(), status: "failed", counts: { fail: 2, unknown: 0, noEvidence: 0, disqualified: 0 } };
+  const pending = { ...creditableAssessment(), status: "pending", counts: { fail: 0, unknown: 0, noEvidence: 1, disqualified: 0 } };
   const chain = [
-    evWithAssessment(REAL, { status: "complete", counts: { fail: 0 } }),
-    evWithAssessment("platform-mission:real2:t:m:failed:v1", { status: "failed", counts: { fail: 2 } }),
-    evWithAssessment("platform-mission:real3:t:m:completed:v1", { status: "pending", counts: { fail: 0 } }),
-    evWithAssessment(SYNTHETIC, { status: "complete", counts: { fail: 0 } }),
+    episodeFor(creditableAssessment(), { episodeId: REAL }),
+    episodeFor(failed, { episodeId: "platform-mission:real2:t:m:failed:v1" }),
+    episodeFor(pending, { episodeId: "platform-mission:real3:t:m:completed:v1" }),
+    episodeFor(creditableAssessment(), { episodeId: SYNTHETIC }),
   ];
   const kept = creditableEpisodes(chain);
   assert.equal(kept.length, 1);
