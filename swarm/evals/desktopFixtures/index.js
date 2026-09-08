@@ -36,16 +36,37 @@ export function allFamiliesBuilt() {
   return FIXTURE_FAMILIES.every((key) => key in DESKTOP_EVAL_FIXTURES);
 }
 
-/** Build a distinct seeded cohort for one family: seeds 0..count-1 must yield unique case ids. */
-export function buildFamilyCohort(key, count) {
+/**
+ * Build a SEMANTICALLY distinct seeded cohort for one family. Seeds are scanned from startSeed;
+ * a case whose datasetDigest was already seen (in this cohort or in excludeDigests) is skipped, so
+ * two seeds that yield the same task/world are never counted as distinct (Codex 20260908T023953Z).
+ */
+export function buildFamilyCohort(key, count, { startSeed = 0, excludeDigests = new Set() } = {}) {
   if (!Number.isSafeInteger(count) || count < 1) throw new Error(`count must be a positive integer, got ${count}`);
+  if (!Number.isSafeInteger(startSeed) || startSeed < 0) throw new Error(`startSeed must be a non-negative integer, got ${startSeed}`);
   const cases = [];
-  const ids = new Set();
-  for (let seed = 0; seed < count; seed += 1) {
+  const seen = new Set();
+  const limit = startSeed + count * 100; // bounded search for distinct datasets
+  for (let seed = startSeed; seed < limit && cases.length < count; seed += 1) {
     const built = buildFixture(key, { seed });
-    if (ids.has(built.fixture.id)) throw new Error(`family ${key} produced a duplicate case id at seed ${seed}`);
-    ids.add(built.fixture.id);
+    const digest = built.fixture.datasetDigest;
+    if (!digest) throw new Error(`family ${key} fixture is missing datasetDigest`);
+    if (seen.has(digest) || excludeDigests.has(digest)) continue;
+    seen.add(digest);
     cases.push(built);
   }
+  if (cases.length < count) throw new Error(`family ${key} could not produce ${count} semantically distinct cases`);
   return cases;
+}
+
+/**
+ * Select a holdout cohort whose datasets are DISJOINT from an inspected development cohort, so the
+ * inspected development cases never become the fresh holdout. Returns cases seeded past the dev
+ * range and semantically deduplicated against the dev digests.
+ */
+export function selectHoldoutSeeds(key, count, { devSeeds = [] } = {}) {
+  const devDigests = new Set(devSeeds.map((seed) => buildFixture(key, { seed }).fixture.datasetDigest));
+  const startSeed = (devSeeds.length ? Math.max(...devSeeds) : -1) + 1;
+  const cases = buildFamilyCohort(key, count, { startSeed, excludeDigests: devDigests });
+  return { seeds: cases.map((c) => c.fixture.seed), digests: cases.map((c) => c.fixture.datasetDigest), cases };
 }

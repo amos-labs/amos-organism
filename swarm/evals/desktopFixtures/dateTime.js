@@ -1,4 +1,4 @@
-import { norm } from "./_shared.js";
+import { norm, datasetDigest } from "./_shared.js";
 
 // Family: date-time reasoning. Add days to a start date across a month boundary. Seeded distinct
 // (start date + offset vary; seed 0 = 2026-02-27 + 3 days = 2026-03-02, non-leap Feb). Strict
@@ -17,6 +17,7 @@ export function dateTimeFixture({ seed = 0 } = {}) {
     fixture: {
       id: `date-time-${String(s).padStart(3, "0")}`,
       synthetic: true, seed: s,
+      datasetDigest: datasetDigest({ family: "date-time", start: iso(start), addDays }),
       prompt: `The start date is ${iso(start)}. Add ${addDays} calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words.`,
     },
     tools: [
