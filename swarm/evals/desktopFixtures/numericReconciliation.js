@@ -12,6 +12,7 @@ export function numericReconciliationFixture({ seed = 0 } = {}) {
   const totalA = ledgerA.reduce((sum, r) => sum + r.amount, 0);
   const totalB = ledgerB.reduce((sum, r) => sum + r.amount, 0);
   const expected = totalA - totalB; // seed 0 -> 75
+  const world = { readA: false, readB: false };
   return {
     fixture: {
       id: `numeric-reconciliation-${String(s).padStart(3, "0")}`,
@@ -22,18 +23,19 @@ export function numericReconciliationFixture({ seed = 0 } = {}) {
     tools: [
       { name: "read_ledger_a", description: "Return ledger A rows [{id, amount}].", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: ledgerA }; } },
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); world.readA = true; return { ok: true, rows: ledgerA }; } },
       { name: "read_ledger_b", description: "Return ledger B rows [{id, amount}].", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: ledgerB }; } },
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); world.readB = true; return { ok: true, rows: ledgerB }; } },
     ],
     verify: (execution) => {
       const answer = norm(execution?.answer);
       const isBareInteger = /^-?(?:0|[1-9][0-9]*)$/.test(answer);
       const got = isBareInteger ? Number(answer) : null;
-      const correct = got === expected;
-      return { verdict: correct ? "pass" : "fail", family: "numeric-reconciliation", expected, got,
-        reason: !isBareInteger ? "answer is not a bare signed integer" : (!correct ? "wrong difference" : "ok") };
+      const readBoth = world.readA && world.readB; // both ledgers must be read (data is not in the prompt)
+      const correct = got === expected && readBoth;
+      return { verdict: correct ? "pass" : "fail", family: "numeric-reconciliation", expected, got, readBoth,
+        reason: !readBoth ? "did not read both ledgers" : (!isBareInteger ? "answer is not a bare signed integer" : (got !== expected ? "wrong difference" : "ok")) };
     },
   };
 }

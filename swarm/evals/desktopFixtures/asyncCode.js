@@ -10,6 +10,7 @@ export function asyncCodeFixture({ seed = 0 } = {}) {
   const durations = Array.from({ length: n }, (_, k) => 40 + ((k * 37 + s * 53) % 260)); // ms, 40..299
   const concurrentMs = Math.max(...durations); // Promise.all wall time = slowest task
   const sequentialMs = durations.reduce((sum, d) => sum + d, 0); // the await-in-loop trap answer
+  const world = { readDurations: false };
   return {
     fixture: {
       id: `async-code-${String(s).padStart(3, "0")}`,
@@ -20,16 +21,16 @@ export function asyncCodeFixture({ seed = 0 } = {}) {
     tools: [
       { name: "get_task_durations", description: "Return the duration in ms of each of the concurrent tasks.", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, durationsMs: durations }; } },
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); world.readDurations = true; return { ok: true, durationsMs: durations }; } },
     ],
     verify: (execution) => {
       const answer = norm(execution?.answer);
       const isBareInteger = /^(?:0|[1-9][0-9]*)$/.test(answer);
       const got = isBareInteger ? Number(answer) : null;
-      const correct = got === concurrentMs;
-      return { verdict: correct ? "pass" : "fail", family: "async-code", expected: concurrentMs, got,
+      const correct = got === concurrentMs && world.readDurations;
+      return { verdict: correct ? "pass" : "fail", family: "async-code", expected: concurrentMs, got, readDurations: world.readDurations,
         sequentialTrap: sequentialMs,
-        reason: !isBareInteger ? "answer is not a bare integer" : (got === sequentialMs ? "summed durations (sequential) instead of the concurrent max" : (!correct ? "wrong concurrent wall time" : "ok")) };
+        reason: !world.readDurations ? "did not read the task durations" : (!isBareInteger ? "answer is not a bare integer" : (got === sequentialMs ? "summed durations (sequential) instead of the concurrent max" : (got !== concurrentMs ? "wrong concurrent wall time" : "ok"))) };
     },
   };
 }
