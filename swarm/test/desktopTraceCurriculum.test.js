@@ -53,3 +53,12 @@ test("a malformed trajectory is rejected rather than silently mislabeled", () =>
   noFinal.messages[6] = { role: "assistant", content: "", tool_calls: [] };
   assert.throws(() => desktopTraceExamples(noFinal, { idPrefix: "x" }), /final message must be an assistant text answer/);
 });
+
+test("every example's sourceEpisodeId is a valid swarm store episode id (recordable for the mixed compile)", () => {
+  // Mirrors EPISODE_ID_PATTERN in swarmLearningStore.js — must contain no colon so the derivatives
+  // can be recorded as episodes and flow through compileAmosNativeTrainingDataset.
+  const EPISODE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,499}$/;
+  for (const example of compileDesktopTraceExamples(NATIVE_TRACE.examples)) {
+    assert.match(example.sourceEpisodeId, EPISODE_ID, `${example.sourceEpisodeId} must be a valid episode id`);
+  }
+});
