@@ -171,7 +171,9 @@ export const SERVING_PREFLIGHT = Object.freeze([
 ]);
 
 /** Fail-closed readiness: every family BUILT with distinct seeded cases, valid counts/arms, feasible bounds. */
-export function preflightEvalBounds({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, arms = EVAL_STOP_BOUNDS.arms.length } = {}) {
+/** Fixture-readiness checks shared by every preflight: valid counts/arms, all families built with
+ * distinct seeded cases. These are NEVER skipped by any session profile. */
+function fixtureReadinessIssues({ casesPerFamily, arms }) {
   const issues = [];
   if (!Number.isSafeInteger(casesPerFamily) || casesPerFamily < 1) issues.push(`casesPerFamily must be a positive integer, got ${casesPerFamily}`);
   if (!Number.isSafeInteger(arms) || arms < 2 || arms > EVAL_STOP_BOUNDS.maxArms) issues.push(`arms must be an integer 2..${EVAL_STOP_BOUNDS.maxArms}, got ${arms}`);
@@ -179,16 +181,38 @@ export function preflightEvalBounds({ casesPerFamily = EVAL_STOP_BOUNDS.casesPer
   for (const key of FIXTURE_FAMILIES) if (!PER_FAMILY_BOUNDS[key]) issues.push(`missing bounds for planned family ${key}`);
   for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) if (!PER_FAMILY_BOUNDS[key]) issues.push(`missing bounds for built fixture ${key}`);
   if (!allFamiliesBuilt()) issues.push(`not all families are built: missing ${FIXTURE_FAMILIES.filter((k) => !(k in DESKTOP_EVAL_FIXTURES)).join(", ")}`);
-  // Distinct seeded cases per built family (fail if a family repeats a case id).
   if (Number.isSafeInteger(casesPerFamily) && casesPerFamily >= 1) {
     for (const key of Object.keys(DESKTOP_EVAL_FIXTURES)) {
       try { buildFamilyCohort(key, casesPerFamily); } catch (e) { issues.push(`family ${key}: ${e.message}`); }
     }
   }
+  return issues;
+}
+
+/** Whole-session (development / 2-arm) preflight: fixture readiness + the full aggregate stop bounds. */
+export function preflightEvalBounds({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, arms = EVAL_STOP_BOUNDS.arms.length } = {}) {
+  const issues = fixtureReadinessIssues({ casesPerFamily, arms });
   let aggregate = null;
   if (issues.length === 0) {
     aggregate = aggregateWorkload({ casesPerFamily, arms });
     if (!aggregate.withinStopBounds) issues.push(`aggregate exceeds stop bounds: httpCalls ${aggregate.projectedHttpCalls}/${aggregate.worstCaseHttpCalls}, tokens ${aggregate.projectedHostedTokens}`);
   }
   return { ok: issues.length === 0, issues, aggregate };
+}
+
+/**
+ * Sealed 3-arm fresh-comparison preflight (Codex 20260908T085713Z): the SAME fixture-readiness
+ * checks (family/completeness/distinct-case) plus the sealed-session workload (primary + warmup
+ * only) against the 900 aggregate cap. Not a substitute for fixture readiness; never disables
+ * validation to pass. Use this — not sealedSessionWorkload.withinSealedBounds alone — to gate the
+ * sealed run. Expected token totals are estimates; the run-time pinned counter enforces per body.
+ */
+export function sealedSessionPreflight({ casesPerFamily = EVAL_STOP_BOUNDS.casesPerFamilyDefault, arms = EVAL_STOP_BOUNDS.maxArms } = {}) {
+  const issues = fixtureReadinessIssues({ casesPerFamily, arms });
+  let sealed = null;
+  if (issues.length === 0) {
+    sealed = sealedSessionWorkload({ casesPerFamily, arms });
+    if (!sealed.withinSealedBounds) issues.push(`sealed session exceeds stop bounds: httpCalls ${sealed.projectedHttpCalls} (cap ${EVAL_STOP_BOUNDS.maxHttpCallsTotal}), tokens ${sealed.projectedHostedTokens} (cap ${EVAL_STOP_BOUNDS.maxHostedTokens})`);
+  }
+  return { ok: issues.length === 0, issues, sealed };
 }
