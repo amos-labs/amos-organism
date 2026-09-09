@@ -16,6 +16,51 @@ function requireAssistantToolCall(message, label) {
 }
 
 /**
+ * Parse a native tool exchange into ordered groups, one per assistant tool_calls turn followed by
+ * the tool results that answer it. This is the single parser used by both retrieved-data helpers so
+ * they share exactly one grouping/binding rule.
+ *
+ * Each group is an assistant message carrying one or more tool_calls (a serial single call, or the
+ * real Desktop PARALLEL representation of several calls in one turn) followed by exactly one tool
+ * result per call id. Results are matched to their group's pending call ids: an orphan (id not issued
+ * by this group), a duplicate (id answered twice) or a missing result all fail closed. The retrieved
+ * context is preserved in order; callers decide which trailing group is the supervised decision.
+ */
+function parseNativeExchange(turns, label) {
+  const groups = [];
+  let index = 0;
+  while (index < turns.length) {
+    const call = turns[index];
+    requireAssistantToolCall(call, `${label} group ${groups.length}`);
+    const callIds = call.tool_calls.map((tc, i) => {
+      const id = tc?.id;
+      if (typeof id !== "string" || id.length === 0) throw new Error(`${label} group ${groups.length} tool_call ${i} needs an id`);
+      return id;
+    });
+    if (new Set(callIds).size !== callIds.length) throw new Error(`${label} group ${groups.length} has duplicate tool_call ids`);
+    index += 1;
+    const pending = new Set(callIds);
+    const results = [];
+    while (index < turns.length && turns[index]?.role === "tool") {
+      const result = turns[index];
+      const id = result.tool_call_id;
+      if (!pending.has(id)) throw new Error(`${label} group ${groups.length} result has an unmatched tool_call_id ${JSON.stringify(id)} (orphan or duplicate)`);
+      pending.delete(id);
+      results.push(result);
+      index += 1;
+    }
+    if (pending.size > 0) throw new Error(`${label} group ${groups.length} is missing tool results for ${[...pending].join(", ")}`);
+    groups.push({ call, results });
+  }
+  return groups;
+}
+
+/** Flatten parsed groups back to their native message order (call then its results). */
+function flattenGroups(groups) {
+  return groups.flatMap((group) => [group.call, ...group.results]);
+}
+
+/**
  * Derive the development training examples from ONE native Desktop tool trajectory.
  *
  * The trajectory is the recorded seven-message shape: system, user, a failed tool call, its error,
@@ -93,8 +138,8 @@ export function compileDesktopTraceExamples(trajectories, options = {}) {
  */
 export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = "numeric-reconciliation", role = "reconciliation-specialist" } = {}) {
   const messages = trajectory?.messages;
-  if (!Array.isArray(messages) || messages.length < 7 || messages.length % 2 !== 1) {
-    throw new Error("retrieved-data trace must be [system, user, (read call, read result)+, calculate call, calculate result, final answer]");
+  if (!Array.isArray(messages) || messages.length < 7) {
+    throw new Error("retrieved-data trace must be [system, user, (read group)+, calculate group, final answer]");
   }
   const systemMessage = messages[0];
   const userMessage = messages[1];
@@ -104,17 +149,15 @@ export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = 
   if (finalAnswer?.role !== "assistant" || typeof finalAnswer.content !== "string" || finalAnswer.content.length === 0) {
     throw new Error("the final message must be an assistant text answer");
   }
-  const exchange = messages.slice(2, messages.length - 1);
-  for (let i = 0; i < exchange.length; i += 2) {
-    requireAssistantToolCall(exchange[i], `tool call ${i / 2}`);
-    if (exchange[i + 1]?.role !== "tool") throw new Error(`tool result ${i / 2} must be a tool message`);
+  const groups = parseNativeExchange(messages.slice(2, messages.length - 1), "retrieved-data trace");
+  if (groups.length < 2) throw new Error("a retrieved-data trace needs at least one read group and a final calculate group");
+  const calculateGroup = groups[groups.length - 1];
+  if (calculateGroup.call.tool_calls.length !== 1 || calculateGroup.call.tool_calls[0]?.function?.name !== "desktop_calculate") {
+    throw new Error("the final group before the answer must be a single desktop_calculate call");
   }
-  const calculateResult = exchange[exchange.length - 1];
-  const calculateCall = exchange[exchange.length - 2];
-  const readTurns = exchange.slice(0, exchange.length - 2);
-  if (readTurns.length < 2) {
-    throw new Error("a retrieved-data trace needs at least one prior read whose results supply the calculate operands");
-  }
+  const readGroups = groups.slice(0, -1);
+  if (readGroups.length < 1) throw new Error("a retrieved-data trace needs at least one prior read whose results supply the calculate operands");
+  const readTurns = flattenGroups(readGroups);
   const system = systemMessage.content;
   const user = userMessage.content;
   const prefix = idPrefix ?? trajectory.id ?? "retrieved-trace";
@@ -124,11 +167,11 @@ export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = 
     {
       ...base, id: `${prefix}:retrieved-tool-call`,
       input: { system, user, toolTrace: { contextTurns: readTurns, tools } },
-      target: { kind: "retrieved-tool-call", content: calculateCall.content ?? null, toolCalls: calculateCall.tool_calls }
+      target: { kind: "retrieved-tool-call", content: calculateGroup.call.content ?? null, toolCalls: calculateGroup.call.tool_calls }
     },
     {
       ...base, id: `${prefix}:checked-final-answer`,
-      input: { system, user, toolTrace: { contextTurns: [...readTurns, calculateCall, calculateResult], tools } },
+      input: { system, user, toolTrace: { contextTurns: [...readTurns, ...flattenGroups([calculateGroup])], tools } },
       target: { kind: "verified-synthesis", content: finalAnswer.content }
     }
   ];
@@ -155,8 +198,8 @@ export function compileRetrievedDataTraceExamples(trajectories, options = {}) {
  */
 export function retrievedAnswerTraceExamples(trajectory, { idPrefix, taskFamily = "date-time", role = "reference-grounded-answerer" } = {}) {
   const messages = trajectory?.messages;
-  if (!Array.isArray(messages) || messages.length < 5 || messages.length % 2 !== 1) {
-    throw new Error("retrieved-answer trace must be [system, user, (read call, read result)+, final answer]");
+  if (!Array.isArray(messages) || messages.length < 5) {
+    throw new Error("retrieved-answer trace must be [system, user, (read group)+, final answer]");
   }
   const systemMessage = messages[0];
   const userMessage = messages[1];
@@ -167,11 +210,8 @@ export function retrievedAnswerTraceExamples(trajectory, { idPrefix, taskFamily 
     throw new Error("the final message must be an assistant text answer");
   }
   const readTurns = messages.slice(2, messages.length - 1);
-  if (readTurns.length < 2) throw new Error("a retrieved-answer trace needs at least one prior read whose result grounds the answer");
-  for (let i = 0; i < readTurns.length; i += 2) {
-    requireAssistantToolCall(readTurns[i], `read call ${i / 2}`);
-    if (readTurns[i + 1]?.role !== "tool") throw new Error(`read result ${i / 2} must be a tool message`);
-  }
+  const readGroups = parseNativeExchange(readTurns, "retrieved-answer trace");
+  if (readGroups.length < 1) throw new Error("a retrieved-answer trace needs at least one prior read whose result grounds the answer");
   const system = systemMessage.content;
   const user = userMessage.content;
   const prefix = idPrefix ?? trajectory.id ?? "retrieved-answer-trace";
