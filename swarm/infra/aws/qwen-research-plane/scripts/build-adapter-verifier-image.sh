@@ -20,7 +20,23 @@ TAG="adapter-verifier-${SOURCE_REVISION:0:12}-$(date -u +%Y%m%d%H%M%S)"
 
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$REGISTRY"
-docker buildx build \
+
+# The research runner's default BuildKit cannot emit provenance/SBOM attestations
+# ("attestations are not supported by the current buildkitd"). Use a bounded, named
+# docker-container builder (capped CPU/memory, max-parallelism 2) — the same setup
+# proven for the trainer image — and remove only that builder on exit.
+BUILDER="amos-verifier-${SOURCE_REVISION:0:12}"
+BUILDKIT_CONFIG="$(mktemp)"
+printf '[worker.oci]\n  max-parallelism = 2\n' > "$BUILDKIT_CONFIG"
+cleanup_builder() { docker buildx rm "$BUILDER" >/dev/null 2>&1 || true; rm -f "$BUILDKIT_CONFIG"; }
+trap cleanup_builder EXIT
+docker buildx rm "$BUILDER" >/dev/null 2>&1 || true
+docker buildx create --name "$BUILDER" --driver docker-container \
+  --driver-opt network=host,memory=4g,cpu-period=100000,cpu-quota=150000 \
+  --config "$BUILDKIT_CONFIG"
+docker buildx inspect --builder "$BUILDER" --bootstrap
+
+docker buildx build --builder "$BUILDER" \
   --platform linux/amd64 \
   --provenance=true \
   --sbom=true \
