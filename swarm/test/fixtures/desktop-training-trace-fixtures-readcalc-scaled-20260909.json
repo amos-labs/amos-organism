@@ -195,7 +195,7 @@
         {
           "role": "tool",
           "tool_call_id": "rda_diff_3x3",
-          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":1875},{\"id\":\"a2\",\"amount\":640},{\"id\":\"a3\",\"amount\":2210}]}"
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":2000},{\"id\":\"a2\",\"amount\":700},{\"id\":\"a3\",\"amount\":1900}]}"
         },
         {
           "role": "assistant",
@@ -214,7 +214,7 @@
         {
           "role": "tool",
           "tool_call_id": "rdb_diff_3x3",
-          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":1500},{\"id\":\"b2\",\"amount\":980},{\"id\":\"b3\",\"amount\":1120}]}"
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":1600},{\"id\":\"b2\",\"amount\":850},{\"id\":\"b3\",\"amount\":1050}]}"
         },
         {
           "role": "assistant",
@@ -225,7 +225,7 @@
               "type": "function",
               "function": {
                 "name": "desktop_calculate",
-                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":1875,\"unit\":\"usd\"},{\"value\":640,\"unit\":\"usd\"},{\"value\":2210,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":1500,\"unit\":\"usd\"},{\"value\":980,\"unit\":\"usd\"},{\"value\":1120,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":2000,\"unit\":\"usd\"},{\"value\":700,\"unit\":\"usd\"},{\"value\":1900,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":1600,\"unit\":\"usd\"},{\"value\":850,\"unit\":\"usd\"},{\"value\":1050,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
               }
             }
           ]
@@ -233,11 +233,11 @@
         {
           "role": "tool",
           "tool_call_id": "cal_diff_3x3",
-          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4725,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":3600,\"unit\":\"usd\",\"formula\":\"=SUM(A4,A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":1125,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4600,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":3500,\"unit\":\"usd\",\"formula\":\"=SUM(A4,A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":1100,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
         },
         {
           "role": "assistant",
-          "content": "1125"
+          "content": "1100"
         }
       ],
       "metadata": {
@@ -247,7 +247,7 @@
         "synthetic": true,
         "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
         "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
-        "independentChecker": "sum(A)=4725; sum(B)=3600; A-B=1125",
+        "independentChecker": "sum(A)=4600; sum(B)=3500; A-B=1100 (distinct from e9db5c4 ledgers)",
         "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
         "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
       }
