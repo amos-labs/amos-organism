@@ -141,3 +141,55 @@ export function compileRetrievedDataTraceExamples(trajectories, options = {}) {
     retrievedDataTraceExamples(trajectory, { idPrefix: trajectory.id ?? `retrieved-${index}`, ...options }).map(createAmosSystemTrainingExample)
   );
 }
+
+/**
+ * Derive a development example from ONE retrieval-then-reasoned-answer trajectory:
+ * [system, user, (read call, read result)+, checked final answer]. Unlike the read->calculate
+ * shape there is no intermediate compute tool — the answer is reasoned from the retrieved reference
+ * (e.g. read month lengths, then return the correct date). This targets the v3 date-overflow miss,
+ * where the candidate read the reference and still returned a wrong date.
+ *
+ * We mint a single `checked-final-answer` example: the read call(s)/result(s) are masked CONTEXT and
+ * the checked final answer is SUPERVISED. We do NOT mint a context-free answer target, because the
+ * answer depends on the retrieved reference; the reads are never dropped from that decision.
+ */
+export function retrievedAnswerTraceExamples(trajectory, { idPrefix, taskFamily = "date-time", role = "reference-grounded-answerer" } = {}) {
+  const messages = trajectory?.messages;
+  if (!Array.isArray(messages) || messages.length < 5 || messages.length % 2 !== 1) {
+    throw new Error("retrieved-answer trace must be [system, user, (read call, read result)+, final answer]");
+  }
+  const systemMessage = messages[0];
+  const userMessage = messages[1];
+  const finalAnswer = messages[messages.length - 1];
+  if (systemMessage?.role !== "system" || typeof systemMessage.content !== "string") throw new Error("the first message must be a system prompt");
+  if (userMessage?.role !== "user" || typeof userMessage.content !== "string") throw new Error("the second message must be a user prompt");
+  if (finalAnswer?.role !== "assistant" || typeof finalAnswer.content !== "string" || finalAnswer.content.length === 0) {
+    throw new Error("the final message must be an assistant text answer");
+  }
+  const readTurns = messages.slice(2, messages.length - 1);
+  if (readTurns.length < 2) throw new Error("a retrieved-answer trace needs at least one prior read whose result grounds the answer");
+  for (let i = 0; i < readTurns.length; i += 2) {
+    requireAssistantToolCall(readTurns[i], `read call ${i / 2}`);
+    if (readTurns[i + 1]?.role !== "tool") throw new Error(`read result ${i / 2} must be a tool message`);
+  }
+  const system = systemMessage.content;
+  const user = userMessage.content;
+  const prefix = idPrefix ?? trajectory.id ?? "retrieved-answer-trace";
+  const tools = trajectory.tools;
+  const base = { sourceEpisodeId: `retrieved-answer-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  return [
+    {
+      ...base, id: `${prefix}:checked-final-answer`,
+      input: { system, user, toolTrace: { contextTurns: readTurns, tools } },
+      target: { kind: "verified-synthesis", content: finalAnswer.content }
+    }
+  ];
+}
+
+/** Compile every retrieval-then-answer trajectory into its validated AMOS system training examples. */
+export function compileRetrievedAnswerTraceExamples(trajectories, options = {}) {
+  if (!Array.isArray(trajectories)) throw new Error("trajectories must be an array");
+  return trajectories.flatMap((trajectory, index) =>
+    retrievedAnswerTraceExamples(trajectory, { idPrefix: trajectory.id ?? `retrieved-answer-${index}`, ...options }).map(createAmosSystemTrainingExample)
+  );
+}
