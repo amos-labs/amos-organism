@@ -8,6 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH
 
+# Build hosts on the research plane have HTTPS-only egress; Ubuntu mirrors default to HTTP.
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates python3-venv \
     && rm -rf /var/lib/apt/lists/* \
@@ -26,6 +28,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TRANSFORMERS_OFFLINE=1 \
     PATH=/opt/venv/bin:$PATH
 
+# Build hosts on the research plane have HTTPS-only egress; Ubuntu mirrors default to HTTP.
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get purge -y \
@@ -37,7 +41,7 @@ RUN apt-get update \
 
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /opt/amos
-COPY infra/aws/qwen-research-plane/adapter-verifier/verify_vllm_adapter.py /opt/amos/verify_vllm_adapter.py
+COPY swarm/infra/aws/qwen-research-plane/adapter-verifier/verify_vllm_adapter.py /opt/amos/verify_vllm_adapter.py
 RUN python -m py_compile /opt/amos/verify_vllm_adapter.py \
     && useradd --create-home --uid 10001 verifier \
     && mkdir -p /work \
