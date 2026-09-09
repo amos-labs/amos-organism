@@ -1,0 +1,68 @@
+{
+  "id": "development-date-overflow-month-boundary",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "month_lengths",
+        "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "year": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month; reply with only the resulting date."
+    },
+    {
+      "role": "user",
+      "content": "The start date is 2026-01-29. Add 5 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+    },
+    {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {
+          "id": "ml_1",
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "arguments": "{\"year\":2026}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "nonexistent-month-lengths",
+      "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+    },
+    {
+      "role": "assistant",
+      "content": "2026-02-03"
+    }
+  ],
+  "metadata": {
+    "sourceExampleId": "development-dateoverflow",
+    "lineageGroup": "live-review-date-overflow-development-family",
+    "split": "development-train-only-candidate",
+    "synthetic": true,
+    "assistantTraceConstruction": "Hand-constructed retrieval-then-reasoned-answer trajectory; month_lengths receipt is the fixture read-tool output; no compute tool and no fabricated error.",
+    "toolResults": "month_lengths is an actual local read-tool execution on a holdout-DISJOINT date/offset; the answer is checked by independent UTC-epoch date arithmetic.",
+    "independentChecker": "UTC-epoch recomputation: 2026-01-29 + 5 days = 2026-02-03 (Jan has 31 days; 29+5=34; 34-31=3 -> Feb 3); month_lengths(2026)[1]=28 (non-leap).",
+    "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout cases/answers.",
+    "supervision": "The month_lengths read is masked context; the checked final date is supervised. No context-free answer target."
+  }
+}
