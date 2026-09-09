@@ -771,7 +771,7 @@
       }
     },
     {
-      "id": "development-recovery-currency-mismatch",
+      "id": "development-recovery-currency-distinct",
       "tools": [
         {
           "function": {
@@ -900,25 +900,25 @@
         },
         {
           "role": "user",
-          "content": "Subtract a EUR 22000/month cost from a USD 40000/month revenue to compare. Use the calculator and keep currencies distinct."
+          "content": "A firm has a USD ledger (revenue USD 40000/month, cost USD 18000/month) and a EUR ledger (revenue EUR 26000/month, cost EUR 15500/month). Compute each currency's monthly net with the calculator; keep the currencies distinct."
         },
         {
           "role": "assistant",
           "content": null,
           "tool_calls": [
             {
-              "id": "bad_currency_mismatch",
+              "id": "bad_curr",
               "type": "function",
               "function": {
                 "name": "desktop_calculate",
-                "arguments": "{\"steps\":[{\"key\":\"compare\",\"operation\":\"subtract\",\"operands\":[{\"value\":40000,\"unit\":\"usd_per_month\"},{\"value\":22000,\"unit\":\"eur_per_month\"}],\"unit\":\"usd_per_month\"}]}"
+                "arguments": "{\"steps\":[{\"key\":\"combined\",\"operation\":\"subtract\",\"operands\":[{\"value\":40000,\"unit\":\"usd_per_month\"},{\"value\":15500,\"unit\":\"eur_per_month\"}],\"unit\":\"usd_per_month\"}]}"
               }
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "bad_currency_mismatch",
+          "tool_call_id": "bad_curr",
           "content": "{\"error\":\"Calculation!B1 declares usd_per_month but its deterministic formula produces mixed. Use an explicit annual_to_monthly or monthly_to_annual operation for period conversions.\"}"
         },
         {
@@ -926,35 +926,35 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "good_currency_mismatch",
+              "id": "good_curr",
               "type": "function",
               "function": {
                 "name": "desktop_calculate",
-                "arguments": "{\"steps\":[{\"key\":\"usd_net\",\"operation\":\"subtract\",\"operands\":[{\"value\":40000,\"unit\":\"usd_per_month\"},{\"value\":18000,\"unit\":\"usd_per_month\"}],\"unit\":\"usd_per_month\"},{\"key\":\"eur_cost\",\"operation\":\"sum\",\"operands\":[{\"value\":22000,\"unit\":\"eur_per_month\"}],\"unit\":\"eur_per_month\"}]}"
+                "arguments": "{\"steps\":[{\"key\":\"usd_net\",\"operation\":\"subtract\",\"operands\":[{\"value\":40000,\"unit\":\"usd_per_month\"},{\"value\":18000,\"unit\":\"usd_per_month\"}],\"unit\":\"usd_per_month\"},{\"key\":\"eur_net\",\"operation\":\"subtract\",\"operands\":[{\"value\":26000,\"unit\":\"eur_per_month\"},{\"value\":15500,\"unit\":\"eur_per_month\"}],\"unit\":\"eur_per_month\"}]}"
               }
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "good_currency_mismatch",
-          "content": "{\"ok\":true,\"steps\":[{\"key\":\"usd_net\",\"label\":\"usd_net\",\"value\":22000,\"unit\":\"usd_per_month\",\"formula\":\"=(A1-A2)\"},{\"key\":\"eur_cost\",\"label\":\"eur_cost\",\"value\":22000,\"unit\":\"eur_per_month\",\"formula\":\"=SUM(A3)\"}],\"verified\":true}"
+          "tool_call_id": "good_curr",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"usd_net\",\"label\":\"usd_net\",\"value\":22000,\"unit\":\"usd_per_month\",\"formula\":\"=(A1-A2)\"},{\"key\":\"eur_net\",\"label\":\"eur_net\",\"value\":10500,\"unit\":\"eur_per_month\",\"formula\":\"=(A3-A4)\"}],\"verified\":true}"
         },
         {
           "role": "assistant",
-          "content": "The currencies stay separate: USD nets 22000/month; the EUR cost of 22000/month is reported on its own, not subtracted from USD."
+          "content": "The currencies stay separate: the USD ledger nets USD 22000/month and the EUR ledger nets EUR 10500/month. They are not combined without a supported exchange rate."
         }
       ],
       "metadata": {
-        "sourceExampleId": "dev-rec-currency-mismatch",
+        "sourceExampleId": "dev-rec-currency-distinct",
         "lineageGroup": "live-review-failuremode-development-family",
         "split": "development-train-only-candidate",
         "synthetic": true,
-        "assistantTraceConstruction": "Hand-constructed from real desktop_calculate executions; not model-generated.",
-        "toolResults": "Actual local executions on holdout-DISJOINT custom values; source hashes match frozen revision.",
-        "independentChecker": "40000-18000=22000 usd; eur 22000 kept separate",
+        "assistantTraceConstruction": "Hand-constructed from real desktop_calculate executions; grounded operands only.",
+        "toolResults": "Actual local executions on holdout-DISJOINT prompt-supplied values; hashes match frozen revision.",
+        "independentChecker": "40000-18000=22000 usd_per_month; 26000-15500=10500 eur_per_month; currencies kept distinct.",
         "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
-        "supervision": "Failed call+error masked; corrected call and checked answer supervised."
+        "supervision": "Failed mismatched-currency call+error masked; corrected per-currency call and checked answer supervised; every operand supplied in the prompt."
       }
     },
     {

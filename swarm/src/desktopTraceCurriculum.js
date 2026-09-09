@@ -61,6 +61,38 @@ function flattenGroups(groups) {
 }
 
 /**
+ * True when `value` appears in `text` as a standalone number: not part of a larger integer and not
+ * the head of a longer decimal. A trailing sentence period ("USD 38000. Compute") still counts as a
+ * match, while "380001" and "38000.5" do not.
+ */
+function numberAppears(text, value) {
+  const token = String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<!\\d)(?<!\\d\\.)${token}(?!\\d)(?!\\.\\d)`).test(text);
+}
+
+/**
+ * Fail closed if a supervised desktop_calculate call carries a LITERAL operand value that is not
+ * grounded in the available evidence (the user prompt plus any prior tool results). This prevents a
+ * "verified" tool receipt from teaching an invented, unsupported operand (Codex 134029Z): a real
+ * Decimal result for 40000-18000 does not make the injected 18000 authorized when the prompt never
+ * supplied it. Step-reference operands and non-calculator calls are not literal facts and are skipped.
+ */
+function assertCalculatorOperandProvenance(call, groundingText, label) {
+  const toolCall = call?.tool_calls?.[0];
+  if (!toolCall || toolCall.function?.name !== "desktop_calculate") return;
+  const raw = toolCall.function.arguments;
+  let args;
+  try { args = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { throw new Error(`${label}: desktop_calculate arguments are not valid JSON`); }
+  for (const step of args?.steps ?? []) {
+    for (const operand of step?.operands ?? []) {
+      if (operand && typeof operand.value === "number" && !numberAppears(groundingText, operand.value)) {
+        throw new Error(`${label}: supervised operand ${operand.value} (${operand.unit ?? "no unit"}) is not grounded in the prompt or prior tool results`);
+      }
+    }
+  }
+}
+
+/**
  * Derive the development training examples from ONE native Desktop tool trajectory.
  *
  * The trajectory is the recorded seven-message shape: system, user, a failed tool call, its error,
@@ -94,6 +126,8 @@ export function desktopTraceExamples(trajectory, { idPrefix, taskFamily = "calcu
   const prefix = idPrefix ?? trajectory.id ?? "desktop-trace";
   const tools = trajectory.tools;
   const base = { sourceEpisodeId: `desktop-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  // The supervised corrected call may only use operand literals the user prompt actually supplied.
+  assertCalculatorOperandProvenance(correctedCall, user, `desktop trace ${prefix} corrected call`);
   const correctedTarget = { content: correctedCall.content ?? null, toolCalls: correctedCall.tool_calls };
   return [
     {
@@ -160,6 +194,9 @@ export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = 
   const readTurns = flattenGroups(readGroups);
   const system = systemMessage.content;
   const user = userMessage.content;
+  // The supervised calculate operands must be grounded: the prompt or the retrieved read results.
+  const readEvidence = `${user} ${readTurns.filter((m) => m.role === "tool").map((m) => m.content).join(" ")}`;
+  assertCalculatorOperandProvenance(calculateGroup.call, readEvidence, `retrieved-data trace ${idPrefix ?? trajectory.id ?? "retrieved-trace"} calculate call`);
   const prefix = idPrefix ?? trajectory.id ?? "retrieved-trace";
   const tools = trajectory.tools;
   const base = { sourceEpisodeId: `retrieved-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
