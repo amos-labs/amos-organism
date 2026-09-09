@@ -1,0 +1,1866 @@
+{
+  "schema": "amos.desktop-development-training-trace-fixtures",
+  "version": 1,
+  "createdAt": "2026-09-09T13:23:40.704Z",
+  "frozenAgentRevision": "764847a031e3d95c3d98d0bdb8afb01a8dd52d62",
+  "sourceArtifact": "organism scaled read-ledger -> calculate curriculum (tool-selection-after-retrieval); holdout-disjoint",
+  "sourceChecks": [
+    {
+      "path": "src/tools/spreadsheets.js",
+      "sha256": "fe9edcd83f7cf38b23f211a1354b36c44480d76dd8db82fb2d4fa3e222b61c03",
+      "matchesExecutedSource": true
+    },
+    {
+      "path": "src/artifacts/spreadsheetFormula.js",
+      "sha256": "5c727ec49e4ccbd476d21ddc7a9459b32bc0bdfcd8eb228403e9c7e71c0be4ce",
+      "matchesExecutedSource": true
+    },
+    {
+      "path": "src/artifacts/spreadsheetSpec.js",
+      "sha256": "17ed7fdd1dd0f9edd20c5d5f376b11f318ebe206d4d4a770736ee98585f9d944",
+      "matchesExecutedSource": true
+    }
+  ],
+  "examples": [
+    {
+      "id": "development-readcalc-diff-3x3",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Two ledgers A and B in whole dollars. Read both, sum each, and report ONLY the signed difference (total A minus total B) as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_3x3",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_3x3",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":1875},{\"id\":\"a2\",\"amount\":640},{\"id\":\"a3\",\"amount\":2210}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_3x3",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_3x3",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":1500},{\"id\":\"b2\",\"amount\":980},{\"id\":\"b3\",\"amount\":1120}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_3x3",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":1875,\"unit\":\"usd\"},{\"value\":640,\"unit\":\"usd\"},{\"value\":2210,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":1500,\"unit\":\"usd\"},{\"value\":980,\"unit\":\"usd\"},{\"value\":1120,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_3x3",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4725,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":3600,\"unit\":\"usd\",\"formula\":\"=SUM(A4,A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":1125,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "1125"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-3x3",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=4725; sum(B)=3600; A-B=1125",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-4x2",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Ledger A has four rows, ledger B two, all whole dollars. Read both, sum each, and report ONLY total A minus total B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_4x2",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_4x2",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":900},{\"id\":\"a2\",\"amount\":1350},{\"id\":\"a3\",\"amount\":275},{\"id\":\"a4\",\"amount\":1600}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_4x2",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_4x2",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":2100},{\"id\":\"b2\",\"amount\":1500}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_4x2",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":900,\"unit\":\"usd\"},{\"value\":1350,\"unit\":\"usd\"},{\"value\":275,\"unit\":\"usd\"},{\"value\":1600,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":2100,\"unit\":\"usd\"},{\"value\":1500,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_4x2",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4125,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3,A4)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":3600,\"unit\":\"usd\",\"formula\":\"=SUM(A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":525,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "525"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-4x2",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=4125; sum(B)=3600; A-B=525",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-2x4",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Ledger A two rows, ledger B four rows, whole dollars. Read both, sum each, report ONLY A minus B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_2x4",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_2x4",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":3300},{\"id\":\"a2\",\"amount\":1450}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_2x4",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_2x4",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":800},{\"id\":\"b2\",\"amount\":1200},{\"id\":\"b3\",\"amount\":950},{\"id\":\"b4\",\"amount\":600}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_2x4",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":3300,\"unit\":\"usd\"},{\"value\":1450,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":800,\"unit\":\"usd\"},{\"value\":1200,\"unit\":\"usd\"},{\"value\":950,\"unit\":\"usd\"},{\"value\":600,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_2x4",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4750,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":3550,\"unit\":\"usd\",\"formula\":\"=SUM(A3,A4,A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":1200,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "1200"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-2x4",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=4750; sum(B)=3550; A-B=1200",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-neg",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Two ledgers in whole dollars. Read both, sum each, report ONLY total A minus total B (may be negative) as a bare signed integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_neg",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_neg",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":1200},{\"id\":\"a2\",\"amount\":500}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_neg",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_neg",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":2000},{\"id\":\"b2\",\"amount\":900}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_neg",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":1200,\"unit\":\"usd\"},{\"value\":500,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":2000,\"unit\":\"usd\"},{\"value\":900,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_neg",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":1700,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":2900,\"unit\":\"usd\",\"formula\":\"=SUM(A3,A4)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":-1200,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "-1200"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-neg",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=1700; sum(B)=2900; A-B=-1200",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-5x3",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Ledger A five rows, ledger B three rows, whole dollars. Read both, sum each, report ONLY A minus B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_5x3",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_5x3",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":410},{\"id\":\"a2\",\"amount\":390},{\"id\":\"a3\",\"amount\":1220},{\"id\":\"a4\",\"amount\":305},{\"id\":\"a5\",\"amount\":875}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_5x3",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_5x3",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":1400},{\"id\":\"b2\",\"amount\":600},{\"id\":\"b3\",\"amount\":700}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_5x3",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":410,\"unit\":\"usd\"},{\"value\":390,\"unit\":\"usd\"},{\"value\":1220,\"unit\":\"usd\"},{\"value\":305,\"unit\":\"usd\"},{\"value\":875,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":1400,\"unit\":\"usd\"},{\"value\":600,\"unit\":\"usd\"},{\"value\":700,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_5x3",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":3200,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3,A4,A5)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":2700,\"unit\":\"usd\",\"formula\":\"=SUM(A6,A7,A8)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":500,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "500"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-5x3",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=3200; sum(B)=2700; A-B=500",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-total-a-only",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Two ledgers, whole dollars. Read both, sum each, report ONLY total A minus total B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_total_a_only",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_total_a_only",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":2450},{\"id\":\"a2\",\"amount\":1330},{\"id\":\"a3\",\"amount\":770}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_total_a_only",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_total_a_only",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":1000}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_total_a_only",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":2450,\"unit\":\"usd\"},{\"value\":1330,\"unit\":\"usd\"},{\"value\":770,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":1000,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_total_a_only",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":4550,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":1000,\"unit\":\"usd\",\"formula\":\"=SUM(A4)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":3550,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "3550"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-total-a-only",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=4550; sum(B)=1000; A-B=3550",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-3x3-b",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Two ledgers A and B, whole dollars. Read both, sum each, report ONLY the signed difference A minus B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_3x3_b",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_3x3_b",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":5000},{\"id\":\"a2\",\"amount\":250},{\"id\":\"a3\",\"amount\":1750}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_3x3_b",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_3x3_b",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":3200},{\"id\":\"b2\",\"amount\":1300},{\"id\":\"b3\",\"amount\":900}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_3x3_b",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":5000,\"unit\":\"usd\"},{\"value\":250,\"unit\":\"usd\"},{\"value\":1750,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":3200,\"unit\":\"usd\"},{\"value\":1300,\"unit\":\"usd\"},{\"value\":900,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_3x3_b",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":7000,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2,A3)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":5400,\"unit\":\"usd\",\"formula\":\"=SUM(A4,A5,A6)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":1600,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "1600"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-3x3-b",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=7000; sum(B)=5400; A-B=1600",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    },
+    {
+      "id": "development-readcalc-diff-big",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_a",
+            "description": "Return ledger A rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "read_ledger_b",
+            "description": "Return ledger B rows [{id, amount}].",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "function": {
+            "description": "Perform material arithmetic deterministically with explicit units. Use before stating financial, pricing, payroll, scenario, rate, annual/monthly, or other consequential numeric conclusions. Build dependent math as ordered steps. A step may reference an earlier step by key. Subtract, divide and power take exactly two operands; sum accepts a list. Keep USD and EUR distinct. Cash divided by same-currency monthly burn produces months; annual burn produces years. Period conversion must use annual_to_monthly or monthly_to_annual; AMOS rejects unit mismatches.",
+            "name": "desktop_calculate",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "description": "Unique snake_case identifier for this result.",
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "operands": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "step": {
+                              "description": "Key of an earlier calculation step.",
+                              "type": "string"
+                            },
+                            "unit": {
+                              "enum": [
+                                "number",
+                                "text",
+                                "boolean",
+                                "count",
+                                "ratio",
+                                "percentage",
+                                "months",
+                                "years",
+                                "usd",
+                                "usd_per_month",
+                                "usd_per_year",
+                                "eur",
+                                "eur_per_month",
+                                "eur_per_year",
+                                "count_per_month",
+                                "count_per_year"
+                              ],
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "operation": {
+                        "enum": [
+                          "add",
+                          "subtract",
+                          "multiply",
+                          "divide",
+                          "power",
+                          "sum",
+                          "average",
+                          "min",
+                          "max",
+                          "round",
+                          "annual_to_monthly",
+                          "monthly_to_annual",
+                          "negate",
+                          "abs"
+                        ],
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "number",
+                          "text",
+                          "boolean",
+                          "count",
+                          "ratio",
+                          "percentage",
+                          "months",
+                          "years",
+                          "usd",
+                          "usd_per_month",
+                          "usd_per_year",
+                          "eur",
+                          "eur_per_month",
+                          "eur_per_year",
+                          "count_per_month",
+                          "count_per_year"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operation",
+                      "operands",
+                      "unit"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "steps"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "function"
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided tools. The amounts are NOT in the prompt: read the ledgers with the tools, then use the calculator on the retrieved values. Report only the checked result."
+        },
+        {
+          "role": "user",
+          "content": "Two ledgers, whole dollars. Read both, sum each, report ONLY total A minus total B as a bare integer."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rda_diff_big",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_a",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rda_diff_big",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"a1\",\"amount\":12400},{\"id\":\"a2\",\"amount\":8600}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "rdb_diff_big",
+              "type": "function",
+              "function": {
+                "name": "read_ledger_b",
+                "arguments": "{}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "rdb_diff_big",
+          "content": "{\"ok\":true,\"rows\":[{\"id\":\"b1\",\"amount\":9900},{\"id\":\"b2\",\"amount\":7300}]}"
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "cal_diff_big",
+              "type": "function",
+              "function": {
+                "name": "desktop_calculate",
+                "arguments": "{\"steps\":[{\"key\":\"total_a\",\"operation\":\"sum\",\"operands\":[{\"value\":12400,\"unit\":\"usd\"},{\"value\":8600,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"total_b\",\"operation\":\"sum\",\"operands\":[{\"value\":9900,\"unit\":\"usd\"},{\"value\":7300,\"unit\":\"usd\"}],\"unit\":\"usd\"},{\"key\":\"difference\",\"operation\":\"subtract\",\"operands\":[{\"step\":\"total_a\"},{\"step\":\"total_b\"}],\"unit\":\"usd\"}]}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "cal_diff_big",
+          "content": "{\"ok\":true,\"steps\":[{\"key\":\"total_a\",\"label\":\"total_a\",\"value\":21000,\"unit\":\"usd\",\"formula\":\"=SUM(A1,A2)\"},{\"key\":\"total_b\",\"label\":\"total_b\",\"value\":17200,\"unit\":\"usd\",\"formula\":\"=SUM(A3,A4)\"},{\"key\":\"difference\",\"label\":\"difference\",\"value\":3800,\"unit\":\"usd\",\"formula\":\"=(B1-B2)\"}],\"verified\":true}"
+        },
+        {
+          "role": "assistant",
+          "content": "3800"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-rc-diff-big",
+        "lineageGroup": "live-review-retrieved-reconciliation-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Clean multi-tool trajectory; read receipts are read_ledger outputs, calculate receipt is a real execution. No fabricated error.",
+        "toolResults": "Read receipts deterministic on holdout-DISJOINT custom ledgers; calculate receipt is an actual execution; hashes match frozen revision.",
+        "independentChecker": "sum(A)=21000; sum(B)=17200; A-B=3800",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "Reads masked context; supervised targets are the native calculate call (operands from reads) and the checked answer; no context-free target."
+      }
+    }
+  ]
+}
