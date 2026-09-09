@@ -9,6 +9,7 @@ export const AMOS_NATIVE_DATASET_VERSION = 1;
 
 const TARGET_KINDS = new Set([
   "tool-call",
+  "retrieved-tool-call",
   "typed-artifact",
   "recovery-transition",
   "approval-boundary",

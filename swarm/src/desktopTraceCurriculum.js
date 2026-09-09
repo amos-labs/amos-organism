@@ -76,3 +76,68 @@ export function compileDesktopTraceExamples(trajectories, options = {}) {
     desktopTraceExamples(trajectory, { idPrefix: trajectory.id ?? `trace-${index}`, ...options }).map(createAmosSystemTrainingExample)
   );
 }
+
+/**
+ * Derive development examples from ONE clean retrieved-data trajectory: the model must READ data
+ * with tools, then choose the calculator on the retrieved operands, then answer. Shape is
+ * [system, user, (read call, read result)+, calculate call, calculate result, final answer] — a
+ * clean multi-tool exchange with NO fabricated recovery error. This targets the v3 gap of choosing
+ * the calculator after retrieval; from it we mint two examples, each supervising one verified target
+ * with the PRIOR turns kept as masked context:
+ *
+ *  - `retrieved-tool-call`   — the ledger reads/results are masked context; the valid native
+ *                              calculate call is supervised. We never mint a context-free arithmetic
+ *                              target here, because the operands came from the reads.
+ *  - `checked-final-answer`  — the whole read+calculate exchange is masked context; the checked final
+ *                              answer is supervised.
+ */
+export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = "numeric-reconciliation", role = "reconciliation-specialist" } = {}) {
+  const messages = trajectory?.messages;
+  if (!Array.isArray(messages) || messages.length < 7 || messages.length % 2 !== 1) {
+    throw new Error("retrieved-data trace must be [system, user, (read call, read result)+, calculate call, calculate result, final answer]");
+  }
+  const systemMessage = messages[0];
+  const userMessage = messages[1];
+  const finalAnswer = messages[messages.length - 1];
+  if (systemMessage?.role !== "system" || typeof systemMessage.content !== "string") throw new Error("the first message must be a system prompt");
+  if (userMessage?.role !== "user" || typeof userMessage.content !== "string") throw new Error("the second message must be a user prompt");
+  if (finalAnswer?.role !== "assistant" || typeof finalAnswer.content !== "string" || finalAnswer.content.length === 0) {
+    throw new Error("the final message must be an assistant text answer");
+  }
+  const exchange = messages.slice(2, messages.length - 1);
+  for (let i = 0; i < exchange.length; i += 2) {
+    requireAssistantToolCall(exchange[i], `tool call ${i / 2}`);
+    if (exchange[i + 1]?.role !== "tool") throw new Error(`tool result ${i / 2} must be a tool message`);
+  }
+  const calculateResult = exchange[exchange.length - 1];
+  const calculateCall = exchange[exchange.length - 2];
+  const readTurns = exchange.slice(0, exchange.length - 2);
+  if (readTurns.length < 2) {
+    throw new Error("a retrieved-data trace needs at least one prior read whose results supply the calculate operands");
+  }
+  const system = systemMessage.content;
+  const user = userMessage.content;
+  const prefix = idPrefix ?? trajectory.id ?? "retrieved-trace";
+  const tools = trajectory.tools;
+  const base = { sourceEpisodeId: `retrieved-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  return [
+    {
+      ...base, id: `${prefix}:retrieved-tool-call`,
+      input: { system, user, toolTrace: { contextTurns: readTurns, tools } },
+      target: { kind: "retrieved-tool-call", content: calculateCall.content ?? null, toolCalls: calculateCall.tool_calls }
+    },
+    {
+      ...base, id: `${prefix}:checked-final-answer`,
+      input: { system, user, toolTrace: { contextTurns: [...readTurns, calculateCall, calculateResult], tools } },
+      target: { kind: "verified-synthesis", content: finalAnswer.content }
+    }
+  ];
+}
+
+/** Compile every retrieved-data trajectory into its validated AMOS system training examples. */
+export function compileRetrievedDataTraceExamples(trajectories, options = {}) {
+  if (!Array.isArray(trajectories)) throw new Error("trajectories must be an array");
+  return trajectories.flatMap((trajectory, index) =>
+    retrievedDataTraceExamples(trajectory, { idPrefix: trajectory.id ?? `retrieved-${index}`, ...options }).map(createAmosSystemTrainingExample)
+  );
+}
