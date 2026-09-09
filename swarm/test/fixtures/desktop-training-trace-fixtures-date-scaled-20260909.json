@@ -1,0 +1,553 @@
+{
+  "schema": "amos.desktop-development-training-trace-fixtures",
+  "version": 1,
+  "createdAt": "2026-09-09T13:24:08.968Z",
+  "frozenAgentRevision": "764847a031e3d95c3d98d0bdb8afb01a8dd52d62",
+  "sourceArtifact": "organism scaled date-overflow curriculum (month-boundary incl leap Feb + year boundary); holdout-disjoint",
+  "examples": [
+    {
+      "id": "development-date-20260330-plus4",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-03-30. Add 4 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260330",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260330",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-04-03"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260330",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-03-30 + 4d = 2026-04-03 (month_lengths(2026)[2]=31)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20260428-plus5",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-04-28. Add 5 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260428",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260428",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-05-03"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260428",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-04-28 + 5d = 2026-05-03 (month_lengths(2026)[3]=30)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20260226-plus4",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-02-26. Add 4 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260226",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260226",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-03-02"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260226",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-02-26 + 4d = 2026-03-02 (month_lengths(2026)[1]=28)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20280227-plus3",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2028-02-27. Add 3 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20280227",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2028}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20280227",
+          "content": "{\"ok\":true,\"year\":2028,\"lengths\":[31,29,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2028-03-01"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20280227",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2028-02-27 + 3d = 2028-03-01 (month_lengths(2028)[1]=29)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20261229-plus5",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-12-29. Add 5 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20261229",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20261229",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2027-01-03"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20261229",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-12-29 + 5d = 2027-01-03 (month_lengths(2026)[11]=31)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20260530-plus3",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-05-30. Add 3 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260530",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260530",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-06-02"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260530",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-05-30 + 3d = 2026-06-02 (month_lengths(2026)[4]=31)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20260730-plus4",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-07-30. Add 4 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260730",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260730",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-08-03"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260730",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-07-30 + 4d = 2026-08-03 (month_lengths(2026)[6]=31)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    },
+    {
+      "id": "development-date-20260929-plus5",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "month_lengths",
+            "description": "Return the number of days in each month (Jan..Dec) for a given year.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "year"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "content": "Use the provided reference tools. To add calendar days across a month boundary, consult month_lengths for the year and carry the overflow into the next month (and next year at December); reply with only the resulting date."
+        },
+        {
+          "role": "user",
+          "content": "The start date is 2026-09-29. Add 5 calendar days. Reply with ONLY the resulting date as YYYY-MM-DD (four-digit year, zero-padded month and day), no words."
+        },
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "ml_20260929",
+              "type": "function",
+              "function": {
+                "name": "month_lengths",
+                "arguments": "{\"year\":2026}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "ml_20260929",
+          "content": "{\"ok\":true,\"year\":2026,\"lengths\":[31,28,31,30,31,30,31,31,30,31,30,31]}"
+        },
+        {
+          "role": "assistant",
+          "content": "2026-10-04"
+        }
+      ],
+      "metadata": {
+        "sourceExampleId": "dev-date-20260929",
+        "lineageGroup": "live-review-date-overflow-development-family",
+        "split": "development-train-only-candidate",
+        "synthetic": true,
+        "assistantTraceConstruction": "Retrieval-then-reasoned-answer trajectory; month_lengths receipt is the read-tool output; no compute tool, no fabricated error.",
+        "toolResults": "month_lengths is an actual read-tool execution on a holdout-DISJOINT date/offset; answer checked by independent UTC-epoch arithmetic.",
+        "independentChecker": "UTC-epoch: 2026-09-29 + 5d = 2026-10-04 (month_lengths(2026)[8]=30)",
+        "trainingEligibility": "requires Organism compiler lineage/eligibility; development-only; disjoint from consumed v3 holdout.",
+        "supervision": "month_lengths read masked context; checked date supervised; no context-free target."
+      }
+    }
+  ]
+}
