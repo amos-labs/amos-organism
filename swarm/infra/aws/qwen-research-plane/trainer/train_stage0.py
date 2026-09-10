@@ -296,6 +296,8 @@ def train(
         # adapter trainably (is_trainable=True) rather than constructing or stacking a fresh one.
         parent = initialization["parent"]
         parent_dir = download_and_verify_parent_adapter(parent, work / "parent-adapter")
+        parent_config = json.loads((parent_dir / "adapter_config.json").read_text(encoding="utf-8"))
+        verify_parent_adapter_config(parent_config, adapter_recipe)
         model = PeftModel.from_pretrained(model, parent_dir, is_trainable=True)
         assert_single_trainable_adapter(model)
     else:
@@ -384,7 +386,11 @@ def train(
         "contractDigest": contract["digest"],
         "stage": contract["recipe"]["stage"],
         "purpose": contract["purpose"],
-        "status": "adapter-built-awaiting-vllm-load-proof",
+        # Parent continuations must NOT report the fresh lineage status: the existing vLLM
+        # verifier accepts that status and then empties remainingExitCriteria, which would erase
+        # the still-unproven parent obligations. A distinct status makes the verifier fail closed
+        # until the observed parent tensor/update receipts land.
+        "status": stage_one_result_status(initialization["mode"]),
         "qualityClaimAllowed": False,
         "promotionAllowed": False,
         "hardware": {
@@ -413,7 +419,7 @@ def train(
             "adapterReloadExact": adapter_probe_before_save == adapter_probe_after_reload,
         },
         "adapterFiles": adapter_files,
-        "remainingExitCriteria": ["vllm-adapter-load-proof"],
+        "remainingExitCriteria": stage_one_remaining_exit_criteria(initialization["mode"]),
     }
     report["digest"] = digest_value(report)
     return report
@@ -822,6 +828,51 @@ def download_and_verify_parent_adapter(parent: dict[str, Any], destination: Path
     verify_file(weights, parent["adapterWeightsSha256"], None, parent["adapterWeightsBytes"])
     verify_file(config, parent["adapterConfigSha256"], None)
     return destination
+
+
+def stage_one_result_status(mode: str) -> str:
+    """A parent continuation reports a distinct pending status so the existing vLLM verifier —
+    which only accepts the fresh status and then empties remainingExitCriteria — fails closed
+    until the observed parent tensor/update receipts land."""
+    return "adapter-built-awaiting-vllm-load-proof" if mode == "fresh" else "parent-adapter-built-awaiting-observed-parent-proof"
+
+
+def stage_one_remaining_exit_criteria(mode: str) -> list[str]:
+    if mode == "fresh":
+        return ["vllm-adapter-load-proof"]
+    return [*PARENT_PROOF_EXIT_CRITERIA, "vllm-adapter-load-proof"]
+
+
+def verify_parent_adapter_config(config: dict[str, Any], adapter_recipe: dict[str, Any]) -> None:
+    """Bind the hash-verified parent adapter_config.json to the child recipe before load.
+
+    PeftModel.from_pretrained loads the SAVED config, so comparing declared ranks is not enough:
+    the effective rank/alpha/dropout/bias/target modules and LoRA semantics must match the child
+    recipe, and unsupported features are rejected rather than silently training different
+    hyperparameters. `inference_mode: true` is intentionally accepted because is_trainable=True
+    overrides it on load.
+    """
+    if config.get("peft_type") != "LORA":
+        raise ValueError("parent adapter must be a LoRA adapter (peft_type=LORA)")
+    if config.get("task_type") != "CAUSAL_LM":
+        raise ValueError("parent adapter task_type must be CAUSAL_LM")
+    if config.get("r") != adapter_recipe["rank"]:
+        raise ValueError("parent adapter rank does not match the child recipe rank")
+    if config.get("lora_alpha") != adapter_recipe["alpha"]:
+        raise ValueError("parent adapter alpha does not match the child recipe alpha")
+    if config.get("lora_dropout") != adapter_recipe["dropout"]:
+        raise ValueError("parent adapter dropout does not match the child recipe dropout")
+    if config.get("bias") != adapter_recipe["bias"]:
+        raise ValueError("parent adapter bias does not match the child recipe bias")
+    if set(config.get("target_modules") or []) != set(adapter_recipe["targetModules"]):
+        raise ValueError("parent adapter target modules do not match the child recipe")
+    for unsupported in ("rank_pattern", "alpha_pattern", "modules_to_save", "layers_to_transform", "layers_pattern"):
+        if config.get(unsupported):
+            raise ValueError(f"unsupported parent adapter setting for continuation: {unsupported}")
+    if config.get("use_rslora") is True:
+        raise ValueError("unsupported parent adapter setting for continuation: use_rslora")
+    if config.get("use_dora") is True:
+        raise ValueError("unsupported parent adapter setting for continuation: use_dora")
 
 
 def assert_single_trainable_adapter(model: Any) -> None:

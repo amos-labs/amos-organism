@@ -258,10 +258,6 @@ class StageZeroTrainerTests(unittest.TestCase):
                 TRAINER.verify_file(path, digest, 3)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ParentInitializationTests(unittest.TestCase):
     PARENT = {
         "adapterUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/pilot-2026-09-09/runs/pilot-060909-r32-s20260909/adapter",
@@ -376,6 +372,63 @@ class ParentInitializationTests(unittest.TestCase):
             finally:
                 TRAINER.download_uri = original
 
+
+
+class ParentAdapterConfigBindingTests(unittest.TestCase):
+    RECIPE = {"type": "lora", "rank": 32, "alpha": 64, "dropout": 0.05, "bias": "none",
+              "targetModules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj",
+                                "down_proj", "in_proj_qkv", "in_proj_z", "in_proj_b", "in_proj_a", "out_proj"]}
+
+    def _config(self, **overrides):
+        cfg = {"peft_type": "LORA", "task_type": "CAUSAL_LM", "r": 32, "lora_alpha": 64,
+               "lora_dropout": 0.05, "bias": "none", "inference_mode": True,
+               "target_modules": list(self.RECIPE["targetModules"])}
+        cfg.update(overrides)
+        return cfg
+
+    def test_archived_matching_config_is_accepted_including_inference_mode_true(self):
+        # is_trainable=True overrides the saved inference_mode; it must NOT be rejected.
+        TRAINER.verify_parent_adapter_config(self._config(inference_mode=True), self.RECIPE)
+
+    def test_effective_config_drift_is_rejected(self):
+        for override in [{"r": 16}, {"lora_alpha": 128}, {"lora_dropout": 0.9},
+                         {"bias": "all"}, {"target_modules": ["q_proj"]},
+                         {"rank_pattern": {"q_proj": 16}}, {"alpha_pattern": {"q_proj": 128}},
+                         {"use_rslora": True}, {"use_dora": True},
+                         {"modules_to_save": ["embed_tokens"]}, {"layers_to_transform": [0, 1]},
+                         {"peft_type": "IA3"}, {"task_type": "SEQ_CLS"}]:
+            with self.subTest(override=override):
+                with self.assertRaises(ValueError):
+                    TRAINER.verify_parent_adapter_config(self._config(**override), self.RECIPE)
+
+
+class ParentPendingProofStatusTests(unittest.TestCase):
+    def test_parent_status_and_remaining_criteria_differ_from_fresh(self):
+        self.assertEqual(TRAINER.stage_one_result_status("fresh"), "adapter-built-awaiting-vllm-load-proof")
+        parent_status = TRAINER.stage_one_result_status("parent")
+        self.assertNotEqual(parent_status, "adapter-built-awaiting-vllm-load-proof")
+        remaining = TRAINER.stage_one_remaining_exit_criteria("parent")
+        for criterion in TRAINER.PARENT_PROOF_EXIT_CRITERIA:
+            self.assertIn(criterion, remaining)
+        self.assertIn("vllm-adapter-load-proof", remaining)
+
+    def test_legacy_vllm_verifier_fails_closed_on_a_parent_report(self):
+        import importlib.util as _u
+        verifier_path = MODULE_PATH.parent.parent / "adapter-verifier" / "verify_vllm_adapter.py"
+        spec = _u.spec_from_file_location("pr98_legacy_verifier", verifier_path)
+        verifier = _u.module_from_spec(spec)
+        spec.loader.exec_module(verifier)
+        with tempfile.TemporaryDirectory() as tmp:
+            adapter = Path(tmp)
+            (adapter / "adapter_model.safetensors").write_bytes(b"synthetic")
+            (adapter / "adapter_config.json").write_bytes(b"{}")
+            report = {"schema": "amos.qwen-adapter-stage0-result",
+                      "status": TRAINER.stage_one_result_status("parent"),
+                      "promotionAllowed": False, "qualityClaimAllowed": False,
+                      "parameters": {"initializationMode": "parent"},
+                      "remainingExitCriteria": TRAINER.stage_one_remaining_exit_criteria("parent")}
+            with self.assertRaises((RuntimeError, ValueError, KeyError)):
+                verifier._validate_lineage(report, adapter)
 
 if __name__ == "__main__":
     unittest.main()
