@@ -10,26 +10,35 @@ const FIXTURES = JSON.parse(
   await readFile(new URL("./fixtures/desktop-training-trace-fixtures-dateoverflow-20260909.json", import.meta.url), "utf8"),
 );
 
-test("a retrieval-then-answer trajectory yields one checked-answer example with the read kept as context", () => {
-  const [answer] = retrievedAnswerTraceExamples(FIXTURES.examples[0], { idPrefix: "date" });
+test("a retrieval-then-answer trajectory supervises the read call and the checked answer", () => {
+  const examples = retrievedAnswerTraceExamples(FIXTURES.examples[0], { idPrefix: "date" });
+  // The single month_lengths read now becomes a supervised read-prefix target, plus the checked answer.
+  assert.equal(examples.length, 2);
+  const read = examples.find((e) => e.id.endsWith(":read-prefix-0"));
+  const answer = examples.find((e) => e.id.endsWith(":checked-final-answer"));
+  // read-prefix: the month_lengths read is now SUPERVISED (was masked-only); no prior read context.
+  assert.equal(read.target.kind, "retrieved-tool-call");
+  assert.equal(read.input.toolTrace.contextTurns.length, 0);
+  assert.ok(Array.isArray(read.target.toolCalls) && read.target.toolCalls.length >= 1);
+  // checked answer: the read is masked context, never dropped.
   assert.equal(answer.target.kind, "verified-synthesis");
   assert.equal(answer.target.toolCalls, undefined);
   assert.equal(answer.target.content, "2026-02-03");
-  // The month_lengths read is masked context, never dropped.
   assert.deepEqual(answer.input.toolTrace.contextTurns.map((m) => m.role), ["assistant", "tool"]);
-  assert.notEqual(answer.input.toolTrace.contextTurns.length, 0);
 });
 
-test("compiles to one validated example rendering a context-masked, answer-supervised row", () => {
+test("compiles to validated examples (read-prefix + answer) rendering context-masked, target-supervised rows", () => {
   const examples = compileRetrievedAnswerTraceExamples(FIXTURES.examples);
-  assert.equal(examples.length, 1);
-  const [example] = examples;
-  assert.equal(validateAmosSystemTrainingExample(example).digest, example.digest);
-  const row = sftRow(example);
-  assert.equal(row.messages[0].role, "system");
-  assert.equal(row.messages.at(-1).role, "assistant");
-  assert.equal(row.messages.at(-1).content, "2026-02-03");
-  assert.ok(row.tools.some((t) => t.function.name === "month_lengths"));
+  assert.equal(examples.length, 2);
+  for (const example of examples) {
+    assert.equal(validateAmosSystemTrainingExample(example).digest, example.digest);
+    const row = sftRow(example);
+    assert.equal(row.messages[0].role, "system");
+    assert.equal(row.messages.at(-1).role, "assistant");
+    assert.ok(row.tools.some((t) => t.function.name === "month_lengths"));
+  }
+  const answer = examples.find((e) => e.id.endsWith(":checked-final-answer"));
+  assert.equal(sftRow(answer).messages.at(-1).content, "2026-02-03");
 });
 
 test("a trajectory with no prior read, or a nonempty non-text answer, is rejected", () => {
