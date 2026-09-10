@@ -100,3 +100,50 @@ test("consolidation plans one immutable job per rank and seed and never selects 
     ranks: [16, 32, 64], seeds: [1, 2, 3, 4, 5]
   }), /capped at twelve/);
 });
+
+const PARENT_INIT = {
+  mode: "parent",
+  parent: {
+    adapterUri: "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/pilot-2026-09-09/runs/pilot-060909-r32-s20260909/adapter",
+    parentContractId: "stage1-2026-09-09-pilot-r32-s20260909",
+    adapterConfigSha256: "edf24b93506b19ea31631fe10020918185b5efca36800084879694e651deb352",
+    adapterWeightsSha256: "36fd8741c18e1a1478629473c7701584e8e9bc92f890eeedf3effff5d3638528",
+    adapterWeightsBytes: 933974032,
+    rank: 32
+  }
+};
+
+test("consolidation propagates a parent initialization into a single-child version-2 contract", () => {
+  const { plan: consolidation, contracts } = planAdapterConsolidation({
+    idPrefix: "stage1-parent-continuation", plan, checkpoint, datasetManifest: dataset.manifest,
+    trainerImageUri: IMAGE, datasetUri: "s3://bucket/stage1/parent/dataset",
+    outputPrefix: "s3://bucket/stage1/parent/runs", contractPrefix: "s3://bucket/stage1/parent/training-contracts",
+    sourceRevision: REVISION, ranks: [32], seeds: [20260910], initialization: PARENT_INIT,
+    generatedAt: new Date("2026-09-10T00:00:00Z")
+  });
+  assert.equal(consolidation.initializationMode, "parent");
+  assert.equal(consolidation.jobs.length, 1);
+  assert.equal(consolidation.jobs[0].initializationMode, "parent");
+  assert.equal(contracts.length, 1);
+  assert.equal(contracts[0].version, 2);
+  assert.equal(contracts[0].recipe.initialization.mode, "parent");
+  assert.equal(contracts[0].recipe.initialization.parent.adapterWeightsSha256, PARENT_INIT.parent.adapterWeightsSha256);
+});
+
+test("a parent continuation refuses a multi-seed replication sweep", () => {
+  assert.throws(() => planAdapterConsolidation({
+    idPrefix: "stage1-parent-bad", plan, checkpoint, datasetManifest: dataset.manifest, trainerImageUri: IMAGE,
+    datasetUri: "s3://bucket/d", outputPrefix: "s3://bucket/o", contractPrefix: "s3://bucket/c",
+    sourceRevision: REVISION, ranks: [32], seeds: [20260910, 20260911], initialization: PARENT_INIT
+  }), /exactly one \(rank, seed\) job/);
+});
+
+test("the default fresh consolidation still emits version-1 contracts", () => {
+  const { plan: consolidation, contracts } = planAdapterConsolidation({
+    idPrefix: "stage1-fresh", plan, checkpoint, datasetManifest: dataset.manifest, trainerImageUri: IMAGE,
+    datasetUri: "s3://bucket/d", outputPrefix: "s3://bucket/o", contractPrefix: "s3://bucket/c",
+    sourceRevision: REVISION, ranks: [32], seeds: [1]
+  });
+  assert.equal(consolidation.initializationMode, "fresh");
+  assert.equal(contracts[0].version, 1);
+});
