@@ -866,13 +866,21 @@ def verify_parent_adapter_config(config: dict[str, Any], adapter_recipe: dict[st
         raise ValueError("parent adapter bias does not match the child recipe bias")
     if set(config.get("target_modules") or []) != set(adapter_recipe["targetModules"]):
         raise ValueError("parent adapter target modules do not match the child recipe")
-    for unsupported in ("rank_pattern", "alpha_pattern", "modules_to_save", "layers_to_transform", "layers_pattern"):
+    # Reject every unmodeled selector/override that would change effective LoRA semantics. The
+    # approved archived S6 config has all of these disabled; alternate parents are not supported
+    # until each is explicitly modeled (Codex 020530Z).
+    for unsupported in (
+        "rank_pattern", "alpha_pattern", "modules_to_save", "layers_to_transform", "layers_pattern",
+        "exclude_modules", "target_parameters", "layer_replication",
+    ):
         if config.get(unsupported):
             raise ValueError(f"unsupported parent adapter setting for continuation: {unsupported}")
-    if config.get("use_rslora") is True:
-        raise ValueError("unsupported parent adapter setting for continuation: use_rslora")
-    if config.get("use_dora") is True:
-        raise ValueError("unsupported parent adapter setting for continuation: use_dora")
+    # DoRA / rsLoRA / fan_in_fan_out / lora_bias must be an explicit False (or absent); a truthy
+    # or non-boolean value is rejected rather than silently changing the adapter parameterization.
+    for boolean_flag in ("use_rslora", "use_dora", "fan_in_fan_out", "lora_bias"):
+        value = config.get(boolean_flag)
+        if value not in (None, False):
+            raise ValueError(f"unsupported parent adapter setting for continuation: {boolean_flag}")
 
 
 def assert_single_trainable_adapter(model: Any) -> None:

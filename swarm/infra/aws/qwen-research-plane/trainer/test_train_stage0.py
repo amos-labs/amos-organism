@@ -396,10 +396,19 @@ class ParentAdapterConfigBindingTests(unittest.TestCase):
                          {"rank_pattern": {"q_proj": 16}}, {"alpha_pattern": {"q_proj": 128}},
                          {"use_rslora": True}, {"use_dora": True},
                          {"modules_to_save": ["embed_tokens"]}, {"layers_to_transform": [0, 1]},
-                         {"peft_type": "IA3"}, {"task_type": "SEQ_CLS"}]:
+                         {"peft_type": "IA3"}, {"task_type": "SEQ_CLS"},
+                         {"exclude_modules": ["lm_head"]}, {"target_parameters": ["foo"]},
+                         {"layer_replication": [[0, 2]]}, {"fan_in_fan_out": True},
+                         {"lora_bias": True}, {"use_dora": "yes"}, {"use_rslora": 1}]:
             with self.subTest(override=override):
                 with self.assertRaises(ValueError):
                     TRAINER.verify_parent_adapter_config(self._config(**override), self.RECIPE)
+
+    def test_explicit_false_flags_are_accepted(self):
+        TRAINER.verify_parent_adapter_config(
+            self._config(use_rslora=False, use_dora=False, fan_in_fan_out=False, lora_bias=False),
+            self.RECIPE,
+        )
 
 
 class ParentPendingProofStatusTests(unittest.TestCase):
