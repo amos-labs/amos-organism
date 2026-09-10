@@ -38,6 +38,7 @@ export function planAdapterConsolidation({
   epochs = 3,
   learningRate = 0.0001,
   maximumSequenceTokens = 4096,
+  initialization = { mode: "fresh" },
   generatedAt = new Date()
 }) {
   const prefix = requiredId(idPrefix, "idPrefix");
@@ -45,6 +46,12 @@ export function planAdapterConsolidation({
     throw new Error("Consolidation needs at least one rank and one seed");
   }
   if (ranks.length * seeds.length > 12) throw new Error("Consolidation is capped at twelve jobs per plan");
+  // A parent continuation is one child adapter, not a multi-seed replication sweep, so it plans a
+  // single (rank, seed) job; the fresh consolidation sweep is unchanged.
+  const initializationMode = initialization?.mode ?? "fresh";
+  if (initializationMode === "parent" && ranks.length * seeds.length !== 1) {
+    throw new Error("a parent continuation must plan exactly one (rank, seed) job");
+  }
   const jobs = [];
   for (const rank of ranks) {
     for (const seed of seeds) {
@@ -63,12 +70,14 @@ export function planAdapterConsolidation({
         rank,
         epochs,
         learningRate,
-        maximumSequenceTokens
+        maximumSequenceTokens,
+        initialization
       });
       jobs.push({
         contractId: id,
         rank,
         seed,
+        initializationMode,
         contractUri: `${trimSlash(contractPrefix)}/${id}.json`,
         outputUri,
         contractDigest: contract.digest,
@@ -87,6 +96,7 @@ export function planAdapterConsolidation({
     sourceRevision,
     ranks: [...ranks],
     seeds: [...seeds],
+    initializationMode,
     jobs: jobs.map(({ contract, ...job }) => job),
     selection: {
       by: "curriculum-grading-on-holdout-pool",
