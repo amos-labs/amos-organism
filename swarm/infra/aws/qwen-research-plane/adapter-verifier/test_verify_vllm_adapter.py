@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
@@ -72,9 +73,6 @@ class VerifyVllmAdapterTests(unittest.TestCase):
                 self.assertTrue(location.is_relative_to(root))
             self.assertEqual(environment["VLLM_USE_FLASHINFER_SAMPLER"], "0")
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class ParentAwareLineageTests(unittest.TestCase):
@@ -168,3 +166,21 @@ class ParentAwareLineageTests(unittest.TestCase):
                 self._sign(report)
                 with self.assertRaises((ValueError, RuntimeError)):
                     verifier._validate_lineage(report, adapter, contract)
+    def test_packaged_layout_import_resolves_trainer(self):
+        # Simulate the image COPY layout: verifier + trainer co-located in one application dir.
+        import importlib.util, shutil
+        base = Path(__file__).resolve().parent
+        with tempfile.TemporaryDirectory() as d:
+            app = Path(d)
+            shutil.copyfile(base / "verify_vllm_adapter.py", app / "verify_vllm_adapter.py")
+            shutil.copyfile(base.parent / "trainer" / "train_stage0.py", app / "train_stage0.py")
+            spec = importlib.util.spec_from_file_location("packaged_verifier", app / "verify_vllm_adapter.py")
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["packaged_verifier"] = module
+            spec.loader.exec_module(module)
+            self.assertTrue(hasattr(module._trainer(), "assert_parent_update_receipt"))
+
+
+
+if __name__ == "__main__":
+    unittest.main()

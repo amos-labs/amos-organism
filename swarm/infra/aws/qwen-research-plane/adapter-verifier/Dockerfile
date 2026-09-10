@@ -42,7 +42,10 @@ RUN apt-get update \
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /opt/amos
 COPY swarm/infra/aws/qwen-research-plane/adapter-verifier/verify_vllm_adapter.py /opt/amos/verify_vllm_adapter.py
-RUN python -m py_compile /opt/amos/verify_vllm_adapter.py \
+# The verifier reuses the trainer's receipt/digest validators (model-free, lazy torch imports);
+# co-locate the trainer so _trainer() resolves in the packaged layout, not only the repo layout.
+COPY swarm/infra/aws/qwen-research-plane/trainer/train_stage0.py /opt/amos/train_stage0.py
+RUN python -m py_compile /opt/amos/verify_vllm_adapter.py /opt/amos/train_stage0.py \
     && useradd --create-home --uid 10001 verifier \
     && mkdir -p /work \
     && chown -R verifier:verifier /work /opt/amos

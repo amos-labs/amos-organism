@@ -146,7 +146,12 @@ def _trainer() -> Any:
     if _TRAINER_MODULE is None:
         import importlib.util
 
-        path = Path(__file__).resolve().parent.parent / "trainer" / "train_stage0.py"
+        here = Path(__file__).resolve().parent
+        # Repo layout: sibling trainer/ dir. Packaged layout: co-located in the application dir.
+        candidates = [here / "train_stage0.py", here.parent / "trainer" / "train_stage0.py"]
+        path = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if path is None:
+            raise RuntimeError("trainer module train_stage0.py is not available beside the verifier")
         spec = importlib.util.spec_from_file_location("amos_trainer_for_verifier", path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -185,16 +190,38 @@ def _validated_adapter_manifest(stage0: dict[str, Any]) -> dict[str, str]:
     return manifest
 
 
-def _load_child_contract(adapter_path: Path) -> dict[str, Any]:
+def _resolve_child_contract(adapter_path: Path, contract: dict[str, Any] | None) -> dict[str, Any] | None:
+    if contract is not None:
+        return contract
     candidate = adapter_path.parent / "training-contract.json"
-    if candidate.is_file():
-        return _read_json(candidate)
-    raise ValueError("child training contract is required to validate a parent continuation")
+    return _read_json(candidate) if candidate.is_file() else None
 
 
-def _validate_parent_lineage(stage0: dict[str, Any], adapter_path: Path,
-                             manifest: dict[str, str], contract: dict[str, Any] | None) -> None:
-    """Validate the bound observed parent-update proof before any outstanding criterion is removed."""
+def _lineage_mode(stage0: dict[str, Any], contract: dict[str, Any] | None) -> str:
+    """Classify the lineage from the FULLY VALIDATED child contract and the report, and reject an
+    inconsistent pair. A present parent contract may never be routed through the fresh path, and a
+    parent report is never trusted without a validated parent contract to bind it to."""
+    trainer = _trainer()
+    contract_mode = None
+    if contract is not None:
+        trainer.validate_contract(contract)  # real full validator: stale/forbidden contracts reject
+        contract_mode = trainer.normalize_initialization(contract)["mode"]
+    report_is_parent = (
+        (stage0.get("parameters") or {}).get("initializationMode") == "parent"
+        or stage0.get("parentInitializationReceipt") is not None
+    )
+    if contract_mode == "parent" or report_is_parent:
+        if contract_mode != "parent":
+            raise ValueError("parent report is not backed by a validated parent child contract")
+        if not report_is_parent:
+            raise ValueError("parent child contract requires a parent continuation report")
+        return "parent"
+    return "fresh"
+
+
+def _validate_parent_lineage(stage0: dict[str, Any], manifest: dict[str, str], contract: dict[str, Any]) -> None:
+    """Validate the bound observed parent-update proof before any outstanding criterion is removed.
+    The contract has already been fully validated and confirmed to be a parent contract."""
     trainer = _trainer()
     _verify_report_digest(stage0)
     if stage0.get("status") != trainer.stage_one_result_status("parent"):
@@ -205,8 +232,6 @@ def _validate_parent_lineage(stage0: dict[str, Any], adapter_path: Path,
     trainer.assert_parent_update_receipt(receipt)
     if receipt["childWeightSha256"] != manifest.get("adapter_model.safetensors"):
         raise ValueError("receipt child weight hash is not the saved adapter artifact")
-    if contract is None:
-        contract = _load_child_contract(adapter_path)
     parent = (contract.get("recipe", {}).get("initialization", {}) or {}).get("parent") or {}
     if receipt["parentWeightSha256"] != parent.get("adapterWeightsSha256"):
         raise ValueError("receipt parent weight hash does not match the contract parent")
@@ -227,12 +252,9 @@ def _validate_lineage(stage0: dict[str, Any], adapter_path: Path,
     if stage0.get("promotionAllowed") is not False or stage0.get("qualityClaimAllowed") is not False:
         raise ValueError("stage-zero result must remain non-promoting")
     manifest = _validated_adapter_manifest(stage0)
-    is_parent = (
-        (stage0.get("parameters") or {}).get("initializationMode") == "parent"
-        or stage0.get("parentInitializationReceipt") is not None
-    )
-    if is_parent:
-        _validate_parent_lineage(stage0, adapter_path, manifest, contract)
+    contract = _resolve_child_contract(adapter_path, contract)
+    if _lineage_mode(stage0, contract) == "parent":
+        _validate_parent_lineage(stage0, manifest, contract)
     elif stage0.get("status") != FRESH_LINEAGE_STATUS:
         raise ValueError("stage-zero result is not awaiting the vLLM proof")
 
@@ -248,6 +270,19 @@ def _validate_lineage(stage0: dict[str, Any], adapter_path: Path,
     if not isinstance(rank, int) or rank <= 0:
         raise ValueError("adapter_config.json must contain a positive integer rank")
     return config, rank
+
+
+def _discharged_exit_criteria(stage0: dict[str, Any]) -> list[str]:
+    """On a successful vLLM load proof, discharge ONLY the criteria this verifier actually proved:
+    the vLLM adapter-load proof plus, for a validated parent continuation, the parent proofs. Any
+    other outstanding criterion is preserved rather than silently erased."""
+    proven = {"vllm-adapter-load-proof"}
+    if stage0.get("parentInitializationReceipt") is not None:
+        proven |= set(_trainer().PARENT_PROOF_EXIT_CRITERIA)
+    original = stage0.get("remainingExitCriteria")
+    if not isinstance(original, list):
+        return []
+    return [criterion for criterion in original if criterion not in proven]
 
 
 def _completion_probe(base_url: str, model: str) -> dict[str, Any]:
@@ -346,7 +381,7 @@ def main() -> int:
                     "modelIds": model_ids,
                     "baseProbe": _completion_probe(base_url, base_name),
                     "adapterProbe": _completion_probe(base_url, adapter_name),
-                    "remainingExitCriteria": [],
+                    "remainingExitCriteria": _discharged_exit_criteria(stage0),
                 }
             )
     except Exception as error:  # receipt must survive every bounded verifier failure
