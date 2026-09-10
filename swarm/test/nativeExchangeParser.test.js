@@ -12,9 +12,18 @@ const load = async (f) => JSON.parse(await readFile(new URL(`./fixtures/${f}`, i
 test("a valid PARALLEL read group (both reads in one assistant turn) is accepted", async () => {
   const trajectory = await load("codex-repro-parallel-read-input.json");
   const examples = retrievedDataTraceExamples(trajectory, { idPrefix: "parallel" });
-  assert.equal(examples.length, 2);
+  // One read group (both parallel reads) now also yields a read-prefix supervised target, plus the
+  // calculate target and the checked final answer.
+  assert.equal(examples.length, 3);
+  // The read call is now a SUPERVISED target (no longer masked-only): its context is just system+user
+  // (the earlier reads), and its target is the parallel read tool call.
+  const readPrefix = examples.find((e) => e.id.endsWith(":read-prefix-0"));
+  assert.ok(readPrefix, "the read call is supervised as a read-prefix target");
+  assert.equal(readPrefix.input.toolTrace.contextTurns.length, 0, "the first read has no prior read context");
+  assert.equal(readPrefix.target.kind, "retrieved-tool-call");
+  assert.equal(readPrefix.target.toolCalls.length, 2, "the parallel read call is the supervised target");
   const call = examples.find((e) => e.id.endsWith(":retrieved-tool-call"));
-  // The parallel read group is preserved as context: one assistant turn with two calls, then two results.
+  // The parallel read group is preserved as context for the calculate target: one assistant turn with two calls, then two results.
   const ctx = call.input.toolTrace.contextTurns;
   assert.equal(ctx[0].role, "assistant");
   assert.equal(ctx[0].tool_calls.length, 2, "both parallel reads kept in the one assistant turn");
@@ -22,7 +31,7 @@ test("a valid PARALLEL read group (both reads in one assistant turn) is accepted
   assert.ok(ctx.at(-1).role === "tool");
   // Compiled forms validate and render.
   const compiled = compileRetrievedDataTraceExamples([trajectory]);
-  assert.equal(compiled.length, 2);
+  assert.equal(compiled.length, 3);
   for (const e of compiled) {
     assert.equal(validateAmosSystemTrainingExample(e).digest, e.digest);
     assert.equal(sftRow(e).messages[0].role, "system");

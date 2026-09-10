@@ -10,24 +10,34 @@ const FIXTURES = JSON.parse(
   await readFile(new URL("./fixtures/desktop-training-trace-fixtures-readcalc-20260909.json", import.meta.url), "utf8"),
 );
 
-test("a retrieved-data trajectory yields exactly two examples: calc-target (reads kept) and checked-answer", () => {
-  const [call, answer] = retrievedDataTraceExamples(FIXTURES.examples[0], { idPrefix: "recon" });
+test("a retrieved-data trajectory supervises each read call, then the calc target and checked answer", () => {
+  const examples = retrievedDataTraceExamples(FIXTURES.examples[0], { idPrefix: "recon" });
+  // Two reads now each become a supervised read-prefix target, plus the calc target and the checked answer.
+  assert.equal(examples.length, 4);
+  const readA = examples.find((e) => e.id.endsWith(":read-prefix-0"));
+  const readB = examples.find((e) => e.id.endsWith(":read-prefix-1"));
+  const call = examples.find((e) => e.id.endsWith(":retrieved-tool-call"));
+  const answer = examples.find((e) => e.id.endsWith(":checked-final-answer"));
+  // read-prefix targets: the read call is now SUPERVISED (was masked-only). First read has no prior
+  // read context; the second read sees the first read's call+result.
+  assert.equal(readA.target.kind, "retrieved-tool-call");
+  assert.equal(readA.input.toolTrace.contextTurns.length, 0);
+  assert.ok(Array.isArray(readA.target.toolCalls) && readA.target.toolCalls[0].function.name !== "desktop_calculate");
+  assert.deepEqual(readB.input.toolTrace.contextTurns.map((m) => m.role), ["assistant", "tool"]);
   // calc target: the ledger reads are masked context (never dropped), the calculate call is supervised.
   assert.equal(call.target.kind, "retrieved-tool-call");
   assert.deepEqual(call.input.toolTrace.contextTurns.map((m) => m.role), ["assistant", "tool", "assistant", "tool"]);
   assert.ok(Array.isArray(call.target.toolCalls) && call.target.toolCalls[0].function.name === "desktop_calculate");
-  // No context-free arithmetic target is ever minted (operands came from the reads).
-  assert.notEqual(call.input.toolTrace.contextTurns.length, 0);
   // checked answer: whole read+calculate exchange is context, the checked answer is supervised.
   assert.equal(answer.target.kind, "verified-synthesis");
   assert.equal(answer.target.toolCalls, undefined);
   assert.deepEqual(answer.input.toolTrace.contextTurns.map((m) => m.role), ["assistant", "tool", "assistant", "tool", "assistant", "tool"]);
 });
 
-test("compiles to two validated examples that render context-masked, target-supervised rows", () => {
+test("compiles to validated examples (read-prefix + calc + answer) that render context-masked, target-supervised rows", () => {
   const examples = compileRetrievedDataTraceExamples(FIXTURES.examples);
-  assert.equal(examples.length, 2);
-  assert.equal(new Set(examples.map((e) => e.id)).size, 2);
+  assert.equal(examples.length, 4);
+  assert.equal(new Set(examples.map((e) => e.id)).size, 4);
   for (const example of examples) {
     assert.equal(validateAmosSystemTrainingExample(example).digest, example.digest);
     const row = sftRow(example);
