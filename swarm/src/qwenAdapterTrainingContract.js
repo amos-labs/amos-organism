@@ -165,7 +165,8 @@ export function createQwenAdapterStageOneContract({
   rank = 32,
   epochs = 3,
   learningRate = 0.0001,
-  maximumSequenceTokens = 4096
+  maximumSequenceTokens = 4096,
+  initialization = { mode: "fresh" }
 }) {
   const normalizedPlan = validatePlan(plan);
   const stageOne = normalizedPlan.trainingLadder.find(({ stage }) => stage === 1);
@@ -177,6 +178,7 @@ export function createQwenAdapterStageOneContract({
   }
   const normalizedDataset = validateStageOneDataset(datasetManifest, normalizedPlan);
   const normalizedCheckpoint = validateCheckpoint(checkpoint, normalizedPlan);
+  const normalizedInitialization = validateStageOneInitialization(initialization, { rank });
   const trainingSeed = integer(seed, "seed", 0, 2 ** 31 - 1);
   const contractBase = {
     schema: QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA,
@@ -206,6 +208,7 @@ export function createQwenAdapterStageOneContract({
       modelClass: "Qwen3_5ForConditionalGeneration",
       textOnlyExamples: true,
       includeVisionTowerInAdapter: false,
+      initialization: normalizedInitialization,
       quantization: { loadInBits: 4, type: "nf4", doubleQuantization: true, computeDtype: "bfloat16" },
       adapter: {
         type: "lora",
@@ -253,7 +256,19 @@ export function createQwenAdapterStageOneContract({
       baseProbeMustBeBitwiseUnchangedWhenAdapterDisabled: true,
       completeMultimodalBaseMustRemainLoadable: true,
       visionTowerAdapterParametersMustEqual: 0,
-      vllmAdapterLoadProofRequired: true
+      vllmAdapterLoadProofRequired: true,
+      // When continuing a parent adapter, `adapterMustChangeProbe` (child != base) is not enough:
+      // a parent-continued adapter differs from base even if it received zero updates. These
+      // criteria bind the trainer to prove the parent actually loaded and then actually moved.
+      ...(normalizedInitialization.mode === "parent"
+        ? {
+            loadedParentTensorEqualityRequiredBeforeFirstStep: true,
+            childAdapterMustDifferFromParentProbe: true,
+            updateStepCountMustBeRecorded: true,
+            parentAndChildTensorDigestsRecorded: true,
+            parentFileShaAndLoadedTensorDigestAreDistinctIdentities: true
+          }
+        : {})
     }
   };
   return { ...contractBase, digest: digestResearchValue(contractBase) };
@@ -278,6 +293,7 @@ export function validateQwenAdapterStageOneContract(input) {
   if (contract.recipe?.optimization?.loss !== "assistant-tokens-only") {
     throw new Error("stage-one training must mask every non-assistant target token");
   }
+  validateStageOneInitialization(contract.recipe?.initialization, { rank: contract.recipe?.adapter?.rank });
   if (contract.selection?.trainerMayNotSelect !== true) {
     throw new Error("the trainer may not select its own checkpoint");
   }
@@ -287,6 +303,61 @@ export function validateQwenAdapterStageOneContract(input) {
   immutableImage(contract.source?.trainerImageUri, "training contract source image");
   gitSha(contract.source?.revision, "training contract source revision");
   return { ...contract, digest };
+}
+
+const STAGE_ONE_INITIALIZATION_MODES = new Set(["fresh", "parent"]);
+
+/**
+ * A stage-one adapter either starts from a fresh LoRA (`fresh`, the historical default) or
+ * continues an already-trained parent adapter (`parent`, e.g. the verified S6/pilot weights).
+ * Parent mode binds the exact parent adapter bytes so the trainer downloads and loads THAT
+ * adapter trainably rather than silently constructing or stacking a new one. The optimizer
+ * state is never carried across runs: the trainer always begins a fresh AdamW, recorded here
+ * as `optimizer: "reset"` so a continuation is never mistaken for optimizer resumption.
+ */
+export function validateStageOneInitialization(input, { rank } = {}) {
+  const init = jsonObject(input ?? { mode: "fresh" }, "initialization");
+  const mode = requiredText(init.mode, "initialization.mode", 20);
+  if (!STAGE_ONE_INITIALIZATION_MODES.has(mode)) {
+    throw new Error(`initialization.mode must be one of ${[...STAGE_ONE_INITIALIZATION_MODES].join(", ")}`);
+  }
+  const optimizer = init.optimizer === undefined ? "reset" : requiredText(init.optimizer, "initialization.optimizer", 20);
+  if (optimizer !== "reset") {
+    throw new Error('initialization.optimizer must be "reset": no optimizer state is saved or reloaded');
+  }
+  if (mode === "fresh") {
+    if (init.parent !== undefined && init.parent !== null) {
+      throw new Error('initialization.parent is only permitted when initialization.mode is "parent"');
+    }
+    return { mode: "fresh", optimizer: "reset", parent: null };
+  }
+  const parent = jsonObject(init.parent, "initialization.parent");
+  const parentRank = integer(parent.rank, "initialization.parent.rank", 1, 512);
+  if (rank !== undefined && parentRank !== rank) {
+    throw new Error(`initialization.parent.rank ${parentRank} must equal the child adapter rank ${rank}`);
+  }
+  return {
+    mode: "parent",
+    optimizer: "reset",
+    parent: {
+      adapterUri: s3Uri(parent.adapterUri, "initialization.parent.adapterUri"),
+      parentContractId: requiredId(parent.parentContractId, "initialization.parent.parentContractId"),
+      adapterConfigSha256: sha256Hex(parent.adapterConfigSha256, "initialization.parent.adapterConfigSha256"),
+      adapterWeightsSha256: sha256Hex(parent.adapterWeightsSha256, "initialization.parent.adapterWeightsSha256"),
+      adapterWeightsBytes: integer(parent.adapterWeightsBytes, "initialization.parent.adapterWeightsBytes", 1, Number.MAX_SAFE_INTEGER),
+      rank: parentRank,
+      // The trainer MUST PeftModel.from_pretrained(..., is_trainable=True) this adapter, never
+      // get_peft_model a fresh one or stack a second adapter over it.
+      loadTrainable: true,
+      stackingForbidden: true
+    }
+  };
+}
+
+function sha256Hex(value, label) {
+  const text = requiredText(value, label, 64).toLowerCase();
+  if (!SHA256.test(text)) throw new Error(`${label} must be a 64-character SHA-256 hex digest`);
+  return text;
 }
 
 function fileReference(file) {
