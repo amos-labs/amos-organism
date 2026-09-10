@@ -263,7 +263,16 @@ export function retrievedAnswerTraceExamples(trajectory, { idPrefix, taskFamily 
   const prefix = idPrefix ?? trajectory.id ?? "retrieved-answer-trace";
   const tools = trajectory.tools;
   const base = { sourceEpisodeId: `retrieved-answer-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  // Read-prefix supervised targets: the reference reads (e.g. month_lengths) otherwise appear only
+  // as masked context, so the model was never trained to fetch the reference it reasons from.
+  // Supervise each read call in turn, with only the earlier reads as context.
+  const readPrefixExamples = readGroups.map((readGroup, index) => ({
+    ...base, id: `${prefix}:read-prefix-${index}`,
+    input: { system, user, toolTrace: { contextTurns: flattenGroups(readGroups.slice(0, index)), tools } },
+    target: { kind: "retrieved-tool-call", content: readGroup.call.content ?? null, toolCalls: readGroup.call.tool_calls }
+  }));
   return [
+    ...readPrefixExamples,
     {
       ...base, id: `${prefix}:checked-final-answer`,
       input: { system, user, toolTrace: { contextTurns: readTurns, tools } },
