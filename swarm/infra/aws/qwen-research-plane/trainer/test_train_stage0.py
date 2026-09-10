@@ -260,3 +260,122 @@ class StageZeroTrainerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParentInitializationTests(unittest.TestCase):
+    PARENT = {
+        "adapterUri": "s3://amos-qwen-research-plane-637423327454-us-east-1/stage1/pilot-2026-09-09/runs/pilot-060909-r32-s20260909/adapter",
+        "parentContractId": "stage1-2026-09-09-pilot-r32-s20260909",
+        "adapterConfigSha256": "edf24b93506b19ea31631fe10020918185b5efca36800084879694e651deb352",
+        "adapterWeightsSha256": "36fd8741c18e1a1478629473c7701584e8e9bc92f890eeedf3effff5d3638528",
+        "adapterWeightsBytes": 933974032,
+        "rank": 32,
+    }
+
+    def _parent_contract(self, **init_overrides):
+        parent = dict(self.PARENT)
+        parent.update(init_overrides.pop("parent", {}))
+        initialization = {"mode": "parent", "optimizer": "reset", "parent": parent}
+        initialization.update(init_overrides)
+        contract = {
+            "schema": "amos.qwen-adapter-training-contract",
+            "version": init_overrides.pop("version", 2),
+            "id": "stage1-parent-under-test",
+            "purpose": "amos-system-competence-sft",
+            "qualityClaimAllowed": False,
+            "promotionAllowed": False,
+            "recipe": {
+                "stage": 1,
+                "adapter": {"rank": 32},
+                "initialization": initialization,
+                "optimization": {"loss": "assistant-tokens-only"},
+                "includeVisionTowerInAdapter": False,
+            },
+            "selection": {"trainerMayNotSelect": True},
+            "execution": {"liveInferenceEndpointMutable": False, "torchNativeJitDisabled": True},
+            "exitCriteria": {k: True for k in TRAINER.PARENT_PROOF_EXIT_CRITERIA},
+        }
+        contract["digest"] = TRAINER.digest_value({k: v for k, v in contract.items() if k != "digest"})
+        return contract
+
+    def test_validate_accepts_a_well_formed_parent_v2_contract(self):
+        self.assertEqual(TRAINER.validate_contract(self._parent_contract())["mode"], "parent")
+
+    def test_parent_mode_must_be_version_2(self):
+        c = self._parent_contract()
+        c["version"] = 1
+        c["digest"] = TRAINER.digest_value({k: v for k, v in c.items() if k != "digest"})
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(c)
+
+    def test_parent_contract_missing_a_proof_criterion_is_rejected(self):
+        c = self._parent_contract()
+        del c["exitCriteria"]["childAdapterMustDifferFromParentProbe"]
+        c["digest"] = TRAINER.digest_value({k: v for k, v in c.items() if k != "digest"})
+        with self.assertRaises(ValueError):
+            TRAINER.validate_contract(c)
+
+    def test_normalize_defaults_missing_flags_to_true_and_never_false(self):
+        c = self._parent_contract()  # fixture omits loadTrainable/stackingForbidden
+        self.assertNotIn("loadTrainable", c["recipe"]["initialization"]["parent"])
+        result = TRAINER.normalize_initialization(c)
+        self.assertIs(result["parent"]["loadTrainable"], True)
+        self.assertIs(result["parent"]["stackingForbidden"], True)
+
+    def test_normalize_rejects_explicit_false_flags(self):
+        c = self._parent_contract(parent={"loadTrainable": False})
+        with self.assertRaises(ValueError):
+            TRAINER.normalize_initialization(c)
+
+    def test_normalize_rejects_unknown_mode_and_does_not_fall_back_to_fresh(self):
+        c = self._parent_contract()
+        c["recipe"]["initialization"]["mode"] = "warmstart"
+        with self.assertRaises(ValueError):
+            TRAINER.normalize_initialization(c)
+
+    def test_normalize_requires_explicit_optimizer_reset(self):
+        c = self._parent_contract()
+        del c["recipe"]["initialization"]["optimizer"]
+        with self.assertRaises(ValueError):
+            TRAINER.normalize_initialization(c)
+
+    def test_normalize_trims_mode_and_optimizer(self):
+        c = self._parent_contract()
+        c["recipe"]["initialization"]["mode"] = " parent "
+        c["recipe"]["initialization"]["optimizer"] = " reset "
+        self.assertEqual(TRAINER.normalize_initialization(c)["mode"], "parent")
+
+    def test_normalize_rejects_parent_rank_that_disagrees_with_adapter_rank(self):
+        c = self._parent_contract(parent={"rank": 16})
+        with self.assertRaises(ValueError):
+            TRAINER.normalize_initialization(c)
+
+    def test_absent_initialization_is_historical_fresh(self):
+        self.assertEqual(TRAINER.normalize_initialization({"recipe": {}})["mode"], "fresh")
+
+    def test_parent_adapter_download_verifies_file_hashes(self):
+        import hashlib as _h
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            weights_body = b"parent-weights"
+            config_body = b'{"peft_type":"LORA"}'
+            def fake_download(uri, dest):
+                dest.write_bytes(weights_body if dest.name.endswith(".safetensors") else config_body)
+            original = TRAINER.download_uri
+            TRAINER.download_uri = fake_download
+            try:
+                parent = dict(self.PARENT)
+                parent["adapterWeightsSha256"] = _h.sha256(weights_body).hexdigest()
+                parent["adapterConfigSha256"] = _h.sha256(config_body).hexdigest()
+                parent["adapterWeightsBytes"] = len(weights_body)
+                out = TRAINER.download_and_verify_parent_adapter(parent, root / "p")
+                self.assertTrue((out / "adapter_model.safetensors").is_file())
+                parent["adapterWeightsSha256"] = "0" * 64
+                with self.assertRaises(ValueError):
+                    TRAINER.download_and_verify_parent_adapter(parent, root / "q")
+            finally:
+                TRAINER.download_uri = original
+
+
+if __name__ == "__main__":
+    unittest.main()

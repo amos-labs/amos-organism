@@ -16,6 +16,7 @@ import json
 import math
 import os
 import random
+import re
 import sys
 import time
 import traceback
@@ -35,6 +36,90 @@ ACCEPTED_PURPOSES = {
 }
 DATASET_SCHEMA = "amos.native-qwen-dataset"
 IGNORE_INDEX = -100
+STAGE_ONE_INITIALIZATION_MODES = {"fresh", "parent"}
+# Parent-continuation contracts carry version 2 so this trainer's predecessor image (which only
+# accepts version 1) fails closed instead of accepting a parent contract and training fresh.
+PARENT_CONTRACT_VERSION = 2
+# Observed-evidence exit criteria a parent contract must require; the trainer proves each of them.
+PARENT_PROOF_EXIT_CRITERIA = (
+    "loadedParentTensorEqualityRequiredBeforeFirstStep",
+    "childAdapterMustDifferFromParentProbe",
+    "updateStepCountMustBeRecorded",
+    "parentAndChildTensorDigestsRecorded",
+    "parentFileShaAndLoadedTensorDigestAreDistinctIdentities",
+)
+SHA256_HEX = re.compile(r"^[a-f0-9]{64}$")
+
+
+def normalize_initialization(contract: dict[str, Any]) -> dict[str, Any]:
+    """Normalize-or-reject the serialized initialization block before any model work.
+
+    The JS contract helper defaults omitted parent flags to true and writes a trimmed
+    mode/optimizer; the JS full validator returns the hash-bound raw object. This trainer must
+    therefore accept those representations but never treat a missing flag as false or route an
+    unknown mode to fresh initialization, and it always enforces a single trainable parent.
+    """
+    raw = contract.get("recipe", {}).get("initialization")
+    if raw is None:
+        return {"mode": "fresh", "optimizer": "reset", "parent": None}
+    if not isinstance(raw, dict):
+        raise ValueError("initialization must be an object")
+    mode = raw.get("mode")
+    mode = mode.strip() if isinstance(mode, str) else mode
+    if mode not in STAGE_ONE_INITIALIZATION_MODES:
+        raise ValueError(f"unsupported initialization mode: {mode!r}")
+    optimizer = raw.get("optimizer")
+    optimizer = optimizer.strip() if isinstance(optimizer, str) else optimizer
+    if optimizer != "reset":
+        raise ValueError('initialization.optimizer must be explicitly "reset"')
+    if mode == "fresh":
+        if raw.get("parent") is not None:
+            raise ValueError("fresh initialization must not carry a parent")
+        return {"mode": "fresh", "optimizer": "reset", "parent": None}
+    parent = raw.get("parent")
+    if not isinstance(parent, dict):
+        raise ValueError("parent initialization requires a parent block")
+    # Missing flags default to true (never false); an explicit false is rejected.
+    if parent.get("loadTrainable", True) is not True:
+        raise ValueError("parent.loadTrainable must be true: the parent is loaded trainably")
+    if parent.get("stackingForbidden", True) is not True:
+        raise ValueError("parent.stackingForbidden must be true: no second adapter is stacked")
+    uri = parent.get("adapterUri")
+    if not isinstance(uri, str) or not uri.startswith("s3://") or ".." in uri:
+        raise ValueError("parent.adapterUri must be a bounded s3:// URI")
+    config_sha = _require_sha256(parent.get("adapterConfigSha256"), "parent.adapterConfigSha256")
+    weights_sha = _require_sha256(parent.get("adapterWeightsSha256"), "parent.adapterWeightsSha256")
+    weights_bytes = parent.get("adapterWeightsBytes")
+    if not isinstance(weights_bytes, int) or isinstance(weights_bytes, bool) or weights_bytes <= 0:
+        raise ValueError("parent.adapterWeightsBytes must be a positive integer")
+    rank = parent.get("rank")
+    adapter_rank = contract.get("recipe", {}).get("adapter", {}).get("rank")
+    if rank != adapter_rank:
+        raise ValueError("parent.rank must equal the child adapter rank")
+    contract_id = parent.get("parentContractId")
+    if not isinstance(contract_id, str) or not contract_id.strip():
+        raise ValueError("parent.parentContractId is required")
+    return {
+        "mode": "parent",
+        "optimizer": "reset",
+        "parent": {
+            "adapterUri": uri.rstrip("/"),
+            "parentContractId": contract_id.strip(),
+            "adapterConfigSha256": config_sha,
+            "adapterWeightsSha256": weights_sha,
+            "adapterWeightsBytes": weights_bytes,
+            "rank": rank,
+            "loadTrainable": True,
+            "stackingForbidden": True,
+        },
+    }
+
+
+def _require_sha256(value: Any, label: str) -> str:
+    text = value.strip().lower() if isinstance(value, str) else ""
+    if not SHA256_HEX.match(text):
+        raise ValueError(f"{label} must be a 64-character SHA-256 hex digest")
+    return text
 
 
 def main() -> int:
@@ -205,9 +290,19 @@ def train(
         target_modules=adapter_recipe["targetModules"],
         task_type="CAUSAL_LM",
     )
-    model = get_peft_model(model, lora)
+    initialization = normalize_initialization(contract)
+    if initialization["mode"] == "parent":
+        # Continue the verified parent adapter: download+hash-bind its files, then load THAT
+        # adapter trainably (is_trainable=True) rather than constructing or stacking a fresh one.
+        parent = initialization["parent"]
+        parent_dir = download_and_verify_parent_adapter(parent, work / "parent-adapter")
+        model = PeftModel.from_pretrained(model, parent_dir, is_trainable=True)
+        assert_single_trainable_adapter(model)
+    else:
+        model = get_peft_model(model, lora)
     assert_adapter_scope(model)
     parameter_receipt = parameter_receipt_for(model)
+    parameter_receipt["initializationMode"] = initialization["mode"]
     write_json(work / "trainable-parameters-receipt.json", parameter_receipt)
 
     optimization = contract["recipe"]["optimization"]
@@ -626,14 +721,25 @@ def fetch_upstream_tree(base: dict[str, Any], attempts: int = 6, opener: Any = N
     raise RuntimeError("unreachable")
 
 
-def validate_contract(contract: dict[str, Any]) -> None:
-    if contract.get("schema") != CONTRACT_SCHEMA or contract.get("version") != 1:
+def validate_contract(contract: dict[str, Any]) -> dict[str, Any]:
+    version = contract.get("version")
+    if contract.get("schema") != CONTRACT_SCHEMA or version not in (1, PARENT_CONTRACT_VERSION):
         raise ValueError("unsupported AMOS Qwen training contract")
     verify_embedded_digest(contract, "training contract")
     purpose = contract.get("purpose")
     stage = contract.get("recipe", {}).get("stage")
     if (purpose, stage) not in ACCEPTED_PURPOSES:
         raise ValueError("trainer accepts only the stage-zero pipeline proof or stage-one system-competence SFT")
+    # Normalize-or-reject the initialization before any external work and tie the version to the
+    # mode so a parent contract can never present as a version-1 contract, nor vice versa.
+    initialization = normalize_initialization(contract)
+    expected_version = PARENT_CONTRACT_VERSION if initialization["mode"] == "parent" else 1
+    if version != expected_version:
+        raise ValueError(f"a {initialization['mode']} initialization contract must be version {expected_version}")
+    if initialization["mode"] == "parent":
+        for criterion in PARENT_PROOF_EXIT_CRITERIA:
+            if contract.get("exitCriteria", {}).get(criterion) is not True:
+                raise ValueError(f"parent-continuation contract must require exit criterion {criterion}")
     if contract.get("qualityClaimAllowed") is not False or contract.get("promotionAllowed") is not False:
         raise ValueError("training contract cannot authorize quality or promotion claims")
     if stage == 1 and contract.get("selection", {}).get("trainerMayNotSelect") is not True:
@@ -646,6 +752,7 @@ def validate_contract(contract: dict[str, Any]) -> None:
         raise ValueError("training contract may not mutate live inference")
     if contract.get("execution", {}).get("torchNativeJitDisabled") is not True:
         raise ValueError("training contract must pin the compiler-free PyTorch eager path")
+    return initialization
 
 
 def validate_dataset(manifest: dict[str, Any], contract: dict[str, Any]) -> None:
@@ -698,6 +805,34 @@ def verify_file(
         raise ValueError(f"row-count mismatch for {path.name}: {rows} != {expected_rows}")
     if expected_bytes is not None and size != expected_bytes:
         raise ValueError(f"byte-size mismatch for {path.name}: {size} != {expected_bytes}")
+
+
+def download_and_verify_parent_adapter(parent: dict[str, Any], destination: Path) -> Path:
+    """Download the pinned parent adapter and verify its config+weights file hashes before load.
+
+    Only the two files required to load the adapter trainably are fetched. The file SHA-256 is a
+    separate identity from the loaded-tensor digest verified after load; both are recorded.
+    """
+    destination.mkdir(parents=True, exist_ok=True)
+    base_uri = parent["adapterUri"].rstrip("/")
+    weights = destination / "adapter_model.safetensors"
+    config = destination / "adapter_config.json"
+    download_uri(f"{base_uri}/adapter_model.safetensors", weights)
+    download_uri(f"{base_uri}/adapter_config.json", config)
+    verify_file(weights, parent["adapterWeightsSha256"], None, parent["adapterWeightsBytes"])
+    verify_file(config, parent["adapterConfigSha256"], None)
+    return destination
+
+
+def assert_single_trainable_adapter(model: Any) -> None:
+    """A parent continuation loads exactly one adapter and trains it — never stacks a second."""
+    adapters = getattr(model, "peft_config", {})
+    if len(adapters) != 1:
+        raise RuntimeError(f"expected exactly one loaded adapter, found {len(adapters)}")
+    active = getattr(model, "active_adapters", None)
+    active_list = active() if callable(active) else active
+    if active_list is not None and len(list(active_list)) != 1:
+        raise RuntimeError("exactly one adapter must be active for a parent continuation")
 
 
 def digest_tree(root: Path) -> list[dict[str, Any]]:
