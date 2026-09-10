@@ -134,25 +134,113 @@ def _wait_until_ready(base_url: str, process: subprocess.Popen[bytes], deadline_
     raise TimeoutError(f"vLLM did not become ready within {deadline_seconds}s; last error: {last_error}")
 
 
-def _validate_lineage(stage0: dict[str, Any], adapter_path: Path) -> tuple[dict[str, Any], int]:
+FRESH_LINEAGE_STATUS = "adapter-built-awaiting-vllm-load-proof"
+
+_TRAINER_MODULE: Any = None
+
+
+def _trainer() -> Any:
+    """Load the trainer module (functions only; torch imports are lazy) to reuse the exact
+    receipt/digest validators the producer emitted, keeping producer and verifier in lockstep."""
+    global _TRAINER_MODULE
+    if _TRAINER_MODULE is None:
+        import importlib.util
+
+        path = Path(__file__).resolve().parent.parent / "trainer" / "train_stage0.py"
+        spec = importlib.util.spec_from_file_location("amos_trainer_for_verifier", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _TRAINER_MODULE = module
+    return _TRAINER_MODULE
+
+
+def _verify_report_digest(stage0: dict[str, Any]) -> None:
+    claimed = stage0.get("digest")
+    body = {key: value for key, value in stage0.items() if key != "digest"}
+    if not isinstance(claimed, str) or _trainer().digest_value(body) != claimed:
+        raise ValueError("stage-zero result digest does not match its contents")
+
+
+def _validated_adapter_manifest(stage0: dict[str, Any]) -> dict[str, str]:
+    """Return path->sha256, rejecting an empty, malformed, escaping, or conflicting manifest."""
+    files = stage0.get("adapterFiles")
+    if not isinstance(files, list) or not files:
+        raise ValueError("adapter manifest is empty or malformed")
+    manifest: dict[str, str] = {}
+    for item in files:
+        if not isinstance(item, dict):
+            raise ValueError("adapter manifest entry is malformed")
+        path = item.get("path")
+        sha = item.get("sha256")
+        if not isinstance(path, str) or not isinstance(sha, str):
+            raise ValueError("adapter manifest entry is malformed")
+        if os.path.isabs(path) or path.startswith("..") or os.path.normpath(path) != path:
+            raise ValueError(f"adapter manifest path escapes the adapter directory: {path}")
+        if path in manifest and manifest[path] != sha:
+            raise ValueError(f"conflicting duplicate adapter manifest entry: {path}")
+        manifest[path] = sha
+    for required in ("adapter_model.safetensors", "adapter_config.json"):
+        if required not in manifest:
+            raise ValueError(f"adapter manifest is missing {required}")
+    return manifest
+
+
+def _load_child_contract(adapter_path: Path) -> dict[str, Any]:
+    candidate = adapter_path.parent / "training-contract.json"
+    if candidate.is_file():
+        return _read_json(candidate)
+    raise ValueError("child training contract is required to validate a parent continuation")
+
+
+def _validate_parent_lineage(stage0: dict[str, Any], adapter_path: Path,
+                             manifest: dict[str, str], contract: dict[str, Any] | None) -> None:
+    """Validate the bound observed parent-update proof before any outstanding criterion is removed."""
+    trainer = _trainer()
+    _verify_report_digest(stage0)
+    if stage0.get("status") != trainer.stage_one_result_status("parent"):
+        raise ValueError("parent continuation result must await observed parent proof")
+    receipt = stage0.get("parentInitializationReceipt")
+    if not isinstance(receipt, dict):
+        raise ValueError("parent continuation result must carry the parent-update receipt")
+    trainer.assert_parent_update_receipt(receipt)
+    if receipt["childWeightSha256"] != manifest.get("adapter_model.safetensors"):
+        raise ValueError("receipt child weight hash is not the saved adapter artifact")
+    if contract is None:
+        contract = _load_child_contract(adapter_path)
+    parent = (contract.get("recipe", {}).get("initialization", {}) or {}).get("parent") or {}
+    if receipt["parentWeightSha256"] != parent.get("adapterWeightsSha256"):
+        raise ValueError("receipt parent weight hash does not match the contract parent")
+    if receipt["parentConfigSha256"] != parent.get("adapterConfigSha256"):
+        raise ValueError("receipt parent config hash does not match the contract parent")
+    if receipt["trainingContractSha256"] != contract.get("digest"):
+        raise ValueError("receipt training contract hash is not this child contract")
+    if stage0.get("contractDigest") != contract.get("digest"):
+        raise ValueError("report contract digest is not this child contract")
+    if stage0.get("contractId") != contract.get("id"):
+        raise ValueError("report contract id is not this child contract")
+
+
+def _validate_lineage(stage0: dict[str, Any], adapter_path: Path,
+                      contract: dict[str, Any] | None = None) -> tuple[dict[str, Any], int]:
     if stage0.get("schema") != "amos.qwen-adapter-stage0-result":
         raise ValueError("stage-zero result schema is invalid")
-    if stage0.get("status") != "adapter-built-awaiting-vllm-load-proof":
-        raise ValueError("stage-zero result is not awaiting the vLLM proof")
     if stage0.get("promotionAllowed") is not False or stage0.get("qualityClaimAllowed") is not False:
         raise ValueError("stage-zero result must remain non-promoting")
+    manifest = _validated_adapter_manifest(stage0)
+    is_parent = (
+        (stage0.get("parameters") or {}).get("initializationMode") == "parent"
+        or stage0.get("parentInitializationReceipt") is not None
+    )
+    if is_parent:
+        _validate_parent_lineage(stage0, adapter_path, manifest, contract)
+    elif stage0.get("status") != FRESH_LINEAGE_STATUS:
+        raise ValueError("stage-zero result is not awaiting the vLLM proof")
 
-    expected = {
-        item["path"]: item["sha256"]
-        for item in stage0.get("adapterFiles", [])
-        if isinstance(item, dict) and isinstance(item.get("path"), str) and isinstance(item.get("sha256"), str)
-    }
-    for relative, expected_digest in expected.items():
+    for relative, expected_digest in manifest.items():
         actual_path = adapter_path / relative
         if not actual_path.is_file():
             raise ValueError(f"adapter file is missing: {relative}")
-        actual_digest = _sha256_file(actual_path)
-        if actual_digest != expected_digest:
+        if _sha256_file(actual_path) != expected_digest:
             raise ValueError(f"adapter file digest mismatch: {relative}")
 
     config = _read_json(adapter_path / "adapter_config.json")

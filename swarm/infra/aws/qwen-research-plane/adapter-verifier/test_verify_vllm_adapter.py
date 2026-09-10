@@ -75,3 +75,96 @@ class VerifyVllmAdapterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParentAwareLineageTests(unittest.TestCase):
+    """In-repo positive control + key negatives for the parent continuation transition. Codex's
+    external check_transition.py covers the full 27-case matrix; these guard CI against regressions."""
+    import importlib.util as _ilu
+    _base = Path(__file__).resolve().parent.parent / "trainer"
+    _tspec = _ilu.spec_from_file_location("verifier_trainer", _base / "train_stage0.py")
+    TR = _ilu.module_from_spec(_tspec); _tspec.loader.exec_module(TR)
+    _sspec = _ilu.spec_from_file_location("verifier_trainer_tests", _base / "test_train_stage0.py")
+    SRC = _ilu.module_from_spec(_sspec); _sspec.loader.exec_module(SRC)
+
+    def _safetensors(self, path, value):
+        import struct
+        entries, body, items = {}, bytearray(), []
+        for name, shape in [("base_model.model.q_proj.lora_A.weight", (32, 1)),
+                            ("base_model.model.q_proj.lora_B.weight", (1, 32))]:
+            raw = struct.pack("<32f", *([value] * 32))
+            entries[name] = {"dtype": "F32", "shape": list(shape), "data_offsets": [len(body), len(body) + len(raw)]}
+            body.extend(raw); items.append((name, "torch.float32", shape, raw))
+        header = json.dumps(entries, separators=(",", ":")).encode()
+        header += b" " * ((-len(header)) % 8)
+        path.write_bytes(struct.pack("<Q", len(header)) + header + body)
+        return items
+
+    def _sign(self, value):
+        value.pop("digest", None)
+        value["digest"] = self.TR.digest_value(value)
+        return value
+
+    def _case(self, directory):
+        sha = lambda b: hashlib.sha256(b).hexdigest()
+        adapter = directory / "adapter"; parent = directory / "parent"
+        adapter.mkdir(); parent.mkdir()
+        config = {"peft_type": "LORA", "task_type": "CAUSAL_LM", "r": 32, "lora_alpha": 64,
+                  "lora_dropout": .05, "bias": "none", "target_modules": ["q_proj"], "inference_mode": True}
+        for folder in (parent, adapter):
+            (folder / "adapter_config.json").write_text(json.dumps(config))
+        parent_items = self._safetensors(parent / "adapter_model.safetensors", 1.0)
+        child_items = self._safetensors(adapter / "adapter_model.safetensors", 2.0)
+        contract = self.SRC.ParentInitializationTests()._parent_contract()
+        contract["id"] = "cpu-verifier-inrepo"
+        contract["recipe"]["adapter"] = {"type": "lora", "rank": 32, "alpha": 64, "dropout": .05,
+                                         "bias": "none", "targetModules": ["q_proj"]}
+        p = contract["recipe"]["initialization"]["parent"]
+        p.update(adapterUri="s3://cpu/parent", parentContractId="cpu-parent",
+                 adapterConfigSha256=sha((parent / "adapter_config.json").read_bytes()),
+                 adapterWeightsSha256=sha((parent / "adapter_model.safetensors").read_bytes()),
+                 adapterWeightsBytes=(parent / "adapter_model.safetensors").stat().st_size)
+        self._sign(contract)
+        initial = self.TR.adapter_tensor_digest(parent_items)
+        final = self.TR.adapter_tensor_digest(child_items)
+        receipt = {"protocolVersion": self.TR.PARENT_TENSOR_DIGEST_PROTOCOL,
+                   "parentWeightSha256": p["adapterWeightsSha256"], "parentConfigSha256": p["adapterConfigSha256"],
+                   "trainingContractSha256": contract["digest"], "childWeightSha256": sha((adapter / "adapter_model.safetensors").read_bytes()),
+                   "expectedParentTensorSha256": initial, "loadedInitialTensorSha256": initial,
+                   "finalTensorSha256": final, "reloadedTensorSha256": final, "optimizerUpdates": 2,
+                   "optimizer": "reset", "baseUnchanged": True, "savedReloadExact": True,
+                   "baseEvidenceScope": "frozen-adapter-scope-and-fixed-logit-probe"}
+        report = {"schema": "amos.qwen-adapter-stage0-result", "version": 1, "stage": 1,
+                  "purpose": "amos-system-competence-sft", "status": self.TR.stage_one_result_status("parent"),
+                  "contractId": contract["id"], "contractDigest": contract["digest"],
+                  "promotionAllowed": False, "qualityClaimAllowed": False,
+                  "parameters": {"initializationMode": "parent"}, "parentInitializationReceipt": receipt,
+                  "remainingExitCriteria": self.TR.stage_one_remaining_exit_criteria("parent"),
+                  "adapterFiles": [{"path": q.name, "sha256": sha(q.read_bytes()), "bytes": q.stat().st_size}
+                                   for q in sorted(adapter.iterdir())]}
+        self._sign(report)
+        return adapter, report, contract
+
+    def test_valid_parent_report_is_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            adapter, report, contract = self._case(Path(d))
+            config, rank = verifier._validate_lineage(report, adapter, contract)
+            self.assertEqual(rank, 32)
+
+    def test_key_parent_negatives_reject(self):
+        mutations = [
+            ("status_downgraded_to_fresh", lambda r, c: r.update(status="adapter-built-awaiting-vllm-load-proof")),
+            ("receipt_missing", lambda r, c: r.pop("parentInitializationReceipt")),
+            ("misloaded_parent", lambda r, c: r["parentInitializationReceipt"].update(loadedInitialTensorSha256="6" * 64)),
+            ("copied_state", lambda r, c: r["parentInitializationReceipt"].update(finalTensorSha256=r["parentInitializationReceipt"]["loadedInitialTensorSha256"], reloadedTensorSha256=r["parentInitializationReceipt"]["loadedInitialTensorSha256"])),
+            ("parent_weight_not_contract", lambda r, c: r["parentInitializationReceipt"].update(parentWeightSha256="1" * 64)),
+            ("report_wrong_contract_id", lambda r, c: r.update(contractId="another")),
+            ("manifest_traversal", lambda r, c: r["adapterFiles"].append({"path": "../escape.txt", "sha256": "0" * 64, "bytes": 1})),
+        ]
+        for name, mutate in mutations:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as d:
+                adapter, report, contract = self._case(Path(d))
+                mutate(report, contract)
+                self._sign(report)
+                with self.assertRaises((ValueError, RuntimeError)):
+                    verifier._validate_lineage(report, adapter, contract)
