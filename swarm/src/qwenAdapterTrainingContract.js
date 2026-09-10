@@ -3,6 +3,10 @@ import { digestResearchValue } from "./experimentProtocol.js";
 export const QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA =
   "amos.qwen-adapter-training-contract";
 export const QWEN_ADAPTER_TRAINING_CONTRACT_VERSION = 1;
+// Parent-continuation contracts carry version 2 so a pre-parent trainer image — whose frozen
+// validate_contract only accepts version 1 — fails closed instead of accepting a parent contract
+// and silently training a fresh adapter. Historical fresh contracts stay version-1 compatible.
+export const QWEN_ADAPTER_TRAINING_CONTRACT_PARENT_VERSION = 2;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_SHA = /^[a-f0-9]{40}$/;
@@ -182,7 +186,9 @@ export function createQwenAdapterStageOneContract({
   const trainingSeed = integer(seed, "seed", 0, 2 ** 31 - 1);
   const contractBase = {
     schema: QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA,
-    version: QWEN_ADAPTER_TRAINING_CONTRACT_VERSION,
+    version: normalizedInitialization.mode === "parent"
+      ? QWEN_ADAPTER_TRAINING_CONTRACT_PARENT_VERSION
+      : QWEN_ADAPTER_TRAINING_CONTRACT_VERSION,
     id: requiredId(id, "contract.id"),
     purpose: QWEN_ADAPTER_STAGE_ONE_PURPOSE,
     qualityClaimAllowed: false,
@@ -276,7 +282,9 @@ export function createQwenAdapterStageOneContract({
 
 export function validateQwenAdapterStageOneContract(input) {
   const contract = jsonObject(input, "training contract");
-  if (contract.schema !== QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA || contract.version !== QWEN_ADAPTER_TRAINING_CONTRACT_VERSION) {
+  if (contract.schema !== QWEN_ADAPTER_TRAINING_CONTRACT_SCHEMA ||
+      (contract.version !== QWEN_ADAPTER_TRAINING_CONTRACT_VERSION &&
+       contract.version !== QWEN_ADAPTER_TRAINING_CONTRACT_PARENT_VERSION)) {
     throw new Error("Unsupported training contract");
   }
   const digest = contract.digest;
@@ -293,7 +301,27 @@ export function validateQwenAdapterStageOneContract(input) {
   if (contract.recipe?.optimization?.loss !== "assistant-tokens-only") {
     throw new Error("stage-one training must mask every non-assistant target token");
   }
-  validateStageOneInitialization(contract.recipe?.initialization, { rank: contract.recipe?.adapter?.rank });
+  // Re-validate the SERIALIZED initialization: this rejects a rehashed contract that keeps a
+  // matching digest but relaxes loadTrainable/stackingForbidden/optimizer, rather than trusting
+  // the constructor. The version discriminator is tied to the mode so a parent contract can never
+  // masquerade as a version-1 contract a frozen pre-parent trainer would accept.
+  const normalizedInitialization = validateStageOneInitialization(
+    contract.recipe?.initialization,
+    { rank: contract.recipe?.adapter?.rank, requireExplicitOptimizer: true }
+  );
+  const expectedVersion = normalizedInitialization.mode === "parent"
+    ? QWEN_ADAPTER_TRAINING_CONTRACT_PARENT_VERSION
+    : QWEN_ADAPTER_TRAINING_CONTRACT_VERSION;
+  if (contract.version !== expectedVersion) {
+    throw new Error(`a ${normalizedInitialization.mode} initialization contract must be version ${expectedVersion}`);
+  }
+  if (normalizedInitialization.mode === "parent") {
+    for (const criterion of PARENT_PROOF_EXIT_CRITERIA) {
+      if (contract.exitCriteria?.[criterion] !== true) {
+        throw new Error(`parent-continuation contract must require exit criterion ${criterion}`);
+      }
+    }
+  }
   if (contract.selection?.trainerMayNotSelect !== true) {
     throw new Error("the trainer may not select its own checkpoint");
   }
@@ -315,11 +343,17 @@ const STAGE_ONE_INITIALIZATION_MODES = new Set(["fresh", "parent"]);
  * state is never carried across runs: the trainer always begins a fresh AdamW, recorded here
  * as `optimizer: "reset"` so a continuation is never mistaken for optimizer resumption.
  */
-export function validateStageOneInitialization(input, { rank } = {}) {
+export function validateStageOneInitialization(input, { rank, requireExplicitOptimizer = false } = {}) {
+  // A fully-absent block is a historical fresh v1 contract (pre-parent); a PRESENT block is
+  // re-checked strictly so a serialized contract cannot omit the optimizer reset.
+  const present = input !== undefined && input !== null;
   const init = jsonObject(input ?? { mode: "fresh" }, "initialization");
   const mode = requiredText(init.mode, "initialization.mode", 20);
   if (!STAGE_ONE_INITIALIZATION_MODES.has(mode)) {
     throw new Error(`initialization.mode must be one of ${[...STAGE_ONE_INITIALIZATION_MODES].join(", ")}`);
+  }
+  if (requireExplicitOptimizer && present && init.optimizer === undefined) {
+    throw new Error('initialization.optimizer must be explicitly "reset": no optimizer state is saved or reloaded');
   }
   const optimizer = init.optimizer === undefined ? "reset" : requiredText(init.optimizer, "initialization.optimizer", 20);
   if (optimizer !== "reset") {
@@ -336,6 +370,16 @@ export function validateStageOneInitialization(input, { rank } = {}) {
   if (rank !== undefined && parentRank !== rank) {
     throw new Error(`initialization.parent.rank ${parentRank} must equal the child adapter rank ${rank}`);
   }
+  // The trainer MUST PeftModel.from_pretrained(..., is_trainable=True) this adapter, never
+  // get_peft_model a fresh one or stack a second adapter over it. These flags default to true
+  // but, when present in a serialized contract, are enforced so a rehashed contract cannot
+  // relax them to a fresh/frozen/stacked load while keeping parent mode.
+  if (parent.loadTrainable !== undefined && parent.loadTrainable !== true) {
+    throw new Error("initialization.parent.loadTrainable must be true: the parent adapter is loaded trainably, never frozen or fresh");
+  }
+  if (parent.stackingForbidden !== undefined && parent.stackingForbidden !== true) {
+    throw new Error("initialization.parent.stackingForbidden must be true: the trainer must not stack a second adapter over the parent");
+  }
   return {
     mode: "parent",
     optimizer: "reset",
@@ -346,13 +390,22 @@ export function validateStageOneInitialization(input, { rank } = {}) {
       adapterWeightsSha256: sha256Hex(parent.adapterWeightsSha256, "initialization.parent.adapterWeightsSha256"),
       adapterWeightsBytes: integer(parent.adapterWeightsBytes, "initialization.parent.adapterWeightsBytes", 1, Number.MAX_SAFE_INTEGER),
       rank: parentRank,
-      // The trainer MUST PeftModel.from_pretrained(..., is_trainable=True) this adapter, never
-      // get_peft_model a fresh one or stack a second adapter over it.
       loadTrainable: true,
       stackingForbidden: true
     }
   };
 }
+
+// The five observed-evidence exit criteria a parent-continuation contract must carry so the
+// trainer proves the parent actually loaded and then actually moved (child != base alone would
+// pass even with zero updates). Enforced on the serialized contract, not only at construction.
+const PARENT_PROOF_EXIT_CRITERIA = [
+  "loadedParentTensorEqualityRequiredBeforeFirstStep",
+  "childAdapterMustDifferFromParentProbe",
+  "updateStepCountMustBeRecorded",
+  "parentAndChildTensorDigestsRecorded",
+  "parentFileShaAndLoadedTensorDigestAreDistinctIdentities"
+];
 
 function sha256Hex(value, label) {
   const text = requiredText(value, label, 64).toLowerCase();
