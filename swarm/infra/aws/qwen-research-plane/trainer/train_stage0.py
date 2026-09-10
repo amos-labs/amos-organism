@@ -306,6 +306,8 @@ def train(
             expected_parent_tensor_items(parent_dir / "adapter_model.safetensors")
         )
         loaded_initial_tensor_sha256 = adapter_tensor_digest(lora_tensor_items_from_model(model))
+        # Stop before building the optimizer or spending training budget on a misloaded parent.
+        assert_loaded_parent_matches_expected(loaded_initial_tensor_sha256, expected_parent_tensor_sha256)
     else:
         model = get_peft_model(model, lora)
         expected_parent_tensor_sha256 = None
@@ -399,6 +401,9 @@ def train(
     parent_update_receipt = None
     if initialization["mode"] == "parent":
         parent = initialization["parent"]
+        # Digest the actual freshly reloaded child adapter (is_trainable=False), proving the saved
+        # artifact reloads to the final trained state — a byte-level check, not only a logit probe.
+        reloaded_tensor_sha256 = adapter_tensor_digest(lora_tensor_items_from_model(reloaded))
         parent_update_receipt = {
             "protocolVersion": PARENT_TENSOR_DIGEST_PROTOCOL,
             "parentWeightSha256": parent["adapterWeightsSha256"],
@@ -408,6 +413,7 @@ def train(
             "expectedParentTensorSha256": expected_parent_tensor_sha256,
             "loadedInitialTensorSha256": loaded_initial_tensor_sha256,
             "finalTensorSha256": final_tensor_sha256,
+            "reloadedTensorSha256": reloaded_tensor_sha256,
             "optimizerUpdates": completed_optimizer_steps,
             "optimizer": initialization["optimizer"],
             # Base preservation here is a frozen-base scope + fixed-probe check (see probes below),
@@ -876,16 +882,23 @@ def download_and_verify_parent_adapter(parent: dict[str, Any], destination: Path
 PARENT_TENSOR_DIGEST_PROTOCOL = "amos.parent-adapter-tensor-digest.v1"
 
 
+LORA_PARAMETER_NAMES = ("lora_A", "lora_B", "lora_embedding_A", "lora_embedding_B", "lora_magnitude_vector")
+_ADAPTER_NAME_SEGMENT = re.compile(
+    r"\.(" + "|".join(LORA_PARAMETER_NAMES) + r")\.[^.]+\."
+)
+
+
 def normalize_lora_tensor_name(name: str) -> str:
     """Canonicalize a LoRA tensor name so the saved-parent artifact and the loaded model agree.
 
-    PEFT inserts the active adapter name as a path segment in the live module state
-    (``...lora_A.default.weight``) that is absent from the saved safetensors keys
-    (``...lora_A.weight``). The only intentional transformation is removing that ``.default.``
-    adapter segment; nothing else is stripped, renamed, or coerced. This transformation is
-    explicit and tested — mismatched tensors are never silently discarded.
+    PEFT inserts the active adapter name as the path segment that immediately follows a LoRA
+    parameter name in the live module state (``...lora_A.default.weight``); the saved safetensors
+    keys omit it (``...lora_A.weight``). The only intentional transformation is removing that one
+    adapter-name segment *after a supported LoRA parameter name*. Ordinary namespace segments
+    (e.g. a module literally named ``default``) are preserved, so distinct tensors never alias;
+    collisions are rejected by the digest rather than silently merged.
     """
-    return name.replace(".default.", ".")
+    return _ADAPTER_NAME_SEGMENT.sub(r".\1.", name)
 
 
 def adapter_tensor_digest(items: Iterable[tuple[str, str, tuple[int, ...], bytes]],
@@ -932,13 +945,15 @@ def assert_parent_update_receipt(receipt: dict[str, Any]) -> None:
         raise ValueError("parent-update receipt protocol version is missing or unsupported")
     for field in ("parentWeightSha256", "parentConfigSha256", "trainingContractSha256",
                   "childWeightSha256", "expectedParentTensorSha256", "loadedInitialTensorSha256",
-                  "finalTensorSha256"):
+                  "finalTensorSha256", "reloadedTensorSha256"):
         if not (isinstance(receipt.get(field), str) and SHA256_HEX.match(receipt[field])):
             raise ValueError(f"parent-update receipt field {field} must be a SHA-256 hex digest")
     if receipt["loadedInitialTensorSha256"] != receipt["expectedParentTensorSha256"]:
         raise ValueError("loaded initial tensor state does not match the independently derived parent state")
     if receipt["finalTensorSha256"] == receipt["loadedInitialTensorSha256"]:
         raise ValueError("final child tensor state is identical to the loaded parent: no update occurred")
+    if receipt["reloadedTensorSha256"] != receipt["finalTensorSha256"]:
+        raise ValueError("freshly reloaded child tensor state does not match the final trained state")
     if receipt["childWeightSha256"] == receipt["parentWeightSha256"]:
         raise ValueError("saved child weights are byte-identical to the parent weights")
     updates = receipt.get("optimizerUpdates")
@@ -953,11 +968,17 @@ def assert_parent_update_receipt(receipt: dict[str, Any]) -> None:
 
 
 def lora_tensor_items_from_model(model: Any) -> Iterable[tuple[str, str, tuple[int, ...], bytes]]:
-    """Yield the live trainable LoRA tensors of a PeftModel as digest items (runtime/torch)."""
+    """Yield the FULL LoRA adapter tensor state of a PeftModel as digest items (runtime/torch).
+
+    The full state is observed independently of trainability so a frozen extra adapter tensor is
+    never silently dropped, and the same collector works on an is_trainable=False reload (it must
+    not return an empty state there). Whether the intended tensors are trainable is asserted
+    separately by assert_single_trainable_adapter.
+    """
     import torch
 
     for name, param in model.named_parameters():
-        if param.requires_grad and "lora_" in name:
+        if "lora_" in name:
             tensor = param.detach().cpu().contiguous()
             raw = tensor.flatten().view(torch.uint8).numpy().tobytes()
             yield (name, str(param.dtype), tuple(int(dim) for dim in param.shape), raw)
@@ -978,6 +999,17 @@ def expected_parent_tensor_items(safetensors_path: Path) -> Iterable[tuple[str, 
             tensor = handle.get_tensor(key).detach().cpu().contiguous()
             raw = tensor.flatten().view(torch.uint8).numpy().tobytes()
             yield (key, str(tensor.dtype), tuple(int(dim) for dim in tensor.shape), raw)
+
+
+def assert_loaded_parent_matches_expected(loaded_initial_sha256: str, expected_parent_sha256: str) -> None:
+    """Fail before spending any training budget if the trainably loaded parent state does not
+    match the state independently derived from the saved artifact (the
+    loadedParentTensorEqualityRequiredBeforeFirstStep obligation)."""
+    if loaded_initial_sha256 != expected_parent_sha256:
+        raise RuntimeError(
+            "loaded parent adapter state does not match the expected saved parent state; "
+            "refusing to train a misloaded parent"
+        )
 
 
 def stage_one_result_status(mode: str) -> str:

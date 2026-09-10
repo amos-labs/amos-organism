@@ -479,6 +479,13 @@ class ParentTensorDigestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             TRAINER.adapter_tensor_digest(dup)
 
+    def test_namespace_default_segment_is_not_stripped(self):
+        # A module literally named "default" (not the adapter segment after a lora param) must
+        # NOT alias its sibling; only the adapter segment following lora_A/lora_B is removed.
+        a = TRAINER.adapter_tensor_digest([("base_model.model.default.q_proj.lora_A.weight", "bfloat16", (1,), b"\x01")])
+        b = TRAINER.adapter_tensor_digest([("base_model.model.q_proj.lora_A.weight", "bfloat16", (1,), b"\x01")])
+        self.assertNotEqual(a, b)
+
 
 class ParentUpdateReceiptTests(unittest.TestCase):
     def _receipt(self, **overrides):
@@ -493,6 +500,7 @@ class ParentUpdateReceiptTests(unittest.TestCase):
             "expectedParentTensorSha256": loaded,
             "loadedInitialTensorSha256": loaded,
             "finalTensorSha256": h(b"child-tensor-state"),
+            "reloadedTensorSha256": h(b"child-tensor-state"),
             "optimizerUpdates": 42,
             "optimizer": "reset",
             "baseUnchanged": True,
@@ -537,6 +545,20 @@ class ParentUpdateReceiptTests(unittest.TestCase):
         r = self._receipt(); del r["protocolVersion"]
         with self.assertRaises(ValueError):
             TRAINER.assert_parent_update_receipt(r)
+
+    def test_reloaded_state_must_equal_final(self):
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(reloadedTensorSha256=__import__("hashlib").sha256(b"drifted-reload").hexdigest()))
+
+    def test_missing_reloaded_digest_rejected(self):
+        r = self._receipt(); del r["reloadedTensorSha256"]
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(r)
+
+    def test_early_stop_helper_fails_on_misloaded_parent(self):
+        TRAINER.assert_loaded_parent_matches_expected("a" * 64, "a" * 64)
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_loaded_parent_matches_expected("a" * 64, "b" * 64)
 
 if __name__ == "__main__":
     unittest.main()
