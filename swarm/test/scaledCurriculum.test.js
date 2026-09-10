@@ -9,23 +9,24 @@ import {
 import { validateAmosSystemTrainingExample, sftRow } from "../src/amosNativeTrainingDataset.js";
 
 // The scaled targeted curriculum for the approved next candidate: real tool receipts, holdout-disjoint,
-// across all three v3-named failure modes. Recovery x8 (24), read->calculate x8 (16), date x12 (12) = 52.
+// across all three v3-named failure modes. Recovery x8 (24), read->calculate x8 (32: 2 read-prefix +
+// calc + answer per trajectory, now that reads are supervised), date x12 (12) = 68.
 const load = async (f) => JSON.parse(await readFile(new URL(`./fixtures/${f}`, import.meta.url), "utf8"));
 const recovery = await load("desktop-training-trace-fixtures-recovery-scaled-20260909.json");
 const readcalc = await load("desktop-training-trace-fixtures-readcalc-scaled-20260909.json");
 const date = await load("desktop-training-trace-fixtures-date-scaled-20260909.json");
 
-test("the scaled curriculum compiles to 48 uniquely-identified, validated examples", () => {
+test("the scaled curriculum compiles to uniquely-identified, validated examples with supervised reads", () => {
   const a = compileDesktopTraceExamples(recovery.examples);
   const b = compileRetrievedDataTraceExamples(readcalc.examples);
   const c = compileRetrievedAnswerTraceExamples(date.examples);
   assert.equal(a.length, 24, "8 recovery trajectories x 3");
-  assert.equal(b.length, 16, "8 read->calculate trajectories x 2");
+  assert.equal(b.length, 32, "8 read->calculate trajectories x 4 (2 read-prefix + calc + answer)");
   assert.equal(c.length, 12, "8 single + 4 multi-month date trajectories");
   const all = [...a, ...b, ...c];
-  assert.equal(all.length, 52);
-  assert.equal(new Set(all.map((e) => e.id)).size, 52);
-  assert.equal(new Set(all.map((e) => e.digest)).size, 52);
+  assert.equal(all.length, 68);
+  assert.equal(new Set(all.map((e) => e.id)).size, 68);
+  assert.equal(new Set(all.map((e) => e.digest)).size, 68);
   for (const e of all) {
     assert.equal(validateAmosSystemTrainingExample(e).digest, e.digest);
     const row = sftRow(e);

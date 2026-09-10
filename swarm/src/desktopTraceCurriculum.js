@@ -200,7 +200,16 @@ export function retrievedDataTraceExamples(trajectory, { idPrefix, taskFamily = 
   const prefix = idPrefix ?? trajectory.id ?? "retrieved-trace";
   const tools = trajectory.tools;
   const base = { sourceEpisodeId: `retrieved-trace-${prefix}`, taskFamily, role, correction: null, safeguards: DEVELOPMENT_SAFEGUARDS };
+  // Read-prefix supervised targets: the diagnosis found the read calls only ever appear as masked
+  // context, so the model was never trained to READ. Supervise each read call in turn, with just
+  // the earlier reads as context, so the model learns to fetch the data it needs before computing.
+  const readPrefixExamples = readGroups.map((readGroup, index) => ({
+    ...base, id: `${prefix}:read-prefix-${index}`,
+    input: { system, user, toolTrace: { contextTurns: flattenGroups(readGroups.slice(0, index)), tools } },
+    target: { kind: "retrieved-tool-call", content: readGroup.call.content ?? null, toolCalls: readGroup.call.tool_calls }
+  }));
   return [
+    ...readPrefixExamples,
     {
       ...base, id: `${prefix}:retrieved-tool-call`,
       input: { system, user, toolTrace: { contextTurns: readTurns, tools } },
