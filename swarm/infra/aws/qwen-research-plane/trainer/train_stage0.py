@@ -300,8 +300,18 @@ def train(
         verify_parent_adapter_config(parent_config, adapter_recipe)
         model = PeftModel.from_pretrained(model, parent_dir, is_trainable=True)
         assert_single_trainable_adapter(model)
+        # Observed BEFORE any optimizer update, and the expected state derived independently
+        # from the hash-verified saved artifact (not copied from the loaded model).
+        expected_parent_tensor_sha256 = adapter_tensor_digest(
+            expected_parent_tensor_items(parent_dir / "adapter_model.safetensors")
+        )
+        loaded_initial_tensor_sha256 = adapter_tensor_digest(lora_tensor_items_from_model(model))
+        # Stop before building the optimizer or spending training budget on a misloaded parent.
+        assert_loaded_parent_matches_expected(loaded_initial_tensor_sha256, expected_parent_tensor_sha256)
     else:
         model = get_peft_model(model, lora)
+        expected_parent_tensor_sha256 = None
+        loaded_initial_tensor_sha256 = None
     assert_adapter_scope(model)
     parameter_receipt = parameter_receipt_for(model)
     parameter_receipt["initializationMode"] = initialization["mode"]
@@ -322,6 +332,7 @@ def train(
     )
     accumulation = optimization["gradientAccumulationSteps"]
     training_history: list[dict[str, Any]] = []
+    completed_optimizer_steps = 0
     optimizer.zero_grad(set_to_none=True)
     model.train()
     for epoch in range(optimization["epochs"]):
@@ -336,6 +347,7 @@ def train(
             batches += 1
             if batch_index % accumulation == 0 or batch_index == len(loader):
                 optimizer.step()
+                completed_optimizer_steps += 1  # counted after the actual step, not per batch
                 optimizer.zero_grad(set_to_none=True)
         history_entry: dict[str, Any] = {
             "epoch": epoch + 1,
@@ -370,6 +382,13 @@ def train(
     tokenizer.save_pretrained(adapter_root)
     adapter_files = digest_tree(adapter_root)
 
+    # Final child adapter state, observed while the adapter is still attached (parent mode only).
+    final_tensor_sha256 = (
+        adapter_tensor_digest(lora_tensor_items_from_model(model))
+        if initialization["mode"] == "parent"
+        else None
+    )
+
     base = model.unload()
     base_probe_after = logits_digest(base, probe)
     if base_probe_after != base_probe_before:
@@ -378,6 +397,35 @@ def train(
     adapter_probe_after_reload = logits_digest(reloaded, probe)
     if adapter_probe_after_reload != adapter_probe_before_save:
         raise RuntimeError("reloaded adapter probe does not match the saved adapter")
+
+    parent_update_receipt = None
+    if initialization["mode"] == "parent":
+        parent = initialization["parent"]
+        # Digest the actual freshly reloaded child adapter (is_trainable=False), proving the saved
+        # artifact reloads to the final trained state — a byte-level check, not only a logit probe.
+        reloaded_tensor_sha256 = adapter_tensor_digest(lora_tensor_items_from_model(reloaded))
+        parent_update_receipt = {
+            "protocolVersion": PARENT_TENSOR_DIGEST_PROTOCOL,
+            "parentWeightSha256": parent["adapterWeightsSha256"],
+            "parentConfigSha256": parent["adapterConfigSha256"],
+            "trainingContractSha256": contract["digest"],
+            "childWeightSha256": file_sha256(adapter_root / "adapter_model.safetensors"),
+            "expectedParentTensorSha256": expected_parent_tensor_sha256,
+            "loadedInitialTensorSha256": loaded_initial_tensor_sha256,
+            "finalTensorSha256": final_tensor_sha256,
+            "reloadedTensorSha256": reloaded_tensor_sha256,
+            "optimizerUpdates": completed_optimizer_steps,
+            "optimizer": initialization["optimizer"],
+            # Base preservation here is a frozen-base scope + fixed-probe check (see probes below),
+            # not a full byte-for-byte comparison of every base tensor.
+            "baseUnchanged": base_probe_after == base_probe_before,
+            "savedReloadExact": adapter_probe_after_reload == adapter_probe_before_save,
+            "baseEvidenceScope": "frozen-adapter-scope-and-fixed-logit-probe",
+        }
+        # Producer self-check: a copied/misloaded parent or zero updates cannot pass. The parent
+        # status stays pending; the parent-aware verifier validates this evidence before removing
+        # any outstanding criterion.
+        assert_parent_update_receipt(parent_update_receipt)
 
     report = {
         "schema": "amos.qwen-adapter-stage0-result",
@@ -419,6 +467,7 @@ def train(
             "adapterReloadExact": adapter_probe_before_save == adapter_probe_after_reload,
         },
         "adapterFiles": adapter_files,
+        "parentInitializationReceipt": parent_update_receipt,
         "remainingExitCriteria": stage_one_remaining_exit_criteria(initialization["mode"]),
     }
     report["digest"] = digest_value(report)
@@ -830,6 +879,139 @@ def download_and_verify_parent_adapter(parent: dict[str, Any], destination: Path
     return destination
 
 
+PARENT_TENSOR_DIGEST_PROTOCOL = "amos.parent-adapter-tensor-digest.v1"
+
+
+LORA_PARAMETER_NAMES = ("lora_A", "lora_B", "lora_embedding_A", "lora_embedding_B", "lora_magnitude_vector")
+_ADAPTER_NAME_SEGMENT = re.compile(
+    r"\.(" + "|".join(LORA_PARAMETER_NAMES) + r")\.[^.]+\."
+)
+
+
+def normalize_lora_tensor_name(name: str) -> str:
+    """Canonicalize a LoRA tensor name so the saved-parent artifact and the loaded model agree.
+
+    PEFT inserts the active adapter name as the path segment that immediately follows a LoRA
+    parameter name in the live module state (``...lora_A.default.weight``); the saved safetensors
+    keys omit it (``...lora_A.weight``). The only intentional transformation is removing that one
+    adapter-name segment *after a supported LoRA parameter name*. Ordinary namespace segments
+    (e.g. a module literally named ``default``) are preserved, so distinct tensors never alias;
+    collisions are rejected by the digest rather than silently merged.
+    """
+    return _ADAPTER_NAME_SEGMENT.sub(r".\1.", name)
+
+
+def adapter_tensor_digest(items: Iterable[tuple[str, str, tuple[int, ...], bytes]],
+                          *, protocol_version: str = PARENT_TENSOR_DIGEST_PROTOCOL) -> str:
+    """Deterministic digest of an adapter tensor state.
+
+    ``items`` yields ``(name, dtype, shape, raw_bytes)`` where ``raw_bytes`` is the tensor's
+    canonical little-endian contiguous byte serialization. Names are normalized then the full
+    key set is hashed in sorted-name order with length-framed fields, so any changed
+    name/shape/dtype/value, or a missing or extra tensor, changes the digest. A normalized-name
+    collision is rejected rather than silently merged. This is a file-independent identity of the
+    tensor *state* — never substituted for a file SHA-256.
+    """
+    framed: dict[str, bytes] = {}
+    for name, dtype, shape, raw in items:
+        key = normalize_lora_tensor_name(name)
+        if key in framed:
+            raise ValueError(f"duplicate normalized tensor name: {key}")
+        shape_text = ",".join(str(int(dim)) for dim in shape)
+        framed[key] = b"".join(_length_framed(part) for part in (
+            key.encode("utf-8"), str(dtype).encode("utf-8"), shape_text.encode("utf-8"), bytes(raw)
+        ))
+    digest = hashlib.sha256()
+    digest.update(_length_framed(protocol_version.encode("utf-8")))
+    digest.update(_length_framed(str(len(framed)).encode("utf-8")))
+    for key in sorted(framed):
+        digest.update(framed[key])
+    return digest.hexdigest()
+
+
+def _length_framed(value: bytes) -> bytes:
+    return len(value).to_bytes(8, "big") + value
+
+
+def assert_parent_update_receipt(receipt: dict[str, Any]) -> None:
+    """Reject a parent-update receipt that does not prove a real continuation.
+
+    A copied parent (final == loaded), a misloaded parent (loaded != expected), zero optimizer
+    steps, a non-reset optimizer, an unchanged saved reload, or a child file identical to the
+    parent all fail here. File hashes and tensor-state hashes are validated as separate
+    identities.
+    """
+    if receipt.get("protocolVersion") != PARENT_TENSOR_DIGEST_PROTOCOL:
+        raise ValueError("parent-update receipt protocol version is missing or unsupported")
+    for field in ("parentWeightSha256", "parentConfigSha256", "trainingContractSha256",
+                  "childWeightSha256", "expectedParentTensorSha256", "loadedInitialTensorSha256",
+                  "finalTensorSha256", "reloadedTensorSha256"):
+        if not (isinstance(receipt.get(field), str) and SHA256_HEX.match(receipt[field])):
+            raise ValueError(f"parent-update receipt field {field} must be a SHA-256 hex digest")
+    if receipt["loadedInitialTensorSha256"] != receipt["expectedParentTensorSha256"]:
+        raise ValueError("loaded initial tensor state does not match the independently derived parent state")
+    if receipt["finalTensorSha256"] == receipt["loadedInitialTensorSha256"]:
+        raise ValueError("final child tensor state is identical to the loaded parent: no update occurred")
+    if receipt["reloadedTensorSha256"] != receipt["finalTensorSha256"]:
+        raise ValueError("freshly reloaded child tensor state does not match the final trained state")
+    if receipt["childWeightSha256"] == receipt["parentWeightSha256"]:
+        raise ValueError("saved child weights are byte-identical to the parent weights")
+    updates = receipt.get("optimizerUpdates")
+    if not isinstance(updates, int) or isinstance(updates, bool) or updates <= 0:
+        raise ValueError("optimizerUpdates must be a positive integer of completed optimizer steps")
+    if receipt.get("optimizer") != "reset":
+        raise ValueError('parent-update receipt optimizer must be "reset"')
+    if receipt.get("baseUnchanged") is not True:
+        raise ValueError("parent-update receipt must record baseUnchanged=true")
+    if receipt.get("savedReloadExact") is not True:
+        raise ValueError("parent-update receipt must record savedReloadExact=true")
+
+
+def lora_tensor_items_from_model(model: Any) -> Iterable[tuple[str, str, tuple[int, ...], bytes]]:
+    """Yield the FULL LoRA adapter tensor state of a PeftModel as digest items (runtime/torch).
+
+    The full state is observed independently of trainability so a frozen extra adapter tensor is
+    never silently dropped, and the same collector works on an is_trainable=False reload (it must
+    not return an empty state there). Whether the intended tensors are trainable is asserted
+    separately by assert_single_trainable_adapter.
+    """
+    import torch
+
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            tensor = param.detach().cpu().contiguous()
+            raw = tensor.flatten().view(torch.uint8).numpy().tobytes()
+            yield (name, str(param.dtype), tuple(int(dim) for dim in param.shape), raw)
+
+
+def expected_parent_tensor_items(safetensors_path: Path) -> Iterable[tuple[str, str, tuple[int, ...], bytes]]:
+    """Yield the parent adapter tensors read directly from the hash-verified safetensors file.
+
+    The expected parent tensor state is derived independently from the saved artifact, never
+    copied from the loaded model, so a misloaded parent is detectable (runtime/torch).
+    """
+    from safetensors import safe_open  # type: ignore[import-not-found]
+
+    import torch
+
+    with safe_open(str(safetensors_path), framework="pt") as handle:
+        for key in handle.keys():
+            tensor = handle.get_tensor(key).detach().cpu().contiguous()
+            raw = tensor.flatten().view(torch.uint8).numpy().tobytes()
+            yield (key, str(tensor.dtype), tuple(int(dim) for dim in tensor.shape), raw)
+
+
+def assert_loaded_parent_matches_expected(loaded_initial_sha256: str, expected_parent_sha256: str) -> None:
+    """Fail before spending any training budget if the trainably loaded parent state does not
+    match the state independently derived from the saved artifact (the
+    loadedParentTensorEqualityRequiredBeforeFirstStep obligation)."""
+    if loaded_initial_sha256 != expected_parent_sha256:
+        raise RuntimeError(
+            "loaded parent adapter state does not match the expected saved parent state; "
+            "refusing to train a misloaded parent"
+        )
+
+
 def stage_one_result_status(mode: str) -> str:
     """A parent continuation reports a distinct pending status so the existing vLLM verifier —
     which only accepts the fresh status and then empties remainingExitCriteria — fails closed
@@ -892,6 +1074,20 @@ def assert_single_trainable_adapter(model: Any) -> None:
     active_list = active() if callable(active) else active
     if active_list is not None and len(list(active_list)) != 1:
         raise RuntimeError("exactly one adapter must be active for a parent continuation")
+    # Every intended parent LoRA tensor must be trainable on the initial load: a partially
+    # frozen parent (e.g. trainable lora_A but frozen lora_B) would otherwise train only part of
+    # the adapter. This is an initial-load-only assertion; it is never run on the frozen reload.
+    frozen = []
+    found = False
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            found = True
+            if not getattr(param, "requires_grad", False):
+                frozen.append(name)
+    if not found:
+        raise RuntimeError("no LoRA parameters found on the loaded parent adapter")
+    if frozen:
+        raise RuntimeError(f"every LoRA tensor of a parent continuation must be trainable on initial load; {len(frozen)} frozen")
 
 
 def digest_tree(root: Path) -> list[dict[str, Any]]:

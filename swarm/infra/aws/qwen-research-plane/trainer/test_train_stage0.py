@@ -439,5 +439,153 @@ class ParentPendingProofStatusTests(unittest.TestCase):
             with self.assertRaises((RuntimeError, ValueError, KeyError)):
                 verifier._validate_lineage(report, adapter)
 
+
+class ParentTensorDigestTests(unittest.TestCase):
+    def _items(self):
+        return [("base_model.model.q_proj.lora_A.default.weight", "bfloat16", (32, 4096), b"\x01\x02"),
+                ("base_model.model.q_proj.lora_B.default.weight", "bfloat16", (4096, 32), b"\x03\x04")]
+
+    def test_name_normalization_removes_default_adapter_segment(self):
+        self.assertEqual(TRAINER.normalize_lora_tensor_name("x.lora_A.default.weight"), "x.lora_A.weight")
+
+    def test_digest_is_order_independent(self):
+        items = self._items()
+        self.assertEqual(TRAINER.adapter_tensor_digest(items), TRAINER.adapter_tensor_digest(list(reversed(items))))
+
+    def test_loaded_and_saved_names_agree_after_normalization(self):
+        loaded = self._items()
+        saved = [("base_model.model.q_proj.lora_A.weight", "bfloat16", (32, 4096), b"\x01\x02"),
+                 ("base_model.model.q_proj.lora_B.weight", "bfloat16", (4096, 32), b"\x03\x04")]
+        self.assertEqual(TRAINER.adapter_tensor_digest(loaded), TRAINER.adapter_tensor_digest(saved))
+
+    def test_changed_value_shape_dtype_or_name_changes_digest(self):
+        base = TRAINER.adapter_tensor_digest(self._items())
+        for mutate in [
+            lambda it: [(it[0][0], it[0][1], it[0][2], b"\x09\x09"), it[1]],
+            lambda it: [(it[0][0], it[0][1], (16, 4096), it[0][3]), it[1]],
+            lambda it: [(it[0][0], "float16", it[0][2], it[0][3]), it[1]],
+            lambda it: [("base_model.model.k_proj.lora_A.default.weight", it[0][1], it[0][2], it[0][3]), it[1]],
+        ]:
+            self.assertNotEqual(base, TRAINER.adapter_tensor_digest(mutate(self._items())))
+
+    def test_missing_or_extra_tensor_changes_digest(self):
+        base = TRAINER.adapter_tensor_digest(self._items())
+        self.assertNotEqual(base, TRAINER.adapter_tensor_digest(self._items()[:1]))
+        extra = self._items() + [("base_model.model.v_proj.lora_A.default.weight", "bfloat16", (32, 4096), b"\x07")]
+        self.assertNotEqual(base, TRAINER.adapter_tensor_digest(extra))
+
+    def test_duplicate_normalized_name_is_rejected(self):
+        dup = self._items() + [("base_model.model.q_proj.lora_A.default.weight", "bfloat16", (32, 4096), b"\xff")]
+        with self.assertRaises(ValueError):
+            TRAINER.adapter_tensor_digest(dup)
+
+    def test_namespace_default_segment_is_not_stripped(self):
+        # A module literally named "default" (not the adapter segment after a lora param) must
+        # NOT alias its sibling; only the adapter segment following lora_A/lora_B is removed.
+        a = TRAINER.adapter_tensor_digest([("base_model.model.default.q_proj.lora_A.weight", "bfloat16", (1,), b"\x01")])
+        b = TRAINER.adapter_tensor_digest([("base_model.model.q_proj.lora_A.weight", "bfloat16", (1,), b"\x01")])
+        self.assertNotEqual(a, b)
+
+
+class ParentUpdateReceiptTests(unittest.TestCase):
+    def _receipt(self, **overrides):
+        h = lambda seed: __import__("hashlib").sha256(seed).hexdigest()
+        loaded = h(b"parent-tensor-state")
+        receipt = {
+            "protocolVersion": TRAINER.PARENT_TENSOR_DIGEST_PROTOCOL,
+            "parentWeightSha256": "36fd8741c18e1a1478629473c7701584e8e9bc92f890eeedf3effff5d3638528",
+            "parentConfigSha256": "edf24b93506b19ea31631fe10020918185b5efca36800084879694e651deb352",
+            "trainingContractSha256": h(b"child-contract"),
+            "childWeightSha256": h(b"child-weights"),
+            "expectedParentTensorSha256": loaded,
+            "loadedInitialTensorSha256": loaded,
+            "finalTensorSha256": h(b"child-tensor-state"),
+            "reloadedTensorSha256": h(b"child-tensor-state"),
+            "optimizerUpdates": 42,
+            "optimizer": "reset",
+            "baseUnchanged": True,
+            "savedReloadExact": True,
+        }
+        receipt.update(overrides)
+        return receipt
+
+    def test_a_valid_receipt_passes(self):
+        TRAINER.assert_parent_update_receipt(self._receipt())
+
+    def test_misloaded_parent_is_rejected(self):
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(loadedInitialTensorSha256=__import__("hashlib").sha256(b"wrong").hexdigest()))
+
+    def test_copied_parent_zero_movement_is_rejected(self):
+        r = self._receipt()
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(finalTensorSha256=r["loadedInitialTensorSha256"]))
+
+    def test_zero_or_nonpositive_updates_rejected(self):
+        for bad in (0, -1, True, "5"):
+            with self.assertRaises(ValueError):
+                TRAINER.assert_parent_update_receipt(self._receipt(optimizerUpdates=bad))
+
+    def test_non_reset_optimizer_rejected(self):
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(optimizer="resume"))
+
+    def test_base_or_reload_evidence_must_hold(self):
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(baseUnchanged=False))
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(savedReloadExact=False))
+
+    def test_child_file_identical_to_parent_rejected(self):
+        r = self._receipt()
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(childWeightSha256=r["parentWeightSha256"]))
+
+    def test_missing_protocol_version_rejected(self):
+        r = self._receipt(); del r["protocolVersion"]
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(r)
+
+    def test_reloaded_state_must_equal_final(self):
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(self._receipt(reloadedTensorSha256=__import__("hashlib").sha256(b"drifted-reload").hexdigest()))
+
+    def test_missing_reloaded_digest_rejected(self):
+        r = self._receipt(); del r["reloadedTensorSha256"]
+        with self.assertRaises(ValueError):
+            TRAINER.assert_parent_update_receipt(r)
+
+    def test_early_stop_helper_fails_on_misloaded_parent(self):
+        TRAINER.assert_loaded_parent_matches_expected("a" * 64, "a" * 64)
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_loaded_parent_matches_expected("a" * 64, "b" * 64)
+
+
+class SingleTrainableAdapterTests(unittest.TestCase):
+    import types as _types
+
+    def _model(self, trainable):
+        _t = __import__("types")
+        params = [(name, _t.SimpleNamespace(requires_grad=flag))
+                  for name, flag in [("base_model.model.q_proj.lora_A.default.weight", trainable[0]),
+                                     ("base_model.model.q_proj.lora_B.default.weight", trainable[1]),
+                                     ("base_model.model.q_proj.base_layer.weight", False)]]
+        return _t.SimpleNamespace(peft_config={"default": {}}, active_adapters=["default"],
+                                  named_parameters=lambda: params)
+
+    def test_all_trainable_lora_passes(self):
+        TRAINER.assert_single_trainable_adapter(self._model((True, True)))
+
+    def test_partially_frozen_parent_is_rejected(self):
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_single_trainable_adapter(self._model((True, False)))
+
+    def test_no_lora_parameters_is_rejected(self):
+        _t = __import__("types")
+        model = _t.SimpleNamespace(peft_config={"default": {}}, active_adapters=["default"],
+                                   named_parameters=lambda: [("base_model.model.q_proj.base_layer.weight", _t.SimpleNamespace(requires_grad=False))])
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_single_trainable_adapter(model)
+
 if __name__ == "__main__":
     unittest.main()
