@@ -560,5 +560,32 @@ class ParentUpdateReceiptTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             TRAINER.assert_loaded_parent_matches_expected("a" * 64, "b" * 64)
 
+
+class SingleTrainableAdapterTests(unittest.TestCase):
+    import types as _types
+
+    def _model(self, trainable):
+        _t = __import__("types")
+        params = [(name, _t.SimpleNamespace(requires_grad=flag))
+                  for name, flag in [("base_model.model.q_proj.lora_A.default.weight", trainable[0]),
+                                     ("base_model.model.q_proj.lora_B.default.weight", trainable[1]),
+                                     ("base_model.model.q_proj.base_layer.weight", False)]]
+        return _t.SimpleNamespace(peft_config={"default": {}}, active_adapters=["default"],
+                                  named_parameters=lambda: params)
+
+    def test_all_trainable_lora_passes(self):
+        TRAINER.assert_single_trainable_adapter(self._model((True, True)))
+
+    def test_partially_frozen_parent_is_rejected(self):
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_single_trainable_adapter(self._model((True, False)))
+
+    def test_no_lora_parameters_is_rejected(self):
+        _t = __import__("types")
+        model = _t.SimpleNamespace(peft_config={"default": {}}, active_adapters=["default"],
+                                   named_parameters=lambda: [("base_model.model.q_proj.base_layer.weight", _t.SimpleNamespace(requires_grad=False))])
+        with self.assertRaises(RuntimeError):
+            TRAINER.assert_single_trainable_adapter(model)
+
 if __name__ == "__main__":
     unittest.main()

@@ -1074,6 +1074,20 @@ def assert_single_trainable_adapter(model: Any) -> None:
     active_list = active() if callable(active) else active
     if active_list is not None and len(list(active_list)) != 1:
         raise RuntimeError("exactly one adapter must be active for a parent continuation")
+    # Every intended parent LoRA tensor must be trainable on the initial load: a partially
+    # frozen parent (e.g. trainable lora_A but frozen lora_B) would otherwise train only part of
+    # the adapter. This is an initial-load-only assertion; it is never run on the frozen reload.
+    frozen = []
+    found = False
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            found = True
+            if not getattr(param, "requires_grad", False):
+                frozen.append(name)
+    if not found:
+        raise RuntimeError("no LoRA parameters found on the loaded parent adapter")
+    if frozen:
+        raise RuntimeError(f"every LoRA tensor of a parent continuation must be trainable on initial load; {len(frozen)} frozen")
 
 
 def digest_tree(root: Path) -> list[dict[str, Any]]:
