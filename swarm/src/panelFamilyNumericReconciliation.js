@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { numericReconciliationFromLedgers } from "../evals/desktopFixtures/numericReconciliation.js";
+import { datasetDigest } from "../evals/desktopFixtures/_shared.js";
 
 // A0 development-panel family: numeric-reconciliation. Deterministic generator + exact
 // grader + comparable decision-signature projection for one of the eight named
@@ -6,9 +8,10 @@ import { createHash } from "node:crypto";
 // fixed before measurement; the grader is a pure oracle (no model); the projection
 // computes the SAME decisionSignature = sha256(canonical(signatureFacts)) the excluded
 // inventory uses, so a panel case whose reconciliation facts match a consumed/parent
-// task is caught (the strong 64-hex identity; the historical 8-hex key is a
-// non-recomputable source id and is not claimed here). Task content is NEW; exact-
-// identity disjointness proves no reuse, not semantic novelty.
+// task is caught. Also emit the exact historical FNV-1a key over the executed
+// ledger rows. Normalized strong signatures ignore row IDs/order; historical keys
+// preserve them. An actual inventory comparison is still required; this establishes
+// exact-decision coverage, not semantic novelty.
 
 export const FAMILY = "numeric-reconciliation";
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
@@ -35,7 +38,8 @@ function streamFrom(label) {
 // 3-5 entries each. Fully determined by (seed, index).
 export function generate(seed, index) {
   if (typeof seed !== "string" || !/^\d+$/.test(seed)) throw new TypeError("seed must be an all-digit string");
-  if (!Number.isInteger(index) || index < 0) throw new TypeError("index must be a non-negative integer");
+  if (!Number.isSafeInteger(index) || index < 0) throw new TypeError("index must be a non-negative integer");
+  if (!Number.isSafeInteger(Number(seed))) throw new RangeError("seed must be a safe integer");
   const next = streamFrom(`${FAMILY}:${seed}:${index}`);
   const sizeA = 3 + (next() % 3); // 3..5
   const sizeB = 3 + (next() % 3);
@@ -47,44 +51,59 @@ export function generate(seed, index) {
 
 // Normalized facts that define the case's decision identity (order-independent).
 export function signatureFacts(body) {
+  validateBody(body,{projection:true});
   const a = body.facts.ledgerA.map((e) => e.amount).sort((x, y) => x - y);
   const b = body.facts.ledgerB.map((e) => e.amount).sort((x, y) => x - y);
   return { family: FAMILY, a, b };
 }
 
-// Comparable decision projection: the strong 64-hex signature only (the 8-hex historical
-// key is not recomputable from task facts and is not claimed).
+// Comparable normalized decision signature plus exact native historical key.
 export function project(body) {
-  return { decisionSignatures: [sha256(canonical(signatureFacts(body)))] };
+  const signature=sha256(canonical(signatureFacts(body)));
+  const rows=values=>values.map(({id,amount})=>({id,amount}));
+  return {decisionSignatures:[signature],decisionKeys:[datasetDigest({family:FAMILY,
+    ledgerA:rows(body.facts.ledgerA),ledgerB:rows(body.facts.ledgerB)})]};
 }
 
-// The canonical correct answer: the multiset of amounts in A with no equal counterpart
-// in B (multiset difference A \ B), sorted ascending, plus the net total difference.
+// Freeze the original A0 task: two actual reads, then a bare signed A-total minus
+// B-total. A separate multiset requirement would be a new experimental treatment.
+export function validateBody(body,{projection=false}={}) {
+  if(!body || body.family!==FAMILY || !Number.isSafeInteger(body.index) || body.index<0 || !body.facts) throw new TypeError("numeric panel body required");
+  for(const rows of [body.facts.ledgerA,body.facts.ledgerB]) {
+    if(!Array.isArray(rows) || rows.length<(projection?1:3) || rows.length>(projection?1000:5)) throw new TypeError("panel ledger requires3..5 rows");
+    const ids=new Set();
+    for(let i=0;i<rows.length;i++) {
+      const row=rows[i];
+      if(!row || typeof row.id!=="string" || row.id.length===0 || row.id.length>128 || ids.has(row.id) || !Number.isSafeInteger(row.amount) || (!projection && (row.amount<100 || row.amount>9999))) throw new TypeError("unique row ids and integer amounts100..9999 required");
+      ids.add(row.id);
+    }
+  }
+  return body;
+}
 export function expected(body) {
-  const bCounts = new Map();
-  for (const e of body.facts.ledgerB) bCounts.set(e.amount, (bCounts.get(e.amount) ?? 0) + 1);
-  const unmatched = [];
-  for (const e of [...body.facts.ledgerA].sort((x, y) => x.amount - y.amount)) {
-    const c = bCounts.get(e.amount) ?? 0;
-    if (c > 0) bCounts.set(e.amount, c - 1);
-    else unmatched.push(e.amount);
-  }
-  const netDifference = body.facts.ledgerA.reduce((s, e) => s + e.amount, 0) - body.facts.ledgerB.reduce((s, e) => s + e.amount, 0);
-  return { unmatchedFromA: unmatched, netDifference };
+  validateBody(body);
+  const sum=rows=>rows.reduce((s,e)=>s+BigInt(e.amount),0n);
+  return Number(sum(body.facts.ledgerA)-sum(body.facts.ledgerB));
 }
-
-// Exact grader. answer must be { unmatchedFromA: number[], netDifference: number }.
-// Malformed (wrong shape/types) is a distinct outcome from a wrong answer.
+const caseIdFor=body=>`${FAMILY}:${sha256(canonical(body)).slice(0,16)}`;
+// Pure ANSWER check only. This outcome cannot establish a successful tool task.
 export function grade(body, answer) {
-  const caseId = `${FAMILY}:${sha256(canonical(body)).slice(0, 16)}`;
-  const base = { caseId, family: FAMILY };
-  if (!answer || typeof answer !== "object" || !Array.isArray(answer.unmatchedFromA) ||
-      !answer.unmatchedFromA.every((n) => Number.isInteger(n)) || !Number.isInteger(answer.netDifference)) {
-    return { ...base, outcome: "malformed", evidenceSha256: sha256(canonical({ body, answer, verdict: "malformed" })) };
-  }
-  const exp = expected(body);
-  const submitted = [...answer.unmatchedFromA].sort((x, y) => x - y);
-  const ok = answer.netDifference === exp.netDifference &&
-    submitted.length === exp.unmatchedFromA.length && submitted.every((n, i) => n === exp.unmatchedFromA[i]);
-  return { ...base, outcome: ok ? "pass" : "fail", expected: exp, evidenceSha256: sha256(canonical({ body, expected: exp, answer, verdict: ok ? "pass" : "fail" })) };
+  const exp=expected(body),text=typeof answer==="string"?answer.trim():null;
+  const valid=text!==null && /^-?(?:0|[1-9][0-9]*)$/.test(text) && Number.isSafeInteger(Number(text));
+  const outcome=!valid?"malformed":Number(text)===exp?"pass":"fail";
+  return {caseId:caseIdFor(body),family:FAMILY,outcome,verificationScope:"answer-only",nativeTaskPassed:false,
+    evidenceSha256:sha256(canonical({body,answer,verdict:outcome,scope:"answer-only"}))};
+}
+// Actual native fixture adapter. Wire this object into the existing Desktop
+// executor. Its own read closures, not caller-supplied booleans, establish readBoth.
+export function createFixture(body) {
+  validateBody(body);body=structuredClone(body);
+  const native=numericReconciliationFromLedgers({id:caseIdFor(body),...body.facts});
+  return {...native,verify(execution){
+    const result=native.verify(execution);
+    const answerCheck=grade(body,execution?.answer);
+    const outcome=answerCheck.outcome==="malformed"?"malformed":result.verdict;
+    return {...result,caseId:caseIdFor(body),outcome,verificationScope:"native-tools-and-answer",
+      nativeTaskPassed:outcome==="pass",evidenceSha256:sha256(canonical({body,answer:execution?.answer,readBoth:result.readBoth,verdict:outcome}))};
+  }};
 }
