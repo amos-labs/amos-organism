@@ -207,6 +207,125 @@ def run(contract: dict[str, Any], work: Path, *, validate_only: bool) -> dict[st
     return train(contract, split_rows, work, preflight)
 
 
+def updates_per_epoch(training_rows: int, micro_batch_size: int, accumulation: int) -> int:
+    """Completed optimizer updates in one epoch. The loop steps every `accumulation`
+    micro-batches AND on the final batch (`batch_index == len(loader)`), so a trailing
+    partial accumulation window still produces one flush update."""
+    if training_rows <= 0 or micro_batch_size <= 0 or accumulation <= 0:
+        raise ValueError("row/batch/accumulation counts must be positive")
+    batches = math.ceil(training_rows / micro_batch_size)
+    return math.ceil(batches / accumulation)
+
+
+def plan_development_checkpoints(
+    targets: "Any", optimization: dict, training_rows: int
+) -> list:
+    """Validate the predeclared A0 development-checkpoint schedule against the fixed
+    recipe BEFORE any training budget is spent. Each target is a count of completed
+    optimizer updates that must be a positive integer, strictly increasing, reachable
+    within the planned epochs, and land exactly on an epoch boundary (the diagnostic
+    saves whole-epoch checkpoints). Returns [{"optimizerSteps", "epoch"}] in order.
+    The schedule is fixed here; it cannot be widened or narrowed after measurement."""
+    if not isinstance(targets, list) or not targets:
+        raise ValueError("developmentCheckpoints must be a non-empty list")
+    per_epoch = updates_per_epoch(
+        training_rows, optimization["microBatchSize"], optimization["gradientAccumulationSteps"]
+    )
+    epochs = optimization["epochs"]
+    total = per_epoch * epochs
+    boundaries = {per_epoch * k: k for k in range(1, epochs + 1)}
+    planned = []
+    previous = 0
+    for target in targets:
+        if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
+            raise ValueError("each development checkpoint must be a positive integer of completed optimizer updates")
+        if target <= previous:
+            raise ValueError("development checkpoints must be strictly increasing and unique")
+        if target > total:
+            raise ValueError(f"development checkpoint {target} exceeds the {total} planned optimizer updates")
+        if target not in boundaries:
+            raise ValueError(
+                f"development checkpoint {target} does not land on an epoch boundary (per-epoch updates {per_epoch})"
+            )
+        planned.append({"optimizerSteps": target, "epoch": boundaries[target]})
+        previous = target
+    return planned
+
+
+def capture_rng_state(torch: "Any", loader_generator: "Any" = None) -> dict:
+    """Snapshot every RNG stream that drives training (python, torch CPU/CUDA, and the
+    dataloader shuffle generator) so it can be restored byte-for-byte."""
+    state = {"python": random.getstate(), "torch": torch.get_rng_state()}
+    if torch.cuda.is_available():
+        state["cuda"] = torch.cuda.get_rng_state_all()
+    if loader_generator is not None:
+        state["loader"] = loader_generator.get_state()
+    return state
+
+
+def restore_rng_state(torch: "Any", state: dict, loader_generator: "Any" = None) -> None:
+    random.setstate(state["python"])
+    torch.set_rng_state(state["torch"])
+    if "cuda" in state and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(state["cuda"])
+    if loader_generator is not None and "loader" in state:
+        loader_generator.set_state(state["loader"])
+
+
+@contextlib.contextmanager
+def rng_neutral(torch: "Any", loader_generator: "Any" = None):
+    """Roll back any randomness consumed inside the block on exit, so a mid-run
+    checkpoint save cannot perturb the training RNG stream: a run WITH checkpointing
+    draws the same subsequent randomness as a run without it."""
+    state = capture_rng_state(torch, loader_generator)
+    try:
+        yield
+    finally:
+        restore_rng_state(torch, state, loader_generator)
+
+
+def _bytetensor_to_hex(torch: "Any", tensor: "Any") -> str:
+    return bytes(tensor.contiguous().view(-1).tolist()).hex()
+
+
+def _hex_to_bytetensor(torch: "Any", hexstr: str) -> "Any":
+    return torch.tensor(list(bytes.fromhex(hexstr)), dtype=torch.uint8)
+
+
+def serialize_rng_state(torch: "Any", state: dict) -> dict:
+    """JSON-safe form of an RNG snapshot. Tensor streams become hex; python's state
+    tuple is stored as lists (its inner MT tuple round-trips back to a tuple on load)."""
+    version, keys, gauss = state["python"]
+    out: dict = {
+        "python": {"version": version, "keys": list(keys), "gauss": gauss},
+        "torch": _bytetensor_to_hex(torch, state["torch"]),
+    }
+    if "cuda" in state:
+        out["cuda"] = [_bytetensor_to_hex(torch, t) for t in state["cuda"]]
+    if "loader" in state:
+        out["loader"] = _bytetensor_to_hex(torch, state["loader"])
+    return out
+
+
+def deserialize_rng_state(torch: "Any", data: dict) -> dict:
+    python = (data["python"]["version"], tuple(data["python"]["keys"]), data["python"]["gauss"])
+    state: dict = {"python": python, "torch": _hex_to_bytetensor(torch, data["torch"])}
+    if "cuda" in data:
+        state["cuda"] = [_hex_to_bytetensor(torch, h) for h in data["cuda"]]
+    if "loader" in data:
+        state["loader"] = _hex_to_bytetensor(torch, data["loader"])
+    return state
+
+
+def save_rng_state_file(torch: "Any", path: "Path", state: dict) -> None:
+    write_json(path, serialize_rng_state(torch, state))
+
+
+def load_rng_state_file(torch: "Any", path: "Path") -> dict:
+    with open(path, "r", encoding="utf-8") as handle:
+        return deserialize_rng_state(torch, json.load(handle))
+
+
 def train(
     contract: dict[str, Any],
     split_rows: dict[str, list[dict[str, Any]]],
@@ -318,13 +437,26 @@ def train(
     write_json(work / "trainable-parameters-receipt.json", parameter_receipt)
 
     optimization = contract["recipe"]["optimization"]
+    loader_generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
         EncodedDataset(encoded["training"], Dataset),
         batch_size=optimization["microBatchSize"],
         shuffle=True,
-        generator=torch.Generator().manual_seed(seed),
+        generator=loader_generator,
         collate_fn=lambda batch: collate(batch, tokenizer.pad_token_id, torch),
     )
+    # Fixed-before-measurement A0 development-checkpoint schedule (optional). Validated
+    # against the recipe so an unreachable or misaligned target is rejected before any
+    # training budget is spent; saved rng-neutrally so checkpointing cannot perturb it.
+    development_targets = (
+        plan_development_checkpoints(
+            contract["recipe"]["developmentCheckpoints"], optimization, len(encoded["training"])
+        )
+        if contract["recipe"].get("developmentCheckpoints")
+        else []
+    )
+    development_by_step = {entry["optimizerSteps"]: entry for entry in development_targets}
+    development_checkpoints: list[dict[str, Any]] = []
     optimizer = torch.optim.AdamW(
         (parameter for parameter in model.parameters() if parameter.requires_grad),
         lr=optimization["learningRate"],
@@ -360,6 +492,38 @@ def train(
             history_entry["validation"] = validation
             model.train()
         training_history.append(history_entry)
+
+        scheduled = development_by_step.get(completed_optimizer_steps)
+        if scheduled is not None:
+            # Persist the RNG position AS OF this checkpoint step (captured before the save
+            # touches anything) so a later eval resumes reproducibly, then restore it so the
+            # remaining epochs draw identically to a no-checkpoint run.
+            rng_at_checkpoint = capture_rng_state(torch, loader_generator)
+            try:
+                checkpoint_dir = work / f"checkpoint-step-{completed_optimizer_steps}"
+                model.save_pretrained(checkpoint_dir, safe_serialization=True)
+                save_rng_state_file(torch, checkpoint_dir / "rng-state.json", rng_at_checkpoint)
+                development_checkpoints.append({
+                    "epoch": scheduled["epoch"],
+                    "optimizerSteps": completed_optimizer_steps,
+                    "adapterSha256": file_sha256(checkpoint_dir / "adapter_model.safetensors"),
+                    "adapterTensorSha256": adapter_tensor_digest(lora_tensor_items_from_model(model)),
+                    "files": digest_tree(checkpoint_dir),
+                })
+            finally:
+                restore_rng_state(torch, rng_at_checkpoint, loader_generator)
+
+    if len(development_checkpoints) != len(development_targets):
+        saved = {entry["optimizerSteps"] for entry in development_checkpoints}
+        missing = [entry["optimizerSteps"] for entry in development_targets if entry["optimizerSteps"] not in saved]
+        raise RuntimeError(f"scheduled development checkpoints were not all saved: missing {missing}")
+    if development_checkpoints:
+        write_json(work / "development-checkpoints-manifest.json", {
+            "schema": "amos.development-checkpoints-manifest.v1",
+            "seed": seed,
+            "trainingContractSha256": contract["digest"],
+            "checkpoints": development_checkpoints,
+        })
 
     metrics = {
         split: evaluate(model, values, tokenizer.pad_token_id, torch)
@@ -799,6 +963,9 @@ def validate_contract(contract: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("training contract cannot authorize quality or promotion claims")
     if stage == 1 and contract.get("selection", {}).get("trainerMayNotSelect") is not True:
         raise ValueError("stage-one contract must forbid trainer-side checkpoint selection")
+    development_checkpoints = contract.get("recipe", {}).get("developmentCheckpoints")
+    if development_checkpoints is not None and (not isinstance(development_checkpoints, list) or not development_checkpoints):
+        raise ValueError("developmentCheckpoints, when present, must be a non-empty list of optimizer-update counts")
     if contract.get("recipe", {}).get("optimization", {}).get("loss") != "assistant-tokens-only":
         raise ValueError("trainer requires assistant-token-only loss")
     if contract.get("recipe", {}).get("includeVisionTowerInAdapter") is not False:
