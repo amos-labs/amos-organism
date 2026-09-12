@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { eventStoreDispatchJournal, createCpuDevelopmentDispatch, DISPATCH_EVENT_TYPE } from "../src/persistentLearningCpuBridge.js";
 import { dispatchActionIdentity, workSpecificationDigest } from "../src/persistentLearningDispatchAdapter.js";
+import { randomUUID } from "node:crypto";
 
 // CPU bridge: durable dispatch over an append-only EventStore, proving the Slice 2
 // exit evidence at the journal level. No model/tool/GPU work: the executor is a
@@ -70,4 +71,31 @@ test("ambiguous interrupted work stays unresolved (no reconciler, no re-executio
   await assert.rejects(bridge.dispatch(action, workItem), /unresolved/);
   assert.equal(s.calls, 0);
   assert.equal(bridge.journal.read(dispatchActionIdentity(action)).state, "unresolved");
+});
+
+// Review 084316Z scope correction: a matching-key completion from a wrong mission,
+// non-organism authority, or with an unexpected hostReceiptId must be REJECTED,
+// not silently ignored and re-executed. Positive control: the configured scope reuses.
+test("read rejects a matching-key record from a wrong mission / authority / hostReceiptId", async () => {
+  const key = dispatchActionIdentity(action);
+  const payload = { key, actionId: action.actionId, workKind: action.workKind, workSpecDigest: workSpecificationDigest(workItem), state: "completed", receiptDigest: DIGEST };
+  const negatives = [
+    { missionId: "other-mission", authority: "organism" },
+    { missionId: "persistent-learning", authority: "host" },
+    { missionId: "persistent-learning", authority: "organism", hostReceiptId: "hr-1" },
+  ];
+  for (const env of negatives) {
+    const store = memStore(); const s = { calls: 0 };
+    store.append({ id: `seed:${randomUUID()}`, type: DISPATCH_EVENT_TYPE, occurredAt: "2026-09-12T08:00:00.000Z", payload, ...env });
+    const executor = async () => { s.calls += 1; return { status: "passed", receiptDigest: DIGEST }; };
+    await assert.rejects(createCpuDevelopmentDispatch({ store, executor, now: clock() }).dispatch(action, workItem), /Invalid CPU dispatch-event authority or scope/);
+    // A second fresh bridge over the same store still rejects; nothing executed.
+    await assert.rejects(createCpuDevelopmentDispatch({ store, executor, now: clock() }).dispatch(action, workItem), /Invalid CPU dispatch-event authority or scope/);
+    assert.equal(s.calls, 0);
+  }
+  // Positive control: the configured mission/organism scope is adopted (reused, no execute).
+  const store = memStore(); const s = { calls: 0 };
+  store.append({ id: `seed:${randomUUID()}`, type: DISPATCH_EVENT_TYPE, missionId: "persistent-learning", authority: "organism", occurredAt: "2026-09-12T08:00:00.000Z", payload });
+  const r = await createCpuDevelopmentDispatch({ store, executor: async () => { s.calls += 1; return { status: "passed", receiptDigest: DIGEST }; }, now: clock() }).dispatch(action, workItem);
+  assert.equal(r.reused, true); assert.equal(s.calls, 0);
 });

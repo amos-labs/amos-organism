@@ -15,7 +15,9 @@ export const DISPATCH_EVENT_TYPE = "learning.cpu-dispatch-state.v1";
 
 // A dispatch journal ({read,write}) backed by an append-only EventStore. Each
 // lifecycle transition is a distinct append; read reconstructs the latest state
-// for a key by replaying the journal in sequence order.
+// for a key by replaying the journal in sequence order. After an uncertain
+// append failure, discard this bridge AND store and reopen the authoritative
+// journal before retrying; the existing runner does this on every tick.
 export function eventStoreDispatchJournal(store, { missionId = "persistent-learning", now = () => new Date() } = {}) {
   if (!store || typeof store.append !== "function" || typeof store.events !== "function") {
     throw new Error("eventStoreDispatchJournal requires an EventStore with append/events");
@@ -24,7 +26,11 @@ export function eventStoreDispatchJournal(store, { missionId = "persistent-learn
     read(key) {
       let latest = null;
       for (const event of store.events()) {
-        if (event.type === DISPATCH_EVENT_TYPE && event.payload && event.payload.key === key) latest = event.payload;
+        if (event.type !== DISPATCH_EVENT_TYPE || !event.payload || event.payload.key !== key) continue;
+        if (event.missionId !== missionId || event.authority !== "organism" || event.hostReceiptId !== undefined) {
+          throw new Error("Invalid CPU dispatch-event authority or scope");
+        }
+        latest = event.payload;
       }
       return latest;
     },
