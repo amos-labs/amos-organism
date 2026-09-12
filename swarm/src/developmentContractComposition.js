@@ -11,6 +11,7 @@
 const SHA256 = /^[a-f0-9]{64}$/;
 const CASE_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/; // the selector's identifier alphabet
 const EXPECTED_STEPS = [119, 238, 357];
+const EXPECTED_SEED = 20260910;
 
 function requireHash(value, name) {
   if (typeof value !== "string" || !SHA256.test(value)) throw new TypeError(`${name}: expected sha256 hex`);
@@ -20,6 +21,7 @@ function requireHash(value, name) {
 // return its checkpoints keyed by optimizer step, with a selector-safe id per checkpoint.
 export function bindCheckpointManifest(manifest) {
   if (manifest?.schema !== "amos.development-checkpoints-manifest.v1") throw new Error("expected development-checkpoints-manifest.v1");
+  if (manifest.seed !== EXPECTED_SEED) throw new Error("checkpoint manifest must use original S7 seed 20260910");
   requireHash(manifest.trainingContractSha256, "manifest.trainingContractSha256");
   if (!Array.isArray(manifest.checkpoints) || manifest.checkpoints.length !== 3) throw new Error("manifest must carry exactly three checkpoints");
   const bound = manifest.checkpoints
@@ -40,7 +42,7 @@ export function bindCheckpointManifest(manifest) {
 export function buildDevelopmentSelectionContract({ panel, checkpointManifest, graderSha256, inferenceSettingsSha256, recipeSha256, parentAdapterSha256 } = {}) {
   if (panel?.schema !== "amos.development-panel.v2") throw new Error("expected a development-panel.v2 compiler output");
   if (!Array.isArray(panel.cases) || panel.cases.length !== 96) throw new Error("panel must carry exactly 96 cases");
-  if (typeof panel.seedNumeric !== "number") throw new Error("panel must expose seedNumeric");
+  if (panel.seedNumeric !== EXPECTED_SEED) throw new Error("panel must use original S7 seed 20260910");
   requireHash(panel.panelSha256, "panel.panelSha256");
   requireHash(graderSha256, "graderSha256");
   requireHash(inferenceSettingsSha256, "inferenceSettingsSha256");
