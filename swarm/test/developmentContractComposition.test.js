@@ -77,3 +77,16 @@ test("the assembled contract is accepted by the actual selector end-to-end", asy
   assert.equal(result.selectedCheckpointId, "epoch-1-step-119");
   assert.equal(result.qualificationPassed, false);
 });
+
+// Both producers expose the seed. Do not relabel foreign checkpoint weights with
+// the panel seed before passing the contract to the fixed-seed selector.
+test("checkpoint and panel seeds must match the original S7 seed", () => {
+  const panel = compileDevelopmentPanel(panelSpecs(), { seed: SEED });
+  for (const seed of [undefined, 1234, "20260910", NaN]) {
+    const wrong = { ...manifest(), seed };
+    assert.throws(() => bindCheckpointManifest(wrong), /original S7 seed/);
+    assert.throws(() => buildDevelopmentSelectionContract({ panel, checkpointManifest: wrong, ...receipts }), /original S7 seed/);
+  }
+  assert.throws(() => buildDevelopmentSelectionContract({ panel: { ...panel, seedNumeric: 1234 }, checkpointManifest: manifest(), ...receipts }), /original S7 seed/);
+  assert.equal(buildDevelopmentSelectionContract({ panel, checkpointManifest: manifest(), ...receipts }).seed, 20260910);
+});
