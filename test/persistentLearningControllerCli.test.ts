@@ -192,3 +192,41 @@ test("CLI rereads changed observations, stays quiet on unchanged ticks and handl
     assert.equal(existsSync(join(f.state, ".controller-lock")), false);
   } finally { child.kill("SIGKILL"); rmSync(f.dir, { recursive: true, force: true }); }
 });
+
+test("CLI --development-work runs the CPU executor once inside the lock and does not re-execute on restart", () => {
+  const f = fixture();
+  const dev = join(f.dir, "dev.json");
+  writeFileSync(dev, JSON.stringify({
+    candidate: { id: "dev-cand-cli", policy: { "bid.repetitionPenalty": 4, "retry.challengerExploration": 1 }, optimizedParameters: ["bid.repetitionPenalty", "retry.challengerExploration"], rank: 1, createdAt: "2026-09-12T00:00:00.000Z" },
+    priorGate: { id: "simulation", status: "passed", evaluator: "organism-simulator", receiptDigest: "0".repeat(64), metrics: {}, feedbackSignals: [], evaluatedAt: "2026-09-12T00:00:00.000Z" },
+    episodes: [{ id: "ep-a", task: { name: "accounts-payable-process" } }, { id: "ep-b", task: { name: "accounts-payable-process" } }],
+  }));
+  const last = (out: string) => JSON.parse(out.trim().split("\n").filter(Boolean).at(-1)!);
+  try {
+    const first = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(first.status, 0, first.stderr);
+    const s1 = last(first.stdout);
+    assert.equal(s1.development.state, "completed");
+    assert.equal(s1.development.reused, false);
+    assert.equal(s1.development.workKind, "organism-artifact-replay");
+    assert.match(s1.development.receiptDigest, /^[a-f0-9]{64}$/);
+    // Restart over the same state: the reflection is already processed, so no new
+    // dispatch/execution occurs — the journal does not grow.
+    const second = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(second.status, 0, second.stderr);
+    const s2 = last(second.stdout);
+    assert.equal(s2.journalSequence, s1.journalSequence, "restart must not execute development work again");
+    assert.ok(s2.development === undefined || s2.development.reused === true);
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("CLI default remains metadata-only when --development-work is absent", () => {
+  const f = fixture();
+  try {
+    const r = run([...f.args, "--once"]);
+    assert.equal(r.status, 0, r.stderr);
+    const s = JSON.parse(r.stdout.trim().split("\n").filter(Boolean).at(-1)!);
+    assert.equal(s.development, undefined);
+    assert.equal(s.operation, "deterministic-cpu-reflection");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
