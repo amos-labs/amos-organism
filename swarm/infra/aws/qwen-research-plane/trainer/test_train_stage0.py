@@ -587,5 +587,129 @@ class SingleTrainableAdapterTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             TRAINER.assert_single_trainable_adapter(model)
 
+
+import torch as _torch
+
+
+OPT_119 = {"microBatchSize": 1, "gradientAccumulationSteps": 8, "epochs": 3}
+
+
+class DevelopmentCheckpointScheduleTests(unittest.TestCase):
+    def test_updates_per_epoch_matches_the_s6_recipe(self):
+        # 945 training rows, micro-batch 1, accumulation 8 -> ceil(945/8) = 119 updates/epoch.
+        self.assertEqual(TRAINER.updates_per_epoch(945, 1, 8), 119)
+
+    def test_valid_schedule_maps_targets_to_epoch_boundaries(self):
+        planned = TRAINER.plan_development_checkpoints([119, 238, 357], OPT_119, 945)
+        self.assertEqual(planned, [
+            {"optimizerSteps": 119, "epoch": 1},
+            {"optimizerSteps": 238, "epoch": 2},
+            {"optimizerSteps": 357, "epoch": 3},
+        ])
+
+    def test_target_beyond_planned_updates_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "exceeds"):
+            TRAINER.plan_development_checkpoints([119, 238, 357, 476], OPT_119, 945)
+
+    def test_target_off_an_epoch_boundary_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "epoch boundary"):
+            TRAINER.plan_development_checkpoints([120], OPT_119, 945)
+
+    def test_non_increasing_targets_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "strictly increasing"):
+            TRAINER.plan_development_checkpoints([238, 119], OPT_119, 945)
+
+    def test_non_integer_bool_empty_and_nonpositive_targets_are_rejected(self):
+        for bad in ([True], [0], [-119], ["119"], []):
+            with self.assertRaises(ValueError):
+                TRAINER.plan_development_checkpoints(bad, OPT_119, 945)
+
+
+class RngNeutralityTests(unittest.TestCase):
+    def test_python_random_is_neutral_across_a_checkpoint_block(self):
+        random_mod = __import__("random")
+        random_mod.seed(1234)
+        _ = [random_mod.random() for _ in range(3)]
+        with_block = None
+        # baseline: no block
+        state = random_mod.getstate()
+        baseline = [random_mod.random() for _ in range(3)]
+        random_mod.setstate(state)
+        with TRAINER.rng_neutral(_torch):
+            _ = [random_mod.random() for _ in range(10)]  # consume inside the block
+        after = [random_mod.random() for _ in range(3)]
+        self.assertEqual(baseline, after)
+
+    def test_torch_global_and_generator_streams_are_neutral(self):
+        _torch.manual_seed(99)
+        gen = _torch.Generator().manual_seed(7)
+        # baseline continuation captured, then rolled back
+        gstate = _torch.get_rng_state()
+        genstate = gen.get_state()
+        base_global = _torch.rand(4)
+        base_gen = _torch.rand(4, generator=gen)
+        _torch.set_rng_state(gstate)
+        gen.set_state(genstate)
+        with TRAINER.rng_neutral(_torch, gen):
+            _ = _torch.rand(17)
+            _ = _torch.rand(23, generator=gen)
+        self.assertTrue(_torch.equal(_torch.rand(4), base_global))
+        self.assertTrue(_torch.equal(_torch.rand(4, generator=gen), base_gen))
+
+
+class RngSerdeTests(unittest.TestCase):
+    def test_serialize_deserialize_reproduces_subsequent_draws(self):
+        random_mod = __import__("random")
+        random_mod.seed(2024)
+        _torch.manual_seed(2024)
+        gen = _torch.Generator().manual_seed(55)
+        _ = _torch.rand(5, generator=gen)  # advance the generator off its seed position
+        state = TRAINER.capture_rng_state(_torch, gen)
+        expected_py = [random_mod.random() for _ in range(3)]
+        expected_global = _torch.rand(3)
+        expected_gen = _torch.rand(3, generator=gen)
+        # round-trip the snapshot through JSON-safe form, then restore and redraw
+        data = TRAINER.serialize_rng_state(_torch, state)
+        import json as _json
+        restored = TRAINER.deserialize_rng_state(_torch, _json.loads(_json.dumps(data)))
+        TRAINER.restore_rng_state(_torch, restored, gen)
+        self.assertEqual([random_mod.random() for _ in range(3)], expected_py)
+        self.assertTrue(_torch.equal(_torch.rand(3), expected_global))
+        self.assertTrue(_torch.equal(_torch.rand(3, generator=gen), expected_gen))
+
+    def test_save_and_load_rng_state_file_round_trips(self):
+        _torch.manual_seed(5)
+        gen = _torch.Generator().manual_seed(6)
+        state = TRAINER.capture_rng_state(_torch, gen)
+        expected = _torch.rand(3, generator=gen)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "rng-state.json"
+            TRAINER.save_rng_state_file(_torch, path, state)
+            loaded = TRAINER.load_rng_state_file(_torch, path)
+        gen2 = _torch.Generator()
+        TRAINER.restore_rng_state(_torch, loaded, gen2)
+        self.assertTrue(_torch.equal(_torch.rand(3, generator=gen2), expected))
+
+
+
+
+class DevelopmentCheckpointPreflightTests(unittest.TestCase):
+    def _contract_with_schedule(self, schedule):
+        contract = StageZeroTrainerTests()._contract("amos-system-competence-sft", 1)
+        contract["recipe"]["optimization"].update(OPT_119)
+        contract["recipe"]["developmentCheckpoints"] = schedule
+        contract["dataset"] = {"trainingFile": {"rows": 945}}
+        contract["digest"] = TRAINER.digest_value({k: v for k, v in contract.items() if k != "digest"})
+        return contract
+
+    def test_valid_fixed_recipe_schedule_passes_early_contract_validation(self):
+        TRAINER.validate_contract(self._contract_with_schedule([119, 238, 357]))
+
+    def test_invalid_schedule_is_rejected_before_run_or_model_loading(self):
+        for schedule in ([120], [True], [476], [238, 119]):
+            with self.subTest(schedule=schedule), self.assertRaises(ValueError):
+                TRAINER.validate_contract(self._contract_with_schedule(schedule))
+
+
 if __name__ == "__main__":
     unittest.main()
