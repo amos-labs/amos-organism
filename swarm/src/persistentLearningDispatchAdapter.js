@@ -34,6 +34,10 @@ function sortKeys(v) {
   if (v && typeof v === "object") return Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])]));
   return v;
 }
+function deepFreeze(v) {
+  if (v && typeof v === "object") { for (const k of Object.keys(v)) deepFreeze(v[k]); return Object.freeze(v); }
+  return v;
+}
 
 // Stable idempotency key for a controller-selected development action — identity
 // fields only (never timestamps/attempt counts) so replay stays idempotent.
@@ -92,17 +96,24 @@ export function createSleepDispatchAdapter({ journal, executor, reconcile = null
   async function dispatchInner(action, workItem, key, workDigest, signal) {
     const prior = assertRecord(journal.read(key), key);
     if (prior) {
-      if (typeof prior.workSpecDigest === "string" && prior.workSpecDigest !== workDigest) {
+      // Require a VALID, EQUAL work-spec binding before any reuse or retry. An
+      // unbound/legacy record (missing or non-sha256 workSpecDigest) cannot be
+      // trusted to describe this work, so it stays unresolved rather than reusing.
+      if (typeof prior.workSpecDigest !== "string" || !SHA256.test(prior.workSpecDigest)) {
+        persist({ ...base(key, action, workDigest), state: "unresolved", outcome: "unbound", unresolvedAt: stamp() });
+        throw new Error("prior dispatch record has no valid work-spec binding; unresolved");
+      }
+      if (prior.workSpecDigest !== workDigest) {
         throw new Error("work specification changed for dispatch key; refusing to reuse the prior receipt");
       }
       if (prior.state === "completed") {
         return { key, state: "completed", receiptDigest: prior.receiptDigest, reused: true };
       }
-      // Interrupted dispatch: reconcile explicitly BEFORE any retry.
+      // Interrupted dispatch: reconcile explicitly BEFORE any retry. A missing
+      // reconciler or a null/invalid result normalizes to 'unknown' -> unresolved.
       persist({ ...prior, key, state: "reconciling", reconciledAt: stamp() });
-      const res = reconcile ? await reconcile(workItem, prior, { signal, key }) : { outcome: "unknown" };
-      const outcome = res?.outcome;
-      if (!RECONCILE_OUTCOMES.includes(outcome)) throw new Error("reconcile must return a known outcome");
+      const res = reconcile ? await reconcile(workItem, prior, { signal, key }) : null;
+      const outcome = RECONCILE_OUTCOMES.includes(res?.outcome) ? res.outcome : "unknown";
       if (outcome === "completed") {
         const rec = adopt(key, action, workDigest, res.receipt);
         return { key, state: "completed", receiptDigest: rec.receiptDigest, reused: true };
@@ -124,8 +135,15 @@ export function createSleepDispatchAdapter({ journal, executor, reconcile = null
   }
 
   async function dispatch(action, workItem, { signal = null } = {}) {
-    const key = dispatchActionIdentity(action);
-    const workDigest = workSpecificationDigest(workItem);
+    // Snapshot + freeze inputs BEFORE queueing, and derive identity/digest from the
+    // SAME snapshots the executor and reconciler will see, so a caller mutating its
+    // objects before the microtask runs cannot change the executed work, key,
+    // digest or recorded action.
+    const actionSnapshot = deepFreeze(structuredClone(action));
+    const workSnapshot = deepFreeze(structuredClone(workItem));
+    const key = dispatchActionIdentity(actionSnapshot);
+    const workDigest = workSpecificationDigest(workSnapshot);
+    action = actionSnapshot; workItem = workSnapshot;
     const prev = inFlight.get(key) ?? Promise.resolve();
     const run = prev.then(() => dispatchInner(action, workItem, key, workDigest, signal),
       () => dispatchInner(action, workItem, key, workDigest, signal));

@@ -106,3 +106,46 @@ test("a malformed (non-sha256) receipt digest is rejected", async () => {
   const adapter = createSleepDispatchAdapter({ journal: memJournal(), executor: async () => ({ status: "passed", receiptDigest: "not-a-sha256" }), now: clock() });
   await assert.rejects(adapter.dispatch(action, workItem), /receipt digest must be sha256 hex/);
 });
+
+// Repair review 064904Z Fix 1: an unbound/legacy prior record (no valid workSpecDigest)
+// must not reuse or retry — it is unresolved.
+test("a prior record with a missing/invalid work-spec binding is unresolved (no reuse)", async () => {
+  const key = dispatchActionIdentity(action); const s = { calls: 0 };
+  for (const bad of [undefined, null, 123, "not-a-sha256"]) {
+    const seed = { key, actionId: action.actionId, workKind: action.workKind, state: "completed", receiptDigest: DIGEST };
+    if (bad !== undefined) seed.workSpecDigest = bad;
+    const adapter = createSleepDispatchAdapter({ journal: memJournal(seed), executor: countingExecutor(s), now: clock() });
+    await assert.rejects(adapter.dispatch(action, workItem), /no valid work-spec binding|sha256/);
+  }
+  assert.equal(s.calls, 0);
+});
+
+// Repair review 064904Z Fix 2: mutating the caller's inputs after dispatch is called
+// must not change the executed work, key, digest or recorded action.
+test("inputs are snapshotted before queueing (post-call mutation cannot alter work/identity)", async () => {
+  const journal = memJournal(); let seen = null;
+  const executor = async (item) => { seen = item; return { status: "passed", receiptDigest: DIGEST }; };
+  const mutableAction = { ...action, observation: { ...action.observation } };
+  const mutableWork = { id: "dev-task-1", kind: "curriculum-grading", nested: { n: 1 } };
+  const expectedKey = dispatchActionIdentity(mutableAction);
+  const adapter = createSleepDispatchAdapter({ journal, executor, now: clock() });
+  const p = adapter.dispatch(mutableAction, mutableWork);
+  mutableAction.actionId = "MUTATED"; mutableAction.observation.family = "MUTATED";
+  mutableWork.id = "MUTATED"; mutableWork.nested.n = 999;
+  const r = await p;
+  assert.equal(r.key, expectedKey, "identity uses the pre-mutation snapshot");
+  assert.equal(seen.id, "dev-task-1"); assert.equal(seen.nested.n, 1);
+  assert.equal(journal.read(expectedKey).actionId, "reflect-0001");
+});
+
+// Repair review 064904Z normalization: a null reconcile result must resolve to
+// 'unresolved', not leave the record stuck in 'reconciling'.
+test("a null reconcile result normalizes to unresolved (not stuck reconciling)", async () => {
+  const key = dispatchActionIdentity(action); const s = { calls: 0 };
+  const seed = { key, actionId: action.actionId, workKind: action.workKind, workSpecDigest: workSpecificationDigest(workItem), state: "running", startedAt: "2026-09-12T06:00:01.000Z" };
+  const journal = memJournal(seed);
+  const adapter = createSleepDispatchAdapter({ journal, executor: countingExecutor(s), reconcile: async () => null, now: clock() });
+  await assert.rejects(adapter.dispatch(action, workItem), /unresolved/);
+  assert.equal(journal.read(key).state, "unresolved");
+  assert.equal(s.calls, 0);
+});
