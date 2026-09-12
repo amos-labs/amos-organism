@@ -5,7 +5,7 @@ import {
 } from "node:fs";
 import { hostname } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { FileEventStore, MemoryEventStore, type OrganismEvent } from "../src/eventStore.ts";
 import { PersistentLearningController, type LearningObservation } from "../src/persistentLearningController.ts";
 
@@ -111,30 +111,98 @@ function preflight(events: readonly OrganismEvent[], observations: LearningObser
   for (const observation of observations) controller.ingestObservation(observation);
 }
 
-// Dispatch explicit operator-bound CPU development work through the existing
-// artifact-replay executor, over the SAME journal, inside the caller's lock. The
-// controller reflection supplies the action identity + its bound observation; the
-// operator input is the development-work authority. A reflection alone is not.
-async function dispatchDevelopmentWork(
-  path: string,
-  store: FileEventStore,
-  action: { id: string; observationId: string },
-  observations: LearningObservation[],
-): Promise<Record<string, unknown>> {
-  const observation = observations.find(o => o.id === action.observationId);
-  if (!observation) return { state: "skipped", reason: "no observation bound to the current reflection" };
-  const operatorInput = JSON.parse(readFileSync(path, "utf8"));
+// Operator-bound CPU development work runs through the existing artifact-replay
+// executor over the SAME journal, inside the caller's lock. A durable runner-owned
+// SELECTION event binds the chosen action/observation/input identity BEFORE the
+// reflection is consumed, so a crash in that interval never loses the work; later
+// ticks RESUME that selection independently of a new planNext() action. A reflection
+// alone is not authority — the explicit operator input is.
+const SELECTION_TYPE = "learning.cpu-development-selection.v1";
+
+function canonicalDigest(value: unknown): string {
+  const canonical = (v: unknown): unknown =>
+    Array.isArray(v) ? v.map(canonical)
+      : (v && typeof v === "object") ? Object.fromEntries(Object.keys(v as Record<string, unknown>).sort().map(k => [k, canonical((v as Record<string, unknown>)[k])]))
+        : v;
+  return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+}
+
+function latestSelection(store: FileEventStore): Record<string, unknown> | null {
+  let latest: Record<string, unknown> | null = null;
+  for (const event of store.events()) if (event.type === SELECTION_TYPE) latest = event.payload;
+  return latest;
+}
+
+async function loadDevModule() {
   // The swarm executor composition is JavaScript; resolve it through a variable
-  // specifier so this TypeScript entrypoint does not require a declaration file
-  // for the cross-package module.
+  // specifier so this TypeScript entrypoint needs no cross-package declaration file.
   const devModule: string = "../swarm/src/persistentLearningDevelopmentDispatch.js";
-  const { buildArtifactReplayDevelopmentDispatch } = await import(devModule);
+  return import(devModule);
+}
+
+// Dispatch a bound selection over its operator input; the adapter reuses a completed
+// receipt, reconciles an interrupted running/submitted record to visibly unresolved,
+// or executes exactly once. Status is derived from that authoritative outcome.
+async function dispatchSelection(
+  store: FileEventStore,
+  selection: { actionId: string; observation: LearningObservation },
+  operatorInput: unknown,
+): Promise<Record<string, unknown>> {
+  const { buildArtifactReplayDevelopmentDispatch } = await loadDevModule();
   const dev = buildArtifactReplayDevelopmentDispatch({ store, operatorInput });
+  try {
+    const result = await dev.dispatch(selection.actionId, selection.observation);
+    return { state: result.state, workKind: dev.workKind, receiptDigest: result.receiptDigest, reused: result.reused };
+  } catch (error) {
+    return { state: "unresolved", workKind: dev.workKind, message: (error as Error).message };
+  }
+}
+
+// Resolve this tick's development work and own the reflect decision. Resume a
+// durable selection if one exists (independently of planNext); otherwise validate
+// the operator input and bind a NEW selection BEFORE consuming the reflection. An
+// invalid input never consumes the reflection, so a corrected input can retry.
+async function developmentTick(
+  config: { developmentWork: string },
+  store: FileEventStore,
+  controller: { reflect: (action: unknown) => void },
+  action: { id: string; observationId: string } | null,
+  observations: LearningObservation[],
+): Promise<Record<string, unknown> | undefined> {
+  const selection = latestSelection(store);
+  if (selection) {
+    // A durable selection exists: resume it, orthogonally to any new reflection.
+    if (action) controller.reflect(action);
+    let operatorInput: unknown;
+    try { operatorInput = JSON.parse(readFileSync(config.developmentWork, "utf8")); }
+    catch (error) { return { state: "unresolved", message: `development input unavailable on resume: ${(error as Error).message}` }; }
+    if (canonicalDigest(operatorInput) !== selection.operatorInputDigest) {
+      return { state: "unresolved", message: "development input changed since selection; refusing to rebind" };
+    }
+    return dispatchSelection(store, selection as { actionId: string; observation: LearningObservation }, operatorInput);
+  }
+  if (!action) return undefined;
+  const observation = observations.find(o => o.id === action.observationId);
+  if (!observation) { controller.reflect(action); return undefined; } // no bound observation: plain reflection
+  // Validate the input by constructing the dispatch BEFORE consuming the reflection.
+  let operatorInput: unknown;
+  let dev: { workKind: string; dispatch: (id: string, obs: LearningObservation) => Promise<Record<string, unknown>> };
+  try {
+    operatorInput = JSON.parse(readFileSync(config.developmentWork, "utf8"));
+    const { buildArtifactReplayDevelopmentDispatch } = await loadDevModule();
+    dev = buildArtifactReplayDevelopmentDispatch({ store, operatorInput });
+  } catch (error) {
+    // Invalid/missing input: do NOT consume the reflection; leave it for a corrected retry.
+    return { state: "error", message: (error as Error).message };
+  }
+  // Bind the durable selection BEFORE reflecting, then dispatch.
+  store.append({ id: `cpu-selection-${randomUUID()}`, type: SELECTION_TYPE, missionId: "persistent-learning", occurredAt: new Date().toISOString(), authority: "organism",
+    payload: { selectionId: randomUUID(), actionId: action.id, observation, workKind: dev.workKind, operatorInputDigest: canonicalDigest(operatorInput) } });
+  controller.reflect(action);
   try {
     const result = await dev.dispatch(action.id, observation);
     return { state: result.state, workKind: dev.workKind, receiptDigest: result.receiptDigest, reused: result.reused };
   } catch (error) {
-    // Fail closed: ambiguous/interrupted or invalid work is surfaced, never retried.
     return { state: "unresolved", workKind: dev.workKind, message: (error as Error).message };
   }
 }
@@ -175,12 +243,15 @@ async function main() {
         preflight(store.events(), observations);
         for (const observation of observations) controller.ingestObservation(observation);
         const action = controller.planNext();
-        if (action) controller.reflect(action);
-        // Optional operator-bound CPU development work, inside this lock, on the
-        // same store. Default remains metadata-only reflection when unset.
-        const development = (config.developmentWork && action)
-          ? await dispatchDevelopmentWork(config.developmentWork, store, action, observations)
-          : undefined;
+        // Optional operator-bound CPU development work, inside this lock, on the same
+        // store. developmentTick owns the reflect decision (bind-before-reflect and
+        // durable resume); the default stays metadata-only reflection when unset.
+        let development: Record<string, unknown> | undefined;
+        if (config.developmentWork) {
+          development = await developmentTick(config, store, controller, action, observations);
+        } else if (action) {
+          controller.reflect(action);
+        }
         const events = store.events();
         const head = events.at(-1);
         const snapshot = {
@@ -198,6 +269,8 @@ async function main() {
         const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
         if (!existsSync(snapshotPath) || readFileSync(snapshotPath, "utf8") !== serialized) atomicJson(snapshotPath, snapshot);
         status = { status: "ready", operation: snapshot.operation, evidenceBasis: snapshot.evidenceBasis, journalSequence: snapshot.journalSequence, journalDigest: snapshot.journalDigest, qualityImprovementEstablished: false, ...(development ? { development } : {}) };
+        // Development failure/unresolved must not read as a successful --once run.
+        if (config.once && development && (development.state === "error" || development.state === "unresolved")) process.exitCode = 1;
       } catch {
         status = { status: "input_or_state_error", message: "Observation validation or local persistence failed; inspect inputs and the authoritative event journal." };
         if (config.once) process.exitCode = 1;
