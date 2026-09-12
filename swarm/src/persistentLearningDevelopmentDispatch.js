@@ -17,6 +17,8 @@ import { createCpuDevelopmentDispatch } from "./persistentLearningCpuBridge.js";
 // createdAt + evaluatedAt are required and fixed by the operator: any wall-clock
 // default would change the candidate digest each run and defeat restart dedup.
 export function buildArtifactReplayDevelopmentDispatch({ store, operatorInput, missionId = "persistent-learning", now = () => new Date() }) {
+  // Snapshot every executor input before constructing closures or work identity.
+  operatorInput = structuredClone(operatorInput);
   validateOperatorInput(operatorInput);
   const spec = operatorInput.candidate;
   const created = createOrganismLearningCandidate({
@@ -39,12 +41,17 @@ export function buildArtifactReplayDevelopmentDispatch({ store, operatorInput, m
     // reproducible; without it normalizeGate stamps wall-clock time.
     evaluatedAt: gate.evaluatedAt,
   });
-  const episodes = operatorInput.episodes.map((episode) => ({ id: episode.id, digest: digestResearchValue(episode.id), task: episode.task }));
+  const episodes = operatorInput.episodes.map((episode) => ({ id: episode.id, digest: digestResearchValue({ id: episode.id, task: episode.task }), task: episode.task }));
   const registry = new SleepCandidateRegistry([candidate]);
   const executor = createArtifactReplayExecutor({ registry, episodes });
   const work = sleepWorkFromCandidates([candidate]).items[0];
   if (!work) throw new Error("operator candidate produced no artifact-replay work item");
-  const { dispatch, journal } = createCpuDevelopmentDispatch({ store, executor, missionId, now });
+  // The candidate work item alone does not identify the episode corpus consumed
+  // by the executor. Bind that immutable content in the durable work specification.
+  const boundWork = { workItem: work, episodesDigest: digestResearchValue(episodes) };
+  const { dispatch, journal } = createCpuDevelopmentDispatch({
+    store, executor: (input, context) => executor(input.workItem, context), missionId, now,
+  });
   return {
     workKind: work.kind,
     journal,
@@ -53,7 +60,7 @@ export function buildArtifactReplayDevelopmentDispatch({ store, operatorInput, m
     async dispatch(reflectionActionId, observation, options) {
       if (typeof reflectionActionId !== "string" || reflectionActionId.length === 0) throw new Error("reflectionActionId required");
       const action = { actionId: reflectionActionId, workKind: work.kind, observation };
-      return dispatch(action, work, options);
+      return dispatch(action, boundWork, options);
     },
   };
 }
@@ -64,17 +71,24 @@ function validateOperatorInput(input) {
   if (!c || typeof c.id !== "string" || !c.policy || typeof c.policy !== "object" || !Array.isArray(c.optimizedParameters)) {
     throw new Error("operator input.candidate {id, policy, optimizedParameters} required");
   }
-  if (typeof c.createdAt !== "string" || Number.isNaN(Date.parse(c.createdAt))) {
-    throw new Error("operator input.candidate.createdAt (ISO timestamp) required for reproducible dispatch");
+  if (!canonicalTimestamp(c.createdAt)) {
+    throw new Error("operator input.candidate.createdAt (canonical UTC ISO timestamp) required for reproducible dispatch");
   }
   if (!g || typeof g.id !== "string" || typeof g.status !== "string" || typeof g.evaluator !== "string" || typeof g.receiptDigest !== "string") {
     throw new Error("operator input.priorGate {id, status, evaluator, receiptDigest} required");
   }
-  if (typeof g.evaluatedAt !== "string" || Number.isNaN(Date.parse(g.evaluatedAt))) {
-    throw new Error("operator input.priorGate.evaluatedAt (ISO timestamp) required for reproducible dispatch");
+  if (!canonicalTimestamp(g.evaluatedAt)) {
+    throw new Error("operator input.priorGate.evaluatedAt (canonical UTC ISO timestamp) required for reproducible dispatch");
   }
   if (!Array.isArray(input.episodes) || input.episodes.length === 0
     || !input.episodes.every((e) => e && typeof e.id === "string" && e.task && typeof e.task === "object")) {
     throw new Error("operator input.episodes [{id, task}] required");
   }
+}
+
+function canonicalTimestamp(value) {
+  return typeof value === "string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+    && Number.isFinite(Date.parse(value))
+    && new Date(value).toISOString() === value;
 }

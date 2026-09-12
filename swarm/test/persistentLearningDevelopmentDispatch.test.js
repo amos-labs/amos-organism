@@ -61,3 +61,34 @@ test("operator input is validated (candidate, priorGate, episodes required)", ()
   assert.throws(() => buildArtifactReplayDevelopmentDispatch({ store, operatorInput: { ...operatorInput, priorGate: undefined } }), /priorGate/);
   assert.throws(() => buildArtifactReplayDevelopmentDispatch({ store, operatorInput: { ...operatorInput, episodes: [] } }), /episodes/);
 });
+
+// Review 102629Z: episodes are part of the durable work binding — changed/added
+// episodes under the same action must NOT reuse the old receipt.
+test("changed or added episodes change the binding (no receipt reuse)", async () => {
+  const store = memStore();
+  await buildArtifactReplayDevelopmentDispatch({ store, operatorInput, now: clock() }).dispatch("reflect-1", observation);
+  const moreEpisodes = { ...operatorInput, episodes: [...operatorInput.episodes, { id: "synthetic-d", task: { name: "accounts-payable-process" } }] };
+  await assert.rejects(
+    buildArtifactReplayDevelopmentDispatch({ store, operatorInput: moreEpisodes, now: clock() }).dispatch("reflect-1", observation),
+    /work specification changed/,
+  );
+});
+
+// Review 102629Z: mutating the caller's input after build must not change executed work.
+test("operator input is snapshotted at build (post-build mutation has no effect)", async () => {
+  const control = await buildArtifactReplayDevelopmentDispatch({ store: memStore(), operatorInput: structuredClone(operatorInput), now: clock() }).dispatch("reflect-1", observation);
+  const mutable = structuredClone(operatorInput);
+  const dev = buildArtifactReplayDevelopmentDispatch({ store: memStore(), operatorInput: mutable, now: clock() });
+  mutable.episodes[0].task.name = "MUTATED"; mutable.candidate.policy["bid.repetitionPenalty"] = 999;
+  const r = await dev.dispatch("reflect-1", observation);
+  assert.equal(r.receiptDigest, control.receiptDigest, "post-build mutation must not change executed work");
+});
+
+// Review 102629Z: timestamps must be canonical UTC (Date.parse alone admits drift).
+test("createdAt / evaluatedAt must be canonical UTC ISO timestamps", () => {
+  const bad = ["2026-09-12T00:00:00.000", "2026-09-12 00:00:00.000Z", "2026-09-12T00:00:00.000+00:00", "2026-09-12T00:00:00Z"];
+  for (const ts of bad) {
+    assert.throws(() => buildArtifactReplayDevelopmentDispatch({ store: memStore(), operatorInput: { ...operatorInput, candidate: { ...operatorInput.candidate, createdAt: ts } } }), /canonical UTC/);
+    assert.throws(() => buildArtifactReplayDevelopmentDispatch({ store: memStore(), operatorInput: { ...operatorInput, priorGate: { ...operatorInput.priorGate, evaluatedAt: ts } } }), /canonical UTC/);
+  }
+});
