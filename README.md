@@ -41,6 +41,10 @@ buy its own survival.
 
 ## What is implemented
 
+- A [persistent learning controller](docs/PERSISTENT_MIND_CONTROLLER.md) that
+  imports aggregate capability evidence, records deterministic gap reflections
+  and resumes without duplicate work. Model-driven exploration and connection
+  to the existing sleep executors are planned next.
 - Mission energy allocation, reservation, spending, refund, and reset.
 - Provisional fitness escrow, verifier-gated vesting, decay/clawback, and
   contextual reputation views.
