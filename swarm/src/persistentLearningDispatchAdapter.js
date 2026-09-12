@@ -100,7 +100,7 @@ export function createSleepDispatchAdapter({ journal, executor, reconcile = null
       // unbound/legacy record (missing or non-sha256 workSpecDigest) cannot be
       // trusted to describe this work, so it stays unresolved rather than reusing.
       if (typeof prior.workSpecDigest !== "string" || !SHA256.test(prior.workSpecDigest)) {
-        persist({ ...base(key, action, workDigest), state: "unresolved", outcome: "unbound", unresolvedAt: stamp() });
+        persist({ ...prior, state: "unresolved", outcome: "unbound", unresolvedAt: stamp() });
         throw new Error("prior dispatch record has no valid work-spec binding; unresolved");
       }
       if (prior.workSpecDigest !== workDigest) {

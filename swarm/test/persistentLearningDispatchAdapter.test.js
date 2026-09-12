@@ -107,15 +107,23 @@ test("a malformed (non-sha256) receipt digest is rejected", async () => {
   await assert.rejects(adapter.dispatch(action, workItem), /receipt digest must be sha256 hex/);
 });
 
-// Repair review 064904Z Fix 1: an unbound/legacy prior record (no valid workSpecDigest)
-// must not reuse or retry — it is unresolved.
-test("a prior record with a missing/invalid work-spec binding is unresolved (no reuse)", async () => {
+// Repair reviews 064904Z Fix 1 + 072423Z preservation: an unbound/legacy prior
+// record must stay unresolved ACROSS repeated attempts — the reject must not
+// rewrite the record with the caller's binding and let a second call adopt it.
+test("an unbound prior record stays unresolved across repeated attempts (no receipt adoption)", async () => {
   const key = dispatchActionIdentity(action); const s = { calls: 0 };
   for (const bad of [undefined, null, 123, "not-a-sha256"]) {
     const seed = { key, actionId: action.actionId, workKind: action.workKind, state: "completed", receiptDigest: DIGEST };
     if (bad !== undefined) seed.workSpecDigest = bad;
-    const adapter = createSleepDispatchAdapter({ journal: memJournal(seed), executor: countingExecutor(s), now: clock() });
-    await assert.rejects(adapter.dispatch(action, workItem), /no valid work-spec binding|sha256/);
+    const journal = memJournal(seed);
+    const first = createSleepDispatchAdapter({ journal, executor: countingExecutor(s), now: clock() });
+    await assert.rejects(first.dispatch(action, workItem), /no valid work-spec binding|sha256/);
+    const after = journal.read(key);
+    assert.equal(after.state, "unresolved");
+    assert.notEqual(after.workSpecDigest, workSpecificationDigest(workItem), "reject must not bind the caller's digest");
+    // A second attempt (new adapter, same journal) must still fail closed.
+    const second = createSleepDispatchAdapter({ journal, executor: countingExecutor(s), now: clock() });
+    await assert.rejects(second.dispatch(action, workItem), /no valid work-spec binding|sha256/);
   }
   assert.equal(s.calls, 0);
 });
