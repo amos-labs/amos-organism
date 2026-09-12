@@ -1,0 +1,13 @@
+[
+  {
+    "id": "synthetic-example-observation-1",
+    "modelId": "synthetic-example-model",
+    "family": "synthetic-calendar-example",
+    "passed": 1,
+    "total": 2,
+    "partition": "development",
+    "cohortId": "synthetic-example-cohort",
+    "evidenceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observedAt": "2026-09-11T00:00:00.000Z"
+  }
+]
