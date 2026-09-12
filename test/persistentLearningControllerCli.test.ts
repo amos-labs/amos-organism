@@ -192,3 +192,79 @@ test("CLI rereads changed observations, stays quiet on unchanged ticks and handl
     assert.equal(existsSync(join(f.state, ".controller-lock")), false);
   } finally { child.kill("SIGKILL"); rmSync(f.dir, { recursive: true, force: true }); }
 });
+
+
+const DEV_INPUT = {
+  candidate: { id: "dev-cand-cli", policy: { "bid.repetitionPenalty": 4, "retry.challengerExploration": 1 }, optimizedParameters: ["bid.repetitionPenalty", "retry.challengerExploration"], rank: 1, createdAt: "2026-09-12T00:00:00.000Z" },
+  priorGate: { id: "simulation", status: "passed", evaluator: "organism-simulator", receiptDigest: "0".repeat(64), metrics: {}, feedbackSignals: [], evaluatedAt: "2026-09-12T00:00:00.000Z" },
+  episodes: [{ id: "ep-a", task: { name: "accounts-payable-process" } }, { id: "ep-b", task: { name: "accounts-payable-process" } }],
+};
+const lastMsg = (out: string) => JSON.parse(out.trim().split("\n").filter(Boolean).at(-1)!);
+
+test("CLI --development-work executes once inside the lock and RESUMES completed status on restart (no duplicate)", () => {
+  const f = fixture();
+  const dev = join(f.dir, "dev.json");
+  writeFileSync(dev, JSON.stringify(DEV_INPUT));
+  try {
+    const first = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(first.status, 0, first.stderr);
+    const s1 = lastMsg(first.stdout);
+    assert.equal(s1.development.state, "completed");
+    assert.equal(s1.development.reused, false);
+    assert.match(s1.development.receiptDigest, /^[a-f0-9]{64}$/);
+    const seq1 = new FileEventStore(join(f.state, "events.jsonl")).events().length;
+    // Restart RESUMES the durable selection: completed status is retained, reused, no duplicate.
+    const second = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(second.status, 0, second.stderr);
+    const s2 = lastMsg(second.stdout);
+    assert.equal(s2.development.state, "completed");
+    assert.equal(s2.development.reused, true, "restart must reuse, not re-execute");
+    assert.equal(new FileEventStore(join(f.state, "events.jsonl")).events().length, seq1, "no new events on resume");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("CLI leaves the reflection uncommitted on invalid development input and recovers it once corrected", () => {
+  const f = fixture();
+  const dev = join(f.dir, "dev.json");
+  writeFileSync(dev, "{invalid json\n");
+  try {
+    const bad = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(bad.status, 1, "invalid development input must fail --once");
+    assert.equal(lastMsg(bad.stdout).development.state, "error");
+    // The reflection was NOT consumed, so no work is stranded.
+    const types = new FileEventStore(join(f.state, "events.jsonl")).events().map(e => e.type);
+    assert.deepEqual(types, ["learning.observation-imported.v1"]);
+    // Corrected input on restart recovers and executes the still-pending work.
+    writeFileSync(dev, JSON.stringify(DEV_INPUT));
+    const fixed = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(fixed.status, 0, fixed.stderr);
+    assert.equal(lastMsg(fixed.stdout).development.state, "completed");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("CLI keeps a bound selection unresolved (never rebinding) when the operator input changes", () => {
+  const f = fixture();
+  const dev = join(f.dir, "dev.json");
+  writeFileSync(dev, JSON.stringify(DEV_INPUT));
+  try {
+    assert.equal(run([...f.args, "--development-work", dev, "--once"]).status, 0);
+    const seq = new FileEventStore(join(f.state, "events.jsonl")).events().length;
+    // Change the bound input: resume must refuse to rebind and stay visibly unresolved.
+    writeFileSync(dev, JSON.stringify({ ...DEV_INPUT, episodes: [...DEV_INPUT.episodes, { id: "ep-c", task: { name: "accounts-payable-process" } }] }));
+    const changed = run([...f.args, "--development-work", dev, "--once"]);
+    assert.equal(changed.status, 1, "changed-input resume must fail --once");
+    assert.equal(lastMsg(changed.stdout).development.state, "unresolved");
+    assert.equal(new FileEventStore(join(f.state, "events.jsonl")).events().length, seq, "no new events on refused rebind");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("CLI default remains metadata-only when --development-work is absent", () => {
+  const f = fixture();
+  try {
+    const r = run([...f.args, "--once"]);
+    assert.equal(r.status, 0, r.stderr);
+    const s = lastMsg(r.stdout);
+    assert.equal(s.development, undefined);
+    assert.equal(s.operation, "deterministic-cpu-reflection");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
