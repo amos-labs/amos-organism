@@ -964,8 +964,16 @@ def validate_contract(contract: dict[str, Any]) -> dict[str, Any]:
     if stage == 1 and contract.get("selection", {}).get("trainerMayNotSelect") is not True:
         raise ValueError("stage-one contract must forbid trainer-side checkpoint selection")
     development_checkpoints = contract.get("recipe", {}).get("developmentCheckpoints")
-    if development_checkpoints is not None and (not isinstance(development_checkpoints, list) or not development_checkpoints):
-        raise ValueError("developmentCheckpoints, when present, must be a non-empty list of optimizer-update counts")
+    if development_checkpoints is not None:
+        if not isinstance(development_checkpoints, list) or not development_checkpoints:
+            raise ValueError("developmentCheckpoints, when present, must be a non-empty list of optimizer-update counts")
+        # Reject impossible schedules before run() downloads data/base weights or loads
+        # a GPU model. train() repeats this check against the actual encoded row count.
+        plan_development_checkpoints(
+            development_checkpoints,
+            contract["recipe"]["optimization"],
+            contract["dataset"]["trainingFile"]["rows"],
+        )
     if contract.get("recipe", {}).get("optimization", {}).get("loss") != "assistant-tokens-only":
         raise ValueError("trainer requires assistant-token-only loss")
     if contract.get("recipe", {}).get("includeVisionTowerInAdapter") is not False:

@@ -692,5 +692,24 @@ class RngSerdeTests(unittest.TestCase):
 
 
 
+
+class DevelopmentCheckpointPreflightTests(unittest.TestCase):
+    def _contract_with_schedule(self, schedule):
+        contract = StageZeroTrainerTests()._contract("amos-system-competence-sft", 1)
+        contract["recipe"]["optimization"].update(OPT_119)
+        contract["recipe"]["developmentCheckpoints"] = schedule
+        contract["dataset"] = {"trainingFile": {"rows": 945}}
+        contract["digest"] = TRAINER.digest_value({k: v for k, v in contract.items() if k != "digest"})
+        return contract
+
+    def test_valid_fixed_recipe_schedule_passes_early_contract_validation(self):
+        TRAINER.validate_contract(self._contract_with_schedule([119, 238, 357]))
+
+    def test_invalid_schedule_is_rejected_before_run_or_model_loading(self):
+        for schedule in ([120], [True], [476], [238, 119]):
+            with self.subTest(schedule=schedule), self.assertRaises(ValueError):
+                TRAINER.validate_contract(self._contract_with_schedule(schedule))
+
+
 if __name__ == "__main__":
     unittest.main()
