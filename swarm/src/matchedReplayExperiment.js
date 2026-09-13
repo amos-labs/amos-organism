@@ -111,6 +111,11 @@ export function prepareMatchedReplayExperiment({
   }
   const arms = { control: arm("simple-replay", control), hrr: arm("hrr-guided-replay", treatment) };
   if (arms.control.tokens !== arms.hrr.tokens || arms.control.supervisedTokens !== arms.hrr.supervisedTokens) throw new Error("unmatched token exposure");
+  // A different ordering of the same examples tests order, not replay selection.
+  // Compare exact content sets before claiming that the treatment selected other experience.
+  const controlContent = new Set(control.map(record => record.trainingContentSha256));
+  const treatmentContent = new Set(treatment.map(record => record.trainingContentSha256));
+  const commonReplayExamples = [...controlContent].filter(value => treatmentContent.has(value)).length;
   const manifest = {
     schema: "amos.matched-replay-experiment.v1", tenantId, snapshotDigest: snapshot.digest,
     parentWeightsSha256, recipeSha256, seed, tokenizerSha256: tokenCounts.tokenizerSha256,
@@ -122,7 +127,11 @@ export function prepareMatchedReplayExperiment({
       tokens: a.tokens, supervisedTokens: a.supervisedTokens, sourceExperienceDigests: a.sourceExperienceDigests
     }])),
     distinctReplaySlots: schedule.filter(s => s.controlId !== s.hrrId).length,
-    comparisonHasDifferentReplay: schedule.some(s => s.controlId !== s.hrrId),
+    commonReplayExamples,
+    uniqueReplayExamplesPerArm: replaySlots - commonReplayExamples,
+    controlReplayContentSetSha256: digest([...controlContent].sort()),
+    hrrReplayContentSetSha256: digest([...treatmentContent].sort()),
+    comparisonHasDifferentReplay: commonReplayExamples < replaySlots,
     inferenceMemory: "disabled-in-both-arms", matchedExposure: "task-family-sequence-and-supervised-token-buckets",
     counterReceiptScope: "supplied-native-counter-receipt-not-recomputed-here",
     createsQualityEvidence: false, trainingExecuted: false, productionChange: false

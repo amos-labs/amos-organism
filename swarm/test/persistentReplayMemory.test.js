@@ -91,11 +91,23 @@ test("matched arms preserve new learning and exact replay exposure; choices repr
   assert.equal(new Set(result.arms.hrr.replayExperienceIds).size, 3);
   assert.equal(result.arms.hrr.replayExperienceIds[0], "old-3");
   assert.ok(result.manifest.distinctReplaySlots > 0);
+  assert.equal(result.manifest.comparisonHasDifferentReplay, true);
+  assert.ok(result.manifest.uniqueReplayExamplesPerArm > 0);
   const path = saveReplayMemory(dir, snapshot);
   assert.deepEqual(prepareMatchedReplayExperiment(request(loadReplayMemory(path, snapshot.digest))), result);
   const output = join(dir, "experiment"); writeMatchedReplayExperiment(output, result); writeMatchedReplayExperiment(output, result);
   assert.equal(hash(readFileSync(join(output, "hrr.training.jsonl"))), result.manifest.arms.hrr.sha256);
   assert.equal(result.manifest.createsQualityEvidence, false);
+});
+
+test("reordering the entire replay pool cannot count as a selection treatment", () => {
+  const result = prepareMatchedReplayExperiment(request(fixture(), { replaySlots: 8 }));
+  assert.ok(result.manifest.distinctReplaySlots > 0, "the two selectors use a different order");
+  assert.deepEqual([...result.arms.control.replayExperienceIds].sort(), [...result.arms.hrr.replayExperienceIds].sort());
+  assert.equal(result.manifest.commonReplayExamples, 8);
+  assert.equal(result.manifest.uniqueReplayExamplesPerArm, 0);
+  assert.equal(result.manifest.controlReplayContentSetSha256, result.manifest.hrrReplayContentSetSha256);
+  assert.equal(result.manifest.comparisonHasDifferentReplay, false);
 });
 
 test("excluded lineage, development copies, failed demonstrations and duplicate content cannot leak into replay", () => {
