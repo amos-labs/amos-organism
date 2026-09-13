@@ -95,7 +95,7 @@ An independent audit reparsed every compiler response and replayed all forty
 TRAIN validations and 106 raw tool calls from the frozen source archive, with
 **zero discrepancies**. It also checked input pairing, actual wire settings,
 usage, source bindings and all twelve empty library snapshots. Full local
-checks passed: 706 tests, one skipped, zero failures; the remote launch's fifty
+checks: 707 tests total, 706 passed, one skipped, zero failures. The remote launch's fifty
 focused tests also passed.
 
 Evidence bindings:
