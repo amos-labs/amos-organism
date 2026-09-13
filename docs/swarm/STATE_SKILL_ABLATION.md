@@ -24,6 +24,9 @@ arm receives a freshly constructed private world with the same paired case seed.
 No tool can call a customer service. The private verifier checks the actual page
 state, resolved effects, no publishing, no unsafe retries and no unrelated changes.
 Completion prose and a program's completed return cannot supply verification.
+Primary bounded completion additionally requires an explicit model finish or
+program return within the limits. Reaching the desired state and then continuing
+until a budget stops execution is reported as state achievement, not completion.
 
 History and typed views use the same public observations, including freshness.
 The typed projection does not infer success from requested changes. Unknown effects
@@ -62,6 +65,10 @@ Default primary measurement is 28 case outcomes: seven paired cases across four
 arms at temperature zero with thinking disabled. This small panel has no claim to
 statistical power or broad generalization. New names alone are not a new domain.
 Use fresh held-out workflow structures before claiming learned transfer.
+Each compiled arm currently learns one program for the entire run. Its failures
+across cases are correlated; seven failures from one bad compilation are not seven
+independent learning trials. Replicate compilation under new seeds before drawing
+general conclusions about the learning mechanism.
 
 All arms have the same maximum logical request allocation, including compilation:
 16 times the number of cases per arm. Each task also has a 16-request and 32-tool

@@ -285,3 +285,112 @@ test("local arm-budget rejection is not misreported as dispatched inference", as
       "a blocked compilation retry stays in the ledger without becoming a transport request");
   }
 });
+
+test("achieved and verified state is not bounded completion when the model keeps calling tools until its call limit", async () => {
+  const request = async input => {
+    if (input.phase === "compile") return contentResponse(JSON.stringify(checkedTeacherProgram()));
+    const next = publicTeacher(input);
+    if (next.message.tool_calls?.length) return next;
+    // The desired state is now supported by public receipts, but this actor
+    // never returns a final response and keeps inspecting unchanged state.
+    return toolResponse("inspect_site", { slug: executionPayload(input).goal.sites[0].slug });
+  };
+  const report = await runStateSkillExperiment({ request, modelIdentity, seed: 901,
+    variants: ["fresh", "existing-collection"], maxModelCallsPerTask: 8 });
+  for (const row of report.results) {
+    assert.equal(row.verification.taskStateAchieved, true);
+    assert.equal(row.verification.evidenceComplete, true);
+    assert.equal(row.verification.pass, true, "the independent state result remains true");
+    assert.equal(row.error, null);
+    if (row.skill) {
+      assert.equal(row.termination, "program-completed");
+      assert.equal(row.pass, true, "a checked procedure that actually returns completion still passes");
+    } else {
+      assert.equal(row.termination, "model-call-budget");
+      assert.equal(row.modelCalls, 8);
+      assert.equal(row.answer, null);
+      assert.equal(row.pass, false, "budget-stopped looping is not clean task completion");
+    }
+  }
+});
+
+test("achieving state on the final allowed tool call differs from explicitly returning completion at that bound", async () => {
+  const report = await runStateSkillExperiment({ request: teacherRequest(), modelIdentity, seed: 902,
+    variants: ["fresh"], maxToolCallsPerTask: 5 });
+  for (const row of report.results) {
+    assert.equal(row.toolCalls, 5);
+    assert.equal(row.verification.taskStateAchieved, true);
+    assert.equal(row.verification.evidenceComplete, true);
+    assert.equal(row.error, null);
+    if (row.skill) {
+      assert.equal(row.termination, "program-completed");
+      assert.equal(row.pass, true, "the return itself needs no further tool allowance");
+    } else {
+      assert.equal(row.termination, "tool-budget");
+      assert.equal(row.answer, null);
+      assert.equal(row.pass, false, "the model was halted before a final response");
+    }
+  }
+});
+
+test("a transport error after verified state achievement stays distinct from successful completion", async () => {
+  const fallbackAfterWork = checkedTeacherProgram();
+  fallbackAfterWork.steps.at(-1).status = "needs_reasoning";
+  const request = async input => {
+    if (input.phase === "compile") return contentResponse(JSON.stringify(fallbackAfterWork));
+    const next = publicTeacher(input);
+    if (next.message.tool_calls?.length) return next;
+    throw new Error("Synthetic transport failure after the desired effects were verified");
+  };
+  const report = await runStateSkillExperiment({ request, modelIdentity, seed: 903, variants: ["fresh"] });
+  for (const row of report.results) {
+    assert.equal(row.verification.taskStateAchieved, true);
+    assert.equal(row.verification.evidenceComplete, true);
+    assert.equal(row.verification.pass, true);
+    assert.equal(row.termination, "execution-error");
+    assert.match(row.error, /Synthetic transport failure after/);
+    assert.equal(row.pass, false);
+  }
+});
+
+test("a clean final response cannot certify an unresolved timeout, whether its hidden effect applied or not", async () => {
+  const request = async input => {
+    if (input.phase === "compile") return contentResponse(JSON.stringify(program([{ type: "return", status: "needs_reasoning" }])));
+    const { observations } = executionPayload(input);
+    const state = observations.mode === "typed" ? observations.state : projectObservedTaskState(observations.events);
+    if (state.unresolvedEffects.length) return contentResponse("Finished without reconciling the unknown update.");
+    return publicTeacher(input);
+  };
+  const report = await runStateSkillExperiment({ request, modelIdentity, seed: 904,
+    variants: ["timeout-applied", "timeout-unapplied"] });
+  for (const row of report.results) {
+    assert.equal(row.verification.taskStateAchieved, row.variant === "timeout-applied");
+    assert.equal(row.verification.evidenceComplete, false);
+    assert.equal(row.verification.unresolvedOutcomes, 1);
+    assert.equal(row.verification.unsafeRetries, 0);
+    assert.equal(row.termination, "model-finished");
+    assert.equal(row.error, null, "an unresolved tool outcome is not a thrown transport error");
+    assert.equal(row.pass, false);
+  }
+});
+
+test("verified state followed by a provider length stop is not bounded completion", async () => {
+  for (const finishReason of ["length", "stop"]) {
+    const request = async input => {
+      if (input.phase === "compile") return contentResponse(JSON.stringify(program([{ type: "return", status: "needs_reasoning" }])));
+      const next = publicTeacher(input);
+      if (next.message.tool_calls?.length) return next;
+      return { ...next, providerResponse: { choices: [{ index: 0, message: next.message, finish_reason: finishReason }] } };
+    };
+    const report = await runStateSkillExperiment({ request, modelIdentity, seed: 905, variants: ["fresh"] });
+    for (const row of report.results) {
+      assert.equal(row.verification.taskStateAchieved, true);
+      assert.equal(row.verification.evidenceComplete, true);
+      assert.equal(row.verification.pass, true);
+      assert.equal(row.termination, "model-finished");
+      assert.equal(row.error, null);
+      assert.equal(row.calls.at(-1).providerResponse.choices[0].finish_reason, finishReason);
+      assert.equal(row.pass, finishReason === "stop", "provider output exhaustion differs from a clean final response");
+    }
+  }
+});

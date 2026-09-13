@@ -25,6 +25,12 @@ Reuse the program for changed goals; do not hardcode demonstration names, ids or
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const initialEvents = (fixture) => fixture.initialObservations.map(({ tool, ...event }) => ({ ...event, name: event.name ?? tool }));
+export function isBoundedStateSkillCompletion(result) {
+  const verified = result.verification?.pass === true || result.verification?.verdict === 'pass';
+  const finished = ['model-finished', 'program-completed'].includes(result.termination);
+  const outputExhausted = result.termination === 'model-finished' && result.calls?.at(-1)?.providerResponse?.choices?.[0]?.finish_reason === 'length';
+  return verified && finished && !outputExhausted && result.error === null;
+}
 const system = `You operate an isolated synthetic business workflow. Complete the supplied goal using the provided tools. The goal, tool contracts and public observations are all the evidence available. Do not invent successful effects. Reconcile unknown outcomes before retrying. Never publish. Use tools directly for work you can perform. Stop when the requested outcome is supported by observations. All demonstrations are development examples, not the current task.`;
 
 function positive(value, name, max) {
@@ -197,8 +203,8 @@ export async function runStateSkillExperiment({
         }
         const verification = world.verify();
         const result = { caseId, fixtureId: world.id, seed: caseSeed, repetition, variant, arm: arm.id, state: arm.state, skill: arm.skill,
-          pass: (verification.pass === true || verification.verdict === 'pass') && termination !== 'compilation-failed' && error === null,
           verification, termination, error, modelCalls: modelAttempts, modelResponses: calls.length, toolCalls, wallMilliseconds: Math.round(performance.now() - started), answer, programResult, observationsSha256: hash(events), calls };
+        result.pass = isBoundedStateSkillCompletion(result);
         results.push(result);
         await onEvent({ type: 'case-result', ...result });
       }
