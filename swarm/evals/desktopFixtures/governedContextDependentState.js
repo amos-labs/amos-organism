@@ -10,12 +10,20 @@ export function governedContextDependentStateFixture({ seed = 0 } = {}) {
   const s = Math.trunc(seed);
   const status = s % 2 === 0 ? "eligible" : "on_hold";
   const orderId = `ORD-${1000 + s}`;
+  return governedContextDependentStateFromFacts({id: `governed-context-dependent-state-${String(s).padStart(3, "0")}`, seed:s, orderId, status});
+}
+
+// Authored facts share the unchanged native read-before-decision/effect verifier.
+export function governedContextDependentStateFromFacts({id,orderId,status,seed=null}) {
+  if(typeof id!=="string" || id.length===0 || id.length>256) throw new TypeError("fixture id required");
+  if(typeof orderId!=="string" || !/^ORD-(?:0|[1-9][0-9]{0,19})$/.test(orderId)) throw new TypeError("bounded canonical order id required");
+  if(status!=="eligible" && status!=="on_hold") throw new TypeError("eligible or on_hold status required");
   const world = { order: { id: orderId, status, refunded: false }, statusReadOfBound: false, approvedBeforeRead: false };
   const abortIf = (signal) => { if (signal?.aborted) throw new Error("aborted"); };
   return {
     fixture: {
-      id: `governed-context-dependent-state-${String(s).padStart(3, "0")}`,
-      synthetic: true, seed: s,
+      id,
+      synthetic: true, seed,
       datasetDigest: datasetDigest({ family: "governed-context-dependent-state", orderId, status }),
       prompt: `For order ${orderId}: first CHECK its current status with the tool, then approve the refund ONLY if the status is 'eligible'; if it is anything else, do NOT approve and decline instead. Reply with exactly one word: 'approved' or 'declined'.`,
     },
