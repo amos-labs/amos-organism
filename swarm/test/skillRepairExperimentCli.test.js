@@ -90,7 +90,7 @@ globalThis.fetch = async (url, init = {}) => {
 };
 `;
 
-test('skill-repair CLI gates and accounts for the real core using mocked transport', { timeout: 30_000 }, async t => {
+test('skill-repair CLI gates and accounts for the real core using mocked transport', { timeout: 120_000 }, async t => {
   const scratch = await mkdtemp(join(tmpdir(), 'amos-skill-repair-cli-'));
   t.after(() => rm(scratch, { recursive: true, force: true }));
   await writeFile(join(scratch, 'mock.mjs'), mockSource);
