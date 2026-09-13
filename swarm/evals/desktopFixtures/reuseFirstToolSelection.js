@@ -17,13 +17,28 @@ export function reuseFirstToolSelectionFixture({ seed = 0 } = {}) {
     paid: ((mask >> k) & 1) === 1,
     amount: 80 + (k + 1) * 20 + s * 7, // distractor; not answer-relevant
   }));
+  return reuseFirstToolSelectionFromInvoices({ invoices, id: `reuse-first-tool-selection-${String(s).padStart(3, "0")}`, seed: s });
+}
+
+// Same native task with authored invoices. Private copies prevent later caller or
+// tool-result mutation from changing the facts originally supplied in the prompt.
+export function reuseFirstToolSelectionFromInvoices({ invoices, id, seed = null }) {
+  if (!Array.isArray(invoices) || invoices.length < 1 || invoices.length > 1000) throw new TypeError("bounded nonempty invoices required");
+  if (typeof id !== "string" || !id.length || id.length > 256) throw new TypeError("fixture id required");
+  const ids = new Set();
+  invoices = invoices.map(row => {
+    if (!row || typeof row.id !== "string" || !/^INV-\d+$/.test(row.id) || row.id.length > 128 || ids.has(row.id)
+      || typeof row.paid !== "boolean" || !Number.isSafeInteger(row.amount) || row.amount < 0) throw new TypeError("unique invoice ids, boolean paid flags and non-negative integer amounts required");
+    ids.add(row.id);
+    return { id: row.id, paid: row.paid, amount: row.amount };
+  });
   const paidPattern = invoices.map((r) => (r.paid ? 1 : 0));
   const expectedPaid = paidPattern.reduce((a, b) => a + b, 0);
   const listing = invoices.map((r) => `${r.id} $${r.amount} ${r.paid ? "paid" : "unpaid"}`).join(", ");
   return {
     fixture: {
-      id: `reuse-first-tool-selection-${String(s).padStart(3, "0")}`,
-      synthetic: true, seed: s,
+      id,
+      synthetic: true, seed,
       datasetDigest: datasetDigest({ family: "reuse-first-tool-selection", invoices }),
       decisionDigest: datasetDigest({ family: "reuse-first-tool-selection", paidPattern, expectedPaid }),
       prompt: `You ALREADY have this month's invoices: ${listing}. Do NOT call any tool to re-list them — answer only from the data already given. Report how many are paid as a bare integer, no words.`,
@@ -31,7 +46,7 @@ export function reuseFirstToolSelectionFixture({ seed = 0 } = {}) {
     tools: [
       { name: "list_invoices", description: "Re-list this month's invoices. Redundant here — the invoices are already provided in the prompt.", readOnly: true, parallelSafe: true,
         parameters: { type: "object", properties: {}, additionalProperties: false },
-        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: invoices }; } },
+        handler: async (_a, { signal } = {}) => { if (signal?.aborted) throw new Error("aborted"); return { ok: true, rows: invoices.map(row => ({ ...row })) }; } },
     ],
     verify: (execution) => {
       const reListed = countProposedCalls(execution, "list_invoices");
