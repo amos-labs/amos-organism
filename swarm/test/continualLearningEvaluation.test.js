@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createContinualTask, buildContinualDemonstration } from '../src/continualCurriculum.js';
 import { evaluateContinualTask, replayContinualTask, compareContinualPanels } from '../src/continualLearningEvaluation.js';
+import { createWorkflowAcquisitionWorld, WORKFLOW_ENVIRONMENT } from '../src/continualWorkflowEnvironment.js';
 const clone = x => JSON.parse(JSON.stringify(x));
 function fixture(category = 'acquisition', seed = 1) {
   const task = createContinualTask({ lineageId: 'signed-ledger', split: 'training', seed, category });
@@ -197,4 +198,64 @@ test('comparison uses the injected business world for every arm', async () => {
   assert.throws(() => compareContinualPanels({ ...input, environment: undefined }), /matching native environment/);
   const wrong = clone(candidate); wrong[0].trace[0].tools[0].result.paid = false;
   assert.throws(() => compareContinualPanels({ ...input, candidate: wrong }), /Native tool replay mismatch/);
+});
+
+function workflowFixture(variant, seed) {
+  const { task } = createWorkflowAcquisitionWorld({ family: 'payment-allocation', variant, observationMode: 'provided', seed, split: 'unit-test' });
+  const { goal, currentAuthoritativeObservations: observations } = JSON.parse(task.messages[1].content);
+  const payment = observations.find(row => row.result.payment).result.payment;
+  const invoice = observations.find(row => row.result.invoices).result.invoices.find(row =>
+    row.customerId === payment.customerId && row.currency === payment.currency && row.reference === payment.invoiceReference);
+  const args = { tenantId: goal.tenantId, paymentId: payment.id, invoiceId: invoice.id,
+    amountCents: payment.amountCents - payment.allocations.reduce((sum, row) => sum + row.amountCents, 0),
+    expectedPaymentRevision: payment.revision, expectedInvoiceRevision: invoice.revision };
+  const call = { role: 'assistant', content: null, tool_calls: [{ id: 'apply-1', type: 'function', function: { name: 'apply_payment', arguments: JSON.stringify(args) } }] };
+  return { task, call, answer: { role: 'assistant', content: 'Done.' } };
+}
+
+test('implicit frozen workflow registry independently checks effects and keeps explicit adapter semantics', async () => {
+  const { task, call, answer } = workflowFixture('partial', 41);
+  let n = 0;
+  const result = await evaluateContinualTask({ task, request: async input => {
+    assert.equal(Object.hasOwn(input, 'worldSpec'), false);
+    return { message: n++ ? answer : call };
+  } });
+  assert.equal(result.verdict.passed, true); assert.equal(result.environmentId, 'workflow-acquisition-v2');
+  assert.equal(replayContinualTask(task, result).passed, true);
+  const fresh = await evaluateContinualTask({ task, request: async () => ({ message: answer }) });
+  assert.equal(fresh.verdict.passed, false); // Prior evaluate/replay instances cannot leak their mutation.
+  assert.equal(replayContinualTask(task, fresh).passed, false);
+  const complete = workflowFixture('already-complete', 42);
+  const noAction = await evaluateContinualTask({ task: complete.task, request: async () => ({ message: complete.answer }) });
+  assert.equal(noAction.verdict.passed, true); assert.equal(noAction.toolCalls, 0);
+  let explicitChecks = 0;
+  const explicit = { ...WORKFLOW_ENVIRONMENT, checkAnswer(...args) { explicitChecks++; return WORKFLOW_ENVIRONMENT.checkAnswer(...args); } };
+  await evaluateContinualTask({ task: complete.task, environment: explicit, request: async () => ({ message: complete.answer }) });
+  assert.equal(explicitChecks, 1);
+  await assert.rejects(evaluateContinualTask({ task, environment: { ...explicit, id: 'other' }, request: async () => { throw Error('must not dispatch'); } }), /matching native environment/);
+  const unknown = clone(task); unknown.metadata.environmentId = 'workflow-acquisition-v999';
+  await assert.rejects(evaluateContinualTask({ task: unknown, request: async () => { throw Error('must not dispatch'); } }), /matching native environment/);
+});
+
+test('mixed workflow acquisition and default retention panels compare with native replay for every arm', async () => {
+  const rows = [workflowFixture('fresh', 51), workflowFixture('partial', 52),
+    ...['general-retention', 'prior-skill-retention', 'composition-transfer'].map((category, index) => fixture(category, 61 + index)),
+    workflowFixture('already-complete', 53)];
+  const candidate = [], parent = [];
+  for (const [index, { task, call, answer }] of rows.entries()) {
+    let n = 0; candidate.push(await evaluateContinualTask({ task, request: async () => ({ message: index === 5 ? answer : n++ ? answer : call }) }));
+    n = 0; parent.push(await evaluateContinualTask({ task, request: async () => ({ message: index < 2 || index === 5 ? answer : n++ ? answer : call }) }));
+  }
+  const comparison = { candidate, parent, anchor: clone(parent), panel: rows.map(row => row.task) };
+  assert.equal(compareContinualPanels(comparison).accepted, true);
+  assert.equal(Object.hasOwn(candidate[2], 'environmentId'), false);
+  const forged = clone(candidate); forged[0].verdict.outcomeEvidence.taskStateAchieved = false;
+  assert.throws(() => compareContinualPanels({ ...comparison, candidate: forged }), /outcome evidence differs/);
+  const wrongEnvironment = clone(parent); wrongEnvironment[0].environmentId = 'continual-curriculum-v1';
+  assert.throws(() => compareContinualPanels({ ...comparison, parent: wrongEnvironment }), /environment identity mismatch/);
+  const regressed = clone(candidate);
+  regressed[5] = await evaluateContinualTask({ task: rows[5].task, request: async () => ({ message: rows[5].answer, finishReason: 'length' }) });
+  const noOpRegression = compareContinualPanels({ ...comparison, candidate: regressed });
+  assert.equal(noOpRegression.acquired, true); assert.equal(noOpRegression.retained, false); assert.equal(noOpRegression.accepted, false);
+  assert.equal(noOpRegression.categories['already-complete-retention'].losses, 1);
 });

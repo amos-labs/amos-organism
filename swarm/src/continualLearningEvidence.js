@@ -246,14 +246,26 @@ export function replayExportedNativeEvidence(input) {
   const evaluationSources = [...sources.values()];
   const uniqueExportedInferenceTotals = Object.fromEntries(['requests', 'logicalRequests', 'tokenizerRequests', 'promptTokens', 'outputTokens'].map(key =>
     [key, evaluationSources.reduce((sum, value) => sum + value.accounting[key], 0)]));
-  const outcomeBreakdown = Object.fromEntries(Object.entries(panels).map(([role, value]) => [role, {
-    total: value.report.results.length,
-    strictNativePassed: value.report.results.filter(row => row.verdict.passed).length,
-    finalAnswerCorrect: value.report.results.filter(row => row.verdict.finalAnswerCorrect).length,
-    nativeToolRequirementMet: value.report.results.filter(row => row.verdict.nativeToolRequirementMet).length,
-    correctAnswerMissingRequiredTool: value.report.results.filter(row => row.verdict.finalAnswerCorrect && !row.verdict.nativeToolRequirementMet).length,
-    finalAnswerIncorrect: value.report.results.filter(row => !row.verdict.finalAnswerCorrect).length
-  }]));
+  const outcomeBreakdown = Object.fromEntries(Object.entries(panels).map(([role, value]) => {
+    const rows = value.report.results;
+    const business = rows.filter(row => row.environmentId === 'workflow-acquisition-v2');
+    const answerGraded = rows.filter(row => row.environmentId !== 'workflow-acquisition-v2');
+    return [role, {
+      total: rows.length,
+      strictNativePassed: rows.filter(row => row.verdict.passed).length,
+      finalAnswerCorrect: answerGraded.filter(row => row.verdict.finalAnswerCorrect).length,
+      nativeToolRequirementMet: answerGraded.filter(row => row.verdict.nativeToolRequirementMet).length,
+      correctAnswerMissingRequiredTool: answerGraded.filter(row => row.verdict.finalAnswerCorrect && !row.verdict.nativeToolRequirementMet).length,
+      finalAnswerIncorrect: answerGraded.filter(row => !row.verdict.finalAnswerCorrect).length,
+      ...(business.length ? {
+        finalAnswerGraded: answerGraded.length, finalAnswerUngraded: business.length,
+        businessTasks: business.length, businessNativePassed: business.filter(row => row.verdict.passed).length,
+        businessOutcomeEvidencePresent: business.filter(row => typeof row.verdict.outcomeEvidence?.passed === 'boolean').length,
+        businessStatePassedInVerdict: business.filter(row => row.verdict.outcomeEvidence?.passed === true).length,
+        interpretation: 'Workflow final prose has no rubric and its compatibility booleans are excluded from answer/tool-requirement counts. Terminal failures can omit business outcome evidence; native pass is not a complete state census.'
+      } : {})
+    }];
+  }));
   const receipt = { schema: 'amos.continual-native-evidence-replay.v1', cycleId: input.cycleId, cycle: input.cycle, arm: input.arm,
     inputSha256: digest(input), panelSha256: input.panel.sha256, checkpoints: input.checkpoints, training, comparison,
     exportedInferenceAccounting: Object.fromEntries(Object.entries(panels).map(([role, value]) => [role, value.accounting])),

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { executeContinualTool, checkContinualAnswer } from './continualCurriculum.js';
+import { WORKFLOW_ENVIRONMENT } from './continualWorkflowEnvironment.js';
 
 export const CONTINUAL_EVALUATION_PROTOCOL = 'amos.continual-learning-evaluation.v1';
 export const CONTINUAL_DEFAULT_ENVIRONMENT_ID = 'continual-curriculum-v1';
@@ -7,11 +8,13 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 const copy = value => JSON.parse(JSON.stringify(value));
 const DEFAULT_ENVIRONMENT = Object.freeze({ id: CONTINUAL_DEFAULT_ENVIRONMENT_ID,
   executeTool: executeContinualTool, checkAnswer: checkContinualAnswer });
+const BUILT_IN_ENVIRONMENTS = Object.freeze({ [CONTINUAL_DEFAULT_ENVIRONMENT_ID]: DEFAULT_ENVIRONMENT,
+  [WORKFLOW_ENVIRONMENT.id]: WORKFLOW_ENVIRONMENT });
 
 function nativeEnvironment(task, provided) {
   const id = task.metadata?.environmentId ?? CONTINUAL_DEFAULT_ENVIRONMENT_ID;
   if (typeof id !== 'string' || !/^[a-z][a-z0-9._-]{0,100}$/.test(id)) throw new Error('Invalid native environment identity');
-  if (id === CONTINUAL_DEFAULT_ENVIRONMENT_ID && provided === undefined) return DEFAULT_ENVIRONMENT;
+  if (provided === undefined && Object.hasOwn(BUILT_IN_ENVIRONMENTS, id)) return BUILT_IN_ENVIRONMENTS[id];
   if (!provided || provided.id !== id || typeof provided.executeTool !== 'function' || typeof provided.checkAnswer !== 'function') {
     throw new Error('Task requires its matching native environment adapter');
   }
@@ -171,6 +174,8 @@ export function compareContinualPanels({ candidate, parent, anchor, panel, envir
   // Qualification remains small and correlated by program; this is not a statistical superiority test.
   const acquisition = categories.acquisition;
   const retention = ['general-retention', 'prior-skill-retention', 'composition-transfer'].map(k => categories[k]);
+  // When the panel includes completed business work, unnecessary actions must not erase retention.
+  if (Object.hasOwn(categories, 'already-complete-retention')) retention.push(categories['already-complete-retention']);
   const complete = Boolean(acquisition && retention.every(Boolean));
   const acquired = Boolean(acquisition && acquisition.candidate >= acquisition.parent + 2);
   const retained = complete && retention.every(row => row.candidate >= row.parent && row.candidate >= row.anchor);
