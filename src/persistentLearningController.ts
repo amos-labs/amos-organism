@@ -1,5 +1,7 @@
 import { digest, immutable } from "./digest.ts";
 import type { EventStore } from "./eventStore.ts";
+import { ContinualLearningCycles, validateCycleInput, type LearningCheckpoint,
+  type LearningCycleDecision, type LearningCycleSelection, type LearningCycleState } from "./continualLearningCycle.ts";
 
 /** Operator-imported aggregates: a digest identifies evidence; it does not verify a verdict. */
 export interface LearningObservation {
@@ -60,11 +62,32 @@ const ACTION_KEYS = ["id", "type", "observationId", "evidenceSha256"];
 export class PersistentLearningController {
   readonly #store: EventStore;
   readonly #now: () => Date;
+  readonly #cycles: ContinualLearningCycles;
 
   constructor(options: { store: EventStore; now?: () => Date }) {
     this.#store = options.store;
     this.#now = options.now ?? (() => new Date());
+    this.#cycles = new ContinualLearningCycles({ store: this.#store, now: this.#now });
     this.#replay();
+  }
+
+  initializeLearningParent(input: unknown): LearningCheckpoint {
+    return this.#cycles.initializeParent(input);
+  }
+
+  learningCycleState(): LearningCycleState {
+    return this.#cycles.state();
+  }
+
+  selectLearningCycle(input: unknown): LearningCycleSelection {
+    const selection = validateCycleInput(input);
+    const observation = this.#replay().observations.get(selection.observationId);
+    if (!observation) throw new Error("Cycle requires an imported source observation");
+    return this.#cycles.select(selection, observation);
+  }
+
+  decideLearningCycle(input: unknown): LearningCycleDecision {
+    return this.#cycles.decide(input);
   }
 
   ingestObservation(input: unknown): LearningObservation {

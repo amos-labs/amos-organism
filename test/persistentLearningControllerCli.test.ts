@@ -5,7 +5,8 @@ import { tmpdir, hostname } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { FileEventStore } from "../src/eventStore.ts";
+import { FileEventStore, MemoryEventStore } from "../src/eventStore.ts";
+import { digest } from "../src/digest.ts";
 
 const script = fileURLToPath(new URL("../scripts/runPersistentLearningController.ts", import.meta.url));
 const example = JSON.parse(readFileSync(new URL("../research/persistent-mind/example-observations.json", import.meta.url), "utf8"));
@@ -266,5 +267,86 @@ test("CLI default remains metadata-only when --development-work is absent", () =
     const s = lastMsg(r.stdout);
     assert.equal(s.development, undefined);
     assert.equal(s.operation, "deterministic-cpu-reflection");
+  } finally { rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test("opt-in CLI selects three fresh cycles across actual process restarts, keeping rejected children out of parent ancestry", { timeout: 120000 }, async () => {
+  const modulePath: string = "../swarm/src/persistentLearningDevelopmentDispatch.js";
+  const { buildArtifactReplayDevelopmentDispatch } = await import(modulePath);
+  const f = fixture();
+  try {
+    const developmentPath = join(f.dir, "cycle-work.json"), manifestPath = join(f.dir, "cycle.json"), decisionPath = join(f.dir, "decision.json");
+    const initialParent = { modelId: "synthetic-S6", weightsSha256: digest("synthetic-S6"), configSha256: digest("config") };
+    let parent = initialParent;
+    const args = [...f.args, "--development-work", developmentPath, "--cycle-manifest", manifestPath, "--once"];
+    const observations = [1, 2, 3].map(index => ({ ...example[0], id: `new-release-${index}`, family: `new-skill-${index}`, cohortId: `new-cohort-${index}` }));
+    const journal = () => new FileEventStore(join(f.state, "events.jsonl")).events();
+    let processStarts = 0;
+    const processIds = new Set<number>();
+    for (let index = 1; index <= 3; index++) {
+      // Only this fresh release is provided; earlier observations remain in the journal.
+      writeFileSync(f.input, JSON.stringify([observations[index - 1]]));
+      const work = { ...DEV_INPUT, candidate: { ...DEV_INPUT.candidate, id: `cycle-candidate-${index}` },
+        episodes: DEV_INPUT.episodes.map(episode => ({ ...episode, id: `${episode.id}-${index}` })) };
+      const dev = buildArtifactReplayDevelopmentDispatch({ store: new MemoryEventStore(), operatorInput: work });
+      const manifest = { schema: "amos.continual-learning-cycle-manifest.v1", initialParent,
+        cycle: { cycleId: `cycle-${index}`, objectiveId: `release-${index}`, observationId: observations[index - 1]!.id,
+          parent, inputSha256: digest(work), workKind: dev.workKind, workSpecSha256: dev.workSpecSha256 } };
+      writeFileSync(developmentPath, JSON.stringify(work));
+      writeFileSync(manifestPath, JSON.stringify(manifest));
+      const started = run(args); processStarts++;
+      processIds.add(started.pid);
+      assert.equal(started.status, 0, started.stdout + started.stderr);
+      const result = lastMsg(started.stdout).development;
+      assert.equal(result.cycleStatus, "awaiting-decision");
+      assert.equal(result.reused, false);
+      assert.equal(result.trainingStarted, false);
+      assert.equal(result.execution, "cpu-artifact-replay");
+      assert.deepEqual(result.acceptedParent, parent, "a completed executor is not an acceptance decision");
+      const beforeRestart = journal().length;
+      const resumed = run(args); processStarts++;
+      processIds.add(resumed.pid);
+      assert.equal(resumed.status, 0, resumed.stdout + resumed.stderr);
+      assert.equal(lastMsg(resumed.stdout).development.reused, true);
+      assert.equal(journal().length, beforeRestart, "restart cannot dispatch again");
+      writeFileSync(developmentPath, JSON.stringify({ ...work, episodes: [...work.episodes, { id: "unbound", task: { name: "accounts-payable-process" } }] }));
+      assert.equal(run(args).status, 1);
+      assert.equal(journal().length, beforeRestart, "changed input cannot rebind or dispatch");
+      writeFileSync(developmentPath, JSON.stringify(work));
+      const child = { modelId: `synthetic-child-${index}`, weightsSha256: digest(`synthetic-child-${index}`), configSha256: digest("config") };
+      const decision = { cycleId: manifest.cycle.cycleId, outcome: index === 1 ? "rejected" : "accepted", parent, candidate: child,
+        receiptDigest: result.receiptDigest, evidenceSha256: digest(`mock-review-${index}`), evidenceKind: "cpu-development", externalRunSha256: null,
+        reason: "Mock decision establishes cycle bookkeeping only; no model-quality gain." };
+      writeFileSync(decisionPath, JSON.stringify(decision));
+      const decided = run([...args, "--cycle-decision", decisionPath]); processStarts++;
+      processIds.add(decided.pid);
+      assert.equal(decided.status, 0, decided.stdout + decided.stderr);
+      if (index !== 1) parent = child;
+      assert.deepEqual(lastMsg(decided.stdout).development.acceptedParent, parent);
+      const afterDecision = journal().length;
+      const replayedDecision = run([...args, "--cycle-decision", decisionPath]); processStarts++;
+      processIds.add(replayedDecision.pid);
+      assert.equal(replayedDecision.status, 0, replayedDecision.stdout + replayedDecision.stderr);
+      assert.equal(journal().length, afterDecision, "terminal decision is also idempotent");
+      if (index === 1) {
+        writeFileSync(manifestPath, JSON.stringify({ ...manifest, cycle: { ...manifest.cycle, cycleId: "unsafe-next", objectiveId: "unsafe-next", parent: child } }));
+        assert.equal(run(args).status, 1, "a rejected child cannot become the next parent");
+        assert.equal(journal().length, afterDecision);
+      }
+    }
+    const events = journal();
+    const selections = events.filter(event => event.type === "learning.cycle-selected.v1").map(event => event.payload.selection as Record<string, unknown>);
+    assert.equal(processStarts, 12);
+    assert.equal(processIds.size, 12, "selection, receipt resume, decision and terminal resume use distinct real processes");
+    assert.deepEqual(selections.map(row => row.cycleId), ["cycle-1", "cycle-2", "cycle-3"]);
+    assert.deepEqual(selections.map(row => row.parentCycleId), [null, null, "cycle-2"]);
+    assert.equal(events.filter(event => event.type === "learning.cpu-dispatch-state.v1" && event.payload.state === "submitted").length, 3);
+    assert.equal(events.filter(event => event.type === "learning.cpu-dispatch-state.v1" && event.payload.state === "completed").length, 3);
+    assert.equal(events.filter(event => event.type === "learning.cycle-decided.v1").length, 3);
+    assert.equal(events.some(event => event.type === "learning.cpu-development-selection.v1"), false);
+    const snapshot = JSON.parse(readFileSync(join(f.state, "snapshot.json"), "utf8"));
+    assert.deepEqual(snapshot.learningCycles.acceptedParent, parent);
+    assert.equal(snapshot.learningCycles.qualityImprovementEstablished, false);
+    assert.equal(snapshot.learningCycles.servingChanged, false);
   } finally { rmSync(f.dir, { recursive: true, force: true }); }
 });

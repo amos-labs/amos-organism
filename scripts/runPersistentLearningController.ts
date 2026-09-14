@@ -8,25 +8,28 @@ import { isAbsolute, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { FileEventStore, MemoryEventStore, type OrganismEvent } from "../src/eventStore.ts";
 import { PersistentLearningController, type LearningObservation } from "../src/persistentLearningController.ts";
+import { validateCheckpoint, validateCycleInput, validateCycleDecision } from "../src/continualLearningCycle.ts";
 
-const USAGE = "Usage: node scripts/runPersistentLearningController.ts --state-dir ABS --observations ABS [--once] [--poll-ms N] [--development-work ABS]\nLocal metadata-only CPU reflection; no model, training, network or promotion. --development-work runs the existing CPU artifact-replay executor on an explicit operator-bound input, inside the lock, over the same journal. Default poll: 15000 ms.";
+const USAGE = "Usage: node scripts/runPersistentLearningController.ts --state-dir ABS --observations ABS [--once] [--poll-ms N] [--development-work ABS] [--cycle-manifest ABS] [--cycle-decision ABS]\nDefault: metadata-only CPU reflection; --development-work uses the existing CPU artifact-replay executor. No model, training, network or serving promotion. --cycle-manifest opts development work into durable successive research cycles; --cycle-decision imports an explicit terminal decision bound to its completed receipt. Default poll: 15000 ms.";
 const STATE_SCHEMA = "amos.persistent-learning-controller-state.v1";
 const MAX_BYTES = 1024 * 1024;
 
 function options(args: string[]) {
-  let stateDir = "", observations = "", once = false, pollMs = 15000, developmentWork = "";
+  let stateDir = "", observations = "", once = false, pollMs = 15000, developmentWork = "", cycleManifest = "", cycleDecision = "";
   const seen = new Set<string>();
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (seen.has(arg)) throw new Error("invalid_arguments");
     seen.add(arg);
     if (arg === "--once") { once = true; continue; }
-    if (!["--state-dir", "--observations", "--poll-ms", "--development-work"].includes(arg)) throw new Error("invalid_arguments");
+    if (!["--state-dir", "--observations", "--poll-ms", "--development-work", "--cycle-manifest", "--cycle-decision"].includes(arg)) throw new Error("invalid_arguments");
     const value = args[++i];
     if (!value || value.startsWith("--")) throw new Error("invalid_arguments");
     if (arg === "--state-dir") stateDir = value;
     if (arg === "--observations") observations = value;
     if (arg === "--development-work") developmentWork = value;
+    if (arg === "--cycle-manifest") cycleManifest = value;
+    if (arg === "--cycle-decision") cycleDecision = value;
     if (arg === "--poll-ms") {
       if (!/^\d+$/.test(value)) throw new Error("invalid_arguments");
       pollMs = Number(value);
@@ -35,7 +38,9 @@ function options(args: string[]) {
   }
   if (!isAbsolute(stateDir) || !isAbsolute(observations)) throw new Error("invalid_arguments");
   if (developmentWork && !isAbsolute(developmentWork)) throw new Error("invalid_arguments");
-  return { stateDir, observations, once, pollMs, developmentWork };
+  if (cycleManifest && (!isAbsolute(cycleManifest) || !developmentWork)) throw new Error("invalid_arguments");
+  if (cycleDecision && (!isAbsolute(cycleDecision) || !cycleManifest)) throw new Error("invalid_arguments");
+  return { stateDir, observations, once, pollMs, developmentWork, cycleManifest, cycleDecision };
 }
 
 function readObservations(path: string): LearningObservation[] {
@@ -207,6 +212,67 @@ async function developmentTick(
   }
 }
 
+function readBoundedJson(path: string): unknown {
+  const info = statSync(path);
+  if (!info.isFile() || info.size > MAX_BYTES) throw new Error("Cycle input must be a bounded JSON file");
+  const bytes = readFileSync(path);
+  if (bytes.length > MAX_BYTES) throw new Error("Cycle input exceeds byte limit");
+  return JSON.parse(bytes.toString("utf8"));
+}
+
+async function cycleDevelopmentTick(
+  config: { developmentWork: string; cycleManifest: string; cycleDecision: string },
+  store: FileEventStore, controller: PersistentLearningController,
+  action: { id: string; observationId: string } | null,
+): Promise<Record<string, unknown>> {
+  try {
+    if (latestSelection(store)) throw new Error("Legacy development work cannot be implicitly migrated into a learning cycle");
+    const manifest = readBoundedJson(config.cycleManifest) as Record<string, unknown>;
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)
+      || manifest.schema !== "amos.continual-learning-cycle-manifest.v1"
+      || Object.keys(manifest).sort().join(",") !== "cycle,initialParent,schema") throw new Error("Invalid cycle manifest");
+    const initialParent = validateCheckpoint(manifest.initialParent);
+    const input = validateCycleInput(manifest.cycle);
+    const decision = config.cycleDecision ? validateCycleDecision(readBoundedJson(config.cycleDecision)) : null;
+    if (decision && decision.cycleId !== input.cycleId) throw new Error("Decision belongs to a different cycle");
+    const operatorInput = readBoundedJson(config.developmentWork);
+    const { buildArtifactReplayDevelopmentDispatch } = await loadDevModule();
+    const dev = buildArtifactReplayDevelopmentDispatch({ store, operatorInput });
+    if (input.inputSha256 !== canonicalDigest(operatorInput) || input.workKind !== dev.workKind
+      || input.workSpecSha256 !== dev.workSpecSha256) throw new Error("Development work differs from frozen cycle inputs; refusing to rebind");
+    // Validate the complete new selection against a replay before any cycle write.
+    const trialStore = new MemoryEventStore();
+    for (const event of store.events()) {
+      const { sequence: _sequence, previousDigest: _previous, digest: _digest, ...proposal } = event;
+      trialStore.append(proposal);
+    }
+    const trial = new PersistentLearningController({ store: trialStore });
+    trial.initializeLearningParent(initialParent);
+    trial.selectLearningCycle(input);
+    controller.initializeLearningParent(initialParent);
+    const selection = controller.selectLearningCycle(input);
+    if (action?.observationId === selection.observationId) controller.reflect(action);
+    const prior = controller.learningCycleState().cycles.find(row => row.selection.cycleId === input.cycleId)!;
+    let result: Record<string, unknown>;
+    if (prior.decision) {
+      // A terminal cycle is immutable. No dispatch call is needed to revisit its receipt.
+      result = { state: "completed", workKind: selection.workKind, receiptDigest: prior.receiptDigest, reused: true };
+    } else {
+      const receipt = await dev.dispatch(selection.dispatchActionId, selection.observation);
+      result = { state: receipt.state, workKind: dev.workKind, receiptDigest: receipt.receiptDigest, reused: receipt.reused };
+    }
+    if (decision) controller.decideLearningCycle(decision);
+    const state = controller.learningCycleState();
+    const cycle = state.cycles.find(row => row.selection.cycleId === input.cycleId)!;
+    return { ...result, cycleId: input.cycleId, cycleStatus: cycle.decision?.outcome ?? "awaiting-decision",
+      acceptedParent: state.acceptedParent, evidenceBasis: "operator-reviewed-research-decision",
+      execution: selection.workKind === "exported-native-evidence-replay" ? "cpu-exported-native-evidence-replay" : "cpu-artifact-replay",
+      trainingStarted: false, servingChanged: false };
+  } catch (error) {
+    return { state: "error", message: (error as Error).message };
+  }
+}
+
 async function main() {
   if (process.argv.slice(2).includes("--help")) { console.log(USAGE); return; }
   const config = options(process.argv.slice(2));
@@ -247,7 +313,11 @@ async function main() {
         // store. developmentTick owns the reflect decision (bind-before-reflect and
         // durable resume); the default stays metadata-only reflection when unset.
         let development: Record<string, unknown> | undefined;
-        if (config.developmentWork) {
+        if (config.cycleManifest) {
+          development = await cycleDevelopmentTick(config, store, controller, action);
+        } else if (config.developmentWork && controller.learningCycleState().initialParent) {
+          development = { state: "error", message: "This journal has explicit cycles; supply --cycle-manifest to resume" };
+        } else if (config.developmentWork) {
           development = await developmentTick(config, store, controller, action, observations);
         } else if (action) {
           controller.reflect(action);
@@ -264,6 +334,7 @@ async function main() {
           reflectionEvents: events.filter(event => event.type === "learning.gap-reflected.v1"),
           qualityImprovementEstablished: false,
           ...(development ? { development } : {}),
+          ...(config.cycleManifest ? { learningCycles: controller.learningCycleState() } : {}),
         };
         const snapshotPath = join(config.stateDir, "snapshot.json");
         const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;

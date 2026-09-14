@@ -45,6 +45,21 @@ test("the real artifact-replay executor completes synthetic CPU work with zero m
   assert.match(r.receiptDigest, /^[a-f0-9]{64}$/);
 });
 
+test("work specification hash is exposed read-only before dispatch and equals the journal binding", async () => {
+  const store = memStore();
+  const input = structuredClone(operatorInput);
+  const dev = buildArtifactReplayDevelopmentDispatch({ store, operatorInput: input, now: clock() });
+  const frozenHash = dev.workSpecSha256;
+  assert.match(frozenHash, /^[a-f0-9]{64}$/);
+  assert.equal(store.events().length, 0);
+  assert.throws(() => { dev.workSpecSha256 = "0".repeat(64); }, TypeError);
+  input.episodes.push({ id: "changed-after-build", task: { name: "accounts-payable-process" } });
+  assert.equal(dev.workSpecSha256, frozenHash);
+  await dev.dispatch("cycle-action", observation);
+  assert.ok(store.events().every(event => event.payload.workSpecDigest === frozenHash));
+  assert.notEqual(buildArtifactReplayDevelopmentDispatch({ store: memStore(), operatorInput: input, now: clock() }).workSpecSha256, frozenHash);
+});
+
 test("a restart over the same journal does not re-run completed development work", async () => {
   const store = memStore();
   const first = await buildArtifactReplayDevelopmentDispatch({ store, operatorInput, now: clock() }).dispatch("reflect-1", observation);

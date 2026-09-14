@@ -611,9 +611,15 @@ class DevelopmentCheckpointScheduleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exceeds"):
             TRAINER.plan_development_checkpoints([119, 238, 357, 476], OPT_119, 945)
 
-    def test_target_off_an_epoch_boundary_is_rejected(self):
-        with self.assertRaisesRegex(ValueError, "epoch boundary"):
-            TRAINER.plan_development_checkpoints([120], OPT_119, 945)
+    def test_explicit_optimizer_steps_map_to_the_containing_epoch(self):
+        self.assertEqual(TRAINER.plan_development_checkpoints([32, 64, 128],
+                         {**OPT_119, "epochs": 1}, 1024), [
+            {"optimizerSteps": 32, "epoch": 1},
+            {"optimizerSteps": 64, "epoch": 1},
+            {"optimizerSteps": 128, "epoch": 1},
+        ])
+        self.assertEqual(TRAINER.plan_development_checkpoints([120], OPT_119, 945),
+                         [{"optimizerSteps": 120, "epoch": 2}])
 
     def test_non_increasing_targets_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "strictly increasing"):
@@ -704,11 +710,156 @@ class DevelopmentCheckpointPreflightTests(unittest.TestCase):
 
     def test_valid_fixed_recipe_schedule_passes_early_contract_validation(self):
         TRAINER.validate_contract(self._contract_with_schedule([119, 238, 357]))
+        TRAINER.validate_contract(self._contract_with_schedule([32, 64, 128]))
 
     def test_invalid_schedule_is_rejected_before_run_or_model_loading(self):
-        for schedule in ([120], [True], [476], [238, 119]):
+        for schedule in ([True], [476], [238, 119], [32, 32]):
             with self.subTest(schedule=schedule), self.assertRaises(ValueError):
                 TRAINER.validate_contract(self._contract_with_schedule(schedule))
+
+
+class OptimizerStepCheckpointTests(unittest.TestCase):
+    class TinyAdapter(_torch.nn.Module):
+        """Real CPU autograd/AdamW and safetensors; no pretrained model or GPU."""
+        def __init__(self, generator):
+            super().__init__()
+            self.q_proj = _torch.nn.Module()
+            self.q_proj.lora_A = _torch.nn.ModuleDict({"default": _torch.nn.Linear(1, 1, bias=False)})
+            self.generator = generator
+            self.forward_count = 0
+            self.fail_save = False
+
+        def forward(self, inputs, targets):
+            from types import SimpleNamespace
+            import random
+            self.forward_count += 1
+            prediction = self.q_proj.lora_A["default"](inputs)
+            # Both RNG streams affect the real gradient; altered future draws change weights.
+            scale = _torch.rand(()) + random.random() + 1
+            return SimpleNamespace(loss=((prediction - targets) ** 2).mean() * scale)
+
+        def save_pretrained(self, path, safe_serialization):
+            import random
+            from safetensors.torch import save_file
+            assert safe_serialization is True
+            random.random()
+            _torch.rand(7)
+            _torch.rand(9, generator=self.generator)
+            if self.fail_save:
+                raise RuntimeError("injected checkpoint write failure")
+            path.mkdir()
+            save_file(self.state_dict(), path / "adapter_model.safetensors")
+            (path / "adapter_config.json").write_text('{}\n', encoding="utf-8")
+
+    def _run(self, root, rows, epochs, targets):
+        import random
+        random.seed(29)
+        _torch.manual_seed(29)
+        generator = _torch.Generator().manual_seed(31)
+        model = self.TinyAdapter(generator)
+        optimizer = _torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0)
+        optimizer.zero_grad(set_to_none=True)
+        examples = [{"inputs": _torch.tensor([1.0]), "targets": _torch.tensor([i % 3 / 2])}
+                    for i in range(rows)]
+        loader = _torch.utils.data.DataLoader(examples, batch_size=1, shuffle=True, generator=generator)
+        planned = TRAINER.plan_development_checkpoints(targets,
+                  {"microBatchSize": 1, "gradientAccumulationSteps": 8, "epochs": epochs}, rows) if targets else []
+        by_step = {entry["optimizerSteps"]: entry for entry in planned}
+        receipts, observed_steps, timing = [], [], {}
+
+        def after_step(step):
+            parameter = next(model.parameters())
+            self.assertEqual(int(optimizer.state[parameter]["step"].item()), step)
+            self.assertIsNone(parameter.grad)
+            observed_steps.append((step, model.forward_count))
+            if step in by_step:
+                expected = parameter.detach().clone()
+                receipt = TRAINER.measure_training_phase(timing, "checkpointSave",
+                    lambda: TRAINER.save_development_checkpoint(model, root, by_step[step], _torch, generator), _torch)
+                from safetensors.torch import load_file
+                saved = load_file(root / f"checkpoint-step-{step}" / "adapter_model.safetensors")
+                self.assertTrue(_torch.equal(next(iter(saved.values())), expected))
+                self.assertEqual(receipt["adapterTensorSha256"], TRAINER.adapter_tensor_digest(
+                    TRAINER.expected_parent_tensor_items(root / f"checkpoint-step-{step}" / "adapter_model.safetensors")))
+                self.assertIn("rng-state.json", [entry["path"] for entry in receipt["files"]])
+                receipts.append(receipt)
+
+        steps = 0
+        for _ in range(epochs):
+            _, steps = TRAINER.measure_training_phase(timing, "optimizerLoop",
+                lambda: TRAINER.train_one_epoch(model, loader, optimizer, 8, steps, after_step, device="cpu"), _torch)
+        return {"weights": next(model.parameters()).detach().clone(), "steps": steps,
+                "rng": TRAINER.serialize_rng_state(_torch, TRAINER.capture_rng_state(_torch, generator)),
+                "receipts": receipts, "observedSteps": observed_steps, "timing": timing}
+
+    def test_actual_update_32_64_128_saves_are_rng_neutral_and_match_saved_tensors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            baseline = self._run(root, 1024, 1, [])
+            checkpointed = self._run(root, 1024, 1, [32, 64, 128])
+        self.assertEqual(checkpointed["steps"], 128)
+        self.assertEqual([entry["optimizerSteps"] for entry in checkpointed["receipts"]], [32, 64, 128])
+        self.assertEqual([checkpointed["observedSteps"][step - 1] for step in [32, 64, 128]],
+                         [(32, 256), (64, 512), (128, 1024)])
+        self.assertTrue(_torch.equal(baseline["weights"], checkpointed["weights"]))
+        self.assertEqual(baseline["rng"], checkpointed["rng"])
+        self.assertGreater(checkpointed["timing"]["optimizerLoop"], checkpointed["timing"]["checkpointSave"])
+        self.assertGreater(checkpointed["timing"]["checkpointSave"], 0)
+
+    def test_partial_accumulation_flush_and_old_epoch_schedule_save_exactly_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self._run(Path(directory), 9, 3, [2, 4, 6])
+        self.assertEqual(result["observedSteps"], [(1, 8), (2, 9), (3, 17), (4, 18), (5, 26), (6, 27)])
+        self.assertEqual([(row["optimizerSteps"], row["epoch"]) for row in result["receipts"]],
+                         [(2, 1), (4, 2), (6, 3)])
+
+    def test_checkpoint_failure_restores_rng_and_stops_before_next_update(self):
+        generator = _torch.Generator().manual_seed(43)
+        model = self.TinyAdapter(generator)
+        model.fail_save = True
+        optimizer = _torch.optim.AdamW(model.parameters(), lr=0.01)
+        observed = []
+        with tempfile.TemporaryDirectory() as directory:
+            def fail_after_step(step):
+                state = TRAINER.serialize_rng_state(_torch, TRAINER.capture_rng_state(_torch, generator))
+                try:
+                    TRAINER.save_development_checkpoint(model, Path(directory),
+                        {"optimizerSteps": step, "epoch": 1}, _torch, generator)
+                finally:
+                    observed.append(step)
+                    self.assertEqual(state, TRAINER.serialize_rng_state(_torch,
+                        TRAINER.capture_rng_state(_torch, generator)))
+            loader = [{"inputs": _torch.ones(1, 1), "targets": _torch.zeros(1, 1)} for _ in range(3)]
+            with self.assertRaisesRegex(RuntimeError, "injected checkpoint"):
+                TRAINER.train_one_epoch(model, loader, optimizer, 1, 0, fail_after_step, device="cpu")
+        self.assertEqual(observed, [1])
+        self.assertEqual(model.forward_count, 1)
+
+
+class NativeTrainingTimingTests(unittest.TestCase):
+    def test_nested_wall_phases_distinguish_optimization_from_saving(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        cuda = SimpleNamespace(is_available=lambda: True, synchronize=Mock())
+        seconds = {}
+        with patch.object(TRAINER.time, "monotonic", side_effect=[0.0, 2.0, 5.0, 9.0]):
+            result = TRAINER.measure_training_phase(seconds, "optimizerLoop", lambda:
+                TRAINER.measure_training_phase(seconds, "checkpointSave", lambda: "saved", SimpleNamespace(cuda=cuda)), SimpleNamespace(cuda=cuda))
+        self.assertEqual(result, "saved")
+        self.assertEqual(seconds, {"checkpointSave": 3.0, "optimizerLoop": 9.0})
+        self.assertEqual(seconds["optimizerLoop"] - seconds["checkpointSave"], 6.0)
+        self.assertEqual(cuda.synchronize.call_count, 4)
+
+    def test_failed_phase_retains_elapsed_observation_and_propagates_error(self):
+        from unittest.mock import patch
+        seconds = {"validation": 1.0}
+        def fail():
+            raise RuntimeError("validation failed")
+        with patch.object(TRAINER.time, "monotonic", side_effect=[2.0, 7.0]):
+            with self.assertRaisesRegex(RuntimeError, "validation failed"):
+                TRAINER.measure_training_phase(seconds, "validation", fail)
+        self.assertEqual(seconds["validation"], 6.0)
+        self.assertRegex(TRAINER.observed_utc(), r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
 
 
 if __name__ == "__main__":

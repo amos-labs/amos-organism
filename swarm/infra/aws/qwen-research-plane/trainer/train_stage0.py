@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import datetime as dt
 import hashlib
 import json
 import math
@@ -220,11 +221,12 @@ def updates_per_epoch(training_rows: int, micro_batch_size: int, accumulation: i
 def plan_development_checkpoints(
     targets: "Any", optimization: dict, training_rows: int
 ) -> list:
-    """Validate the predeclared A0 development-checkpoint schedule against the fixed
+    """Validate the predeclared development-checkpoint schedule against the fixed
     recipe BEFORE any training budget is spent. Each target is a count of completed
     optimizer updates that must be a positive integer, strictly increasing, reachable
-    within the planned epochs, and land exactly on an epoch boundary (the diagnostic
-    saves whole-epoch checkpoints). Returns [{"optimizerSteps", "epoch"}] in order.
+    within the planned epochs. Returns [{"optimizerSteps", "epoch"}] in order, where
+    epoch is the one-based epoch containing the update, not a claim it is complete.
+    Existing whole-epoch schedules retain their update counts and epoch labels.
     The schedule is fixed here; it cannot be widened or narrowed after measurement."""
     if not isinstance(targets, list) or not targets:
         raise ValueError("developmentCheckpoints must be a non-empty list")
@@ -233,7 +235,6 @@ def plan_development_checkpoints(
     )
     epochs = optimization["epochs"]
     total = per_epoch * epochs
-    boundaries = {per_epoch * k: k for k in range(1, epochs + 1)}
     planned = []
     previous = 0
     for target in targets:
@@ -243,11 +244,7 @@ def plan_development_checkpoints(
             raise ValueError("development checkpoints must be strictly increasing and unique")
         if target > total:
             raise ValueError(f"development checkpoint {target} exceeds the {total} planned optimizer updates")
-        if target not in boundaries:
-            raise ValueError(
-                f"development checkpoint {target} does not land on an epoch boundary (per-epoch updates {per_epoch})"
-            )
-        planned.append({"optimizerSteps": target, "epoch": boundaries[target]})
+        planned.append({"optimizerSteps": target, "epoch": math.ceil(target / per_epoch)})
         previous = target
     return planned
 
@@ -326,12 +323,83 @@ def load_rng_state_file(torch: "Any", path: "Path") -> dict:
         return deserialize_rng_state(torch, json.load(handle))
 
 
+def save_development_checkpoint(model: Any, work: Path, scheduled: dict,
+                                torch: Any, loader_generator: Any) -> dict:
+    """Save the adapter and update-position RNG without perturbing later training.
+
+    This remains an adapter evaluation artifact, not an optimizer-resume checkpoint.
+    A failed save restores RNG too and must not produce a completed manifest entry.
+    """
+    rng_at_checkpoint = capture_rng_state(torch, loader_generator)
+    try:
+        checkpoint_dir = work / f"checkpoint-step-{scheduled['optimizerSteps']}"
+        model.save_pretrained(checkpoint_dir, safe_serialization=True)
+        save_rng_state_file(torch, checkpoint_dir / "rng-state.json", rng_at_checkpoint)
+        return {
+            "epoch": scheduled["epoch"],
+            "optimizerSteps": scheduled["optimizerSteps"],
+            "adapterSha256": file_sha256(checkpoint_dir / "adapter_model.safetensors"),
+            "adapterTensorSha256": adapter_tensor_digest(lora_tensor_items_from_model(model)),
+            "files": digest_tree(checkpoint_dir),
+        }
+    finally:
+        restore_rng_state(torch, rng_at_checkpoint, loader_generator)
+
+
+def synchronize_training_timing(torch: Any) -> None:
+    """Observe completed GPU work at phase boundaries without consuming RNG."""
+    if torch is not None and torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
+def measure_training_phase(seconds: dict[str, float], phase: str,
+                           operation: Any, torch: Any = None) -> Any:
+    synchronize_training_timing(torch)
+    started = time.monotonic()
+    try:
+        return operation()
+    finally:
+        synchronize_training_timing(torch)
+        seconds[phase] = seconds.get(phase, 0.0) + time.monotonic() - started
+
+
+def observed_utc() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def train_one_epoch(model: Any, loader: Any, optimizer: Any, accumulation: int,
+                    completed_optimizer_steps: int, on_optimizer_step: Any,
+                    *, device: str = "cuda") -> tuple[float, int]:
+    """Run the native accumulation loop; notify only after an actual optimizer step.
+
+    The final partial accumulation window keeps the existing loss/accumulation
+    coefficient and flushes once. CPU device selection is used by loop tests.
+    """
+    total_loss = 0.0
+    batches = 0
+    for batch_index, batch in enumerate(loader, start=1):
+        batch = {key: value.to(device=device, non_blocking=True) for key, value in batch.items()}
+        output = model(**batch)
+        loss = output.loss / accumulation
+        loss.backward()
+        total_loss += float(output.loss.detach().cpu())
+        batches += 1
+        if batch_index % accumulation == 0 or batch_index == len(loader):
+            optimizer.step()
+            completed_optimizer_steps += 1
+            optimizer.zero_grad(set_to_none=True)
+            on_optimizer_step(completed_optimizer_steps)
+    return total_loss / max(1, batches), completed_optimizer_steps
+
+
 def train(
     contract: dict[str, Any],
     split_rows: dict[str, list[dict[str, Any]]],
     work: Path,
     preflight: dict[str, Any],
 ) -> dict[str, Any]:
+    train_started = time.monotonic()
+    train_started_at = observed_utc()
     if os.environ.get("TORCH_DISABLE_NATIVE_JIT") != "1":
         raise RuntimeError("stage-zero training requires TORCH_DISABLE_NATIVE_JIT=1")
 
@@ -446,7 +514,7 @@ def train(
         collate_fn=lambda batch: collate(batch, tokenizer.pad_token_id, torch),
     )
     # Fixed-before-measurement A0 development-checkpoint schedule (optional). Validated
-    # against the recipe so an unreachable or misaligned target is rejected before any
+    # against the recipe so an unreachable target is rejected before any
     # training budget is spent; saved rng-neutrally so checkpointing cannot perturb it.
     development_targets = (
         plan_development_checkpoints(
@@ -467,51 +535,62 @@ def train(
     completed_optimizer_steps = 0
     optimizer.zero_grad(set_to_none=True)
     model.train()
+    phase_seconds: dict[str, float] = {}
+    synchronize_training_timing(torch)
+    optimization_started = time.monotonic()
+    optimization_started_at = observed_utc()
+    epoch_loop_started = optimization_started
+
+    def after_optimizer_step(step: int) -> None:
+        scheduled = development_by_step.get(step)
+        if scheduled is not None:
+            synchronize_training_timing(torch)
+            observed = time.monotonic()
+            loop_seconds = phase_seconds.get("optimizerLoop", 0.0) + observed - epoch_loop_started
+            update_timing = {
+                "observedAt": observed_utc(),
+                "elapsedSinceOptimizationStartedSeconds": observed - optimization_started,
+                "optimizerLoopIncludingCheckpointSavesSeconds": loop_seconds,
+                "optimizerLoopExcludingCheckpointSavesSeconds": loop_seconds - phase_seconds.get("checkpointSave", 0.0),
+            }
+            prior_save_seconds = phase_seconds.get("checkpointSave", 0.0)
+            receipt = measure_training_phase(
+                phase_seconds, "checkpointSave",
+                lambda: save_development_checkpoint(model, work, scheduled, torch, loader_generator), torch,
+            )
+            receipt["timing"] = {**update_timing, "checkpointSaveSeconds": phase_seconds["checkpointSave"] - prior_save_seconds,
+                                 "saveCompletedAt": observed_utc()}
+            development_checkpoints.append(receipt)
+
     for epoch in range(optimization["epochs"]):
-        total_loss = 0.0
-        batches = 0
-        for batch_index, batch in enumerate(loader, start=1):
-            batch = {key: value.cuda(non_blocking=True) for key, value in batch.items()}
-            output = model(**batch)
-            loss = output.loss / accumulation
-            loss.backward()
-            total_loss += float(output.loss.detach().cpu())
-            batches += 1
-            if batch_index % accumulation == 0 or batch_index == len(loader):
-                optimizer.step()
-                completed_optimizer_steps += 1  # counted after the actual step, not per batch
-                optimizer.zero_grad(set_to_none=True)
+        prior_loop_seconds = phase_seconds.get("optimizerLoop", 0.0)
+        prior_save_seconds = phase_seconds.get("checkpointSave", 0.0)
+        epoch_loop_started = time.monotonic()
+        mean_loss, completed_optimizer_steps = measure_training_phase(
+            phase_seconds, "optimizerLoop",
+            lambda: train_one_epoch(model, loader, optimizer, accumulation, completed_optimizer_steps, after_optimizer_step), torch,
+        )
+        epoch_loop_seconds = phase_seconds["optimizerLoop"] - prior_loop_seconds
+        epoch_save_seconds = phase_seconds.get("checkpointSave", 0.0) - prior_save_seconds
         history_entry: dict[str, Any] = {
             "epoch": epoch + 1,
-            "meanLoss": total_loss / max(1, batches),
+            "meanLoss": mean_loss,
+            "timing": {
+                "optimizerLoopIncludingCheckpointSavesSeconds": epoch_loop_seconds,
+                "optimizerLoopExcludingCheckpointSavesSeconds": epoch_loop_seconds - epoch_save_seconds,
+                "checkpointSaveSeconds": epoch_save_seconds,
+            },
         }
         if optimization.get("evaluateValidationEveryEpoch"):
-            validation = evaluate(model, encoded["validation"], tokenizer.pad_token_id, torch)
+            prior_validation_seconds = phase_seconds.get("epochValidation", 0.0)
+            validation = measure_training_phase(phase_seconds, "epochValidation",
+                lambda: evaluate(model, encoded["validation"], tokenizer.pad_token_id, torch), torch)
+            history_entry["timing"]["validationSeconds"] = phase_seconds["epochValidation"] - prior_validation_seconds
             if not math.isfinite(validation["meanLoss"]):
                 raise RuntimeError(f"validation loss became non-finite after epoch {epoch + 1}")
             history_entry["validation"] = validation
             model.train()
         training_history.append(history_entry)
-
-        scheduled = development_by_step.get(completed_optimizer_steps)
-        if scheduled is not None:
-            # Persist the RNG position AS OF this checkpoint step (captured before the save
-            # touches anything) so a later eval resumes reproducibly, then restore it so the
-            # remaining epochs draw identically to a no-checkpoint run.
-            rng_at_checkpoint = capture_rng_state(torch, loader_generator)
-            try:
-                checkpoint_dir = work / f"checkpoint-step-{completed_optimizer_steps}"
-                model.save_pretrained(checkpoint_dir, safe_serialization=True)
-                save_rng_state_file(torch, checkpoint_dir / "rng-state.json", rng_at_checkpoint)
-                development_checkpoints.append({
-                    "epoch": scheduled["epoch"],
-                    "optimizerSteps": completed_optimizer_steps,
-                    "adapterSha256": file_sha256(checkpoint_dir / "adapter_model.safetensors"),
-                    "adapterTensorSha256": adapter_tensor_digest(lora_tensor_items_from_model(model)),
-                    "files": digest_tree(checkpoint_dir),
-                })
-            finally:
-                restore_rng_state(torch, rng_at_checkpoint, loader_generator)
 
     if len(development_checkpoints) != len(development_targets):
         saved = {entry["optimizerSteps"] for entry in development_checkpoints}
@@ -525,10 +604,10 @@ def train(
             "checkpoints": development_checkpoints,
         })
 
-    metrics = {
-        split: evaluate(model, values, tokenizer.pad_token_id, torch)
-        for split, values in encoded.items()
-    }
+    metrics = {}
+    for split, values in encoded.items():
+        metrics[split] = measure_training_phase(phase_seconds, "finalEvaluation." + split,
+            lambda: evaluate(model, values, tokenizer.pad_token_id, torch), torch)
     minimum_accuracy = contract["exitCriteria"]["minimumSupervisedTokenAccuracy"]
     if metrics["training"]["supervisedTokenAccuracy"] < minimum_accuracy:
         raise RuntimeError(
@@ -538,15 +617,19 @@ def train(
     if contract["exitCriteria"].get("validationLossMustBeFinite") and not math.isfinite(metrics["validation"]["meanLoss"]):
         raise RuntimeError("validation loss is not finite")
 
-    adapter_probe_before_save = logits_digest(model, probe)
+    adapter_probe_before_save = measure_training_phase(phase_seconds, "probeBeforeSave", lambda: logits_digest(model, probe), torch)
     if adapter_probe_before_save == base_probe_before:
         raise RuntimeError("trained adapter did not change the fixed probe")
     adapter_root = work / "adapter"
-    model.save_pretrained(adapter_root, safe_serialization=True)
-    tokenizer.save_pretrained(adapter_root)
-    adapter_files = digest_tree(adapter_root)
+    def save_final_adapter() -> list[dict[str, Any]]:
+        model.save_pretrained(adapter_root, safe_serialization=True)
+        tokenizer.save_pretrained(adapter_root)
+        return digest_tree(adapter_root)
+    adapter_files = measure_training_phase(phase_seconds, "finalAdapterSave", save_final_adapter, torch)
 
     # Final child adapter state, observed while the adapter is still attached (parent mode only).
+    synchronize_training_timing(torch)
+    reload_proof_started = time.monotonic()
     final_tensor_sha256 = (
         adapter_tensor_digest(lora_tensor_items_from_model(model))
         if initialization["mode"] == "parent"
@@ -591,6 +674,24 @@ def train(
         # any outstanding criterion.
         assert_parent_update_receipt(parent_update_receipt)
 
+    synchronize_training_timing(torch)
+    phase_seconds["reloadProof"] = time.monotonic() - reload_proof_started
+    training_timing = {
+        "schema": "amos.native-training-timing.v1",
+        "scope": "train() wall time; dataset download/preflight excluded; CUDA synchronized at phase and checkpoint observations",
+        "trainStartedAt": train_started_at,
+        "optimizationStartedAt": optimization_started_at,
+        "completedAt": observed_utc(),
+        "setupSeconds": optimization_started - train_started,
+        "trainFunctionWallSeconds": time.monotonic() - train_started,
+        "optimizerUpdates": completed_optimizer_steps,
+        "optimizerLoopIncludingCheckpointSavesSeconds": phase_seconds.get("optimizerLoop", 0.0),
+        "optimizerLoopExcludingCheckpointSavesSeconds": phase_seconds.get("optimizerLoop", 0.0) - phase_seconds.get("checkpointSave", 0.0),
+        "checkpointSaveSeconds": phase_seconds.get("checkpointSave", 0.0),
+        "validationSeconds": phase_seconds.get("epochValidation", 0.0) + phase_seconds.get("finalEvaluation.validation", 0.0),
+        "phaseWallSeconds": phase_seconds,
+    }
+
     report = {
         "schema": "amos.qwen-adapter-stage0-result",
         "version": 1,
@@ -621,6 +722,7 @@ def train(
             "status": "complete-base-preserved-frozen",
         },
         "trainingHistory": training_history,
+        "trainingTiming": training_timing,
         "metrics": metrics,
         "probes": {
             "baseBefore": base_probe_before,

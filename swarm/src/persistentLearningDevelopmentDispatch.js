@@ -2,6 +2,8 @@ import { digestResearchValue } from "./experimentProtocol.js";
 import { createOrganismLearningCandidate, recordOrganismLearningGate } from "./swarmOrganismLearningCycle.js";
 import { SleepCandidateRegistry, sleepWorkFromCandidates, createArtifactReplayExecutor } from "./sleepCycleExecutors.js";
 import { createCpuDevelopmentDispatch } from "./persistentLearningCpuBridge.js";
+import { workSpecificationDigest } from "./persistentLearningDispatchAdapter.js";
+import { NATIVE_EVIDENCE_SCHEMA, replayExportedNativeEvidence } from "./continualLearningEvidence.js";
 
 // Persistent-mind Slice 2 (increment 2 core): compose the EXISTING artifact-replay
 // executor from an explicit operator-bound development input and dispatch it durably
@@ -19,6 +21,19 @@ import { createCpuDevelopmentDispatch } from "./persistentLearningCpuBridge.js";
 export function buildArtifactReplayDevelopmentDispatch({ store, operatorInput, missionId = "persistent-learning", now = () => new Date() }) {
   // Snapshot every executor input before constructing closures or work identity.
   operatorInput = structuredClone(operatorInput);
+  if (operatorInput?.schema === NATIVE_EVIDENCE_SCHEMA) {
+    // A model checkpoint is not an organism policy. Verify its exported native
+    // evidence directly; do not invent a simulator gate to enter the legacy path.
+    const receipt = replayExportedNativeEvidence(operatorInput);
+    const workKind = "exported-native-evidence-replay";
+    const { dispatch, journal } = createCpuDevelopmentDispatch({ store, missionId, now, executor: async () => receipt,
+      // This variant has no external effects. Rechecking the same pinned exports
+      // above supplies a complete deterministic receipt after an interrupted append;
+      // it never retries the external training or inference represented by them.
+      reconcile: async () => ({ outcome: "completed", receipt }) });
+    return { workKind, journal, get workSpecSha256() { return workSpecificationDigest(operatorInput); },
+      dispatch: (actionId, observation, options) => dispatch({ actionId, workKind, observation }, operatorInput, options) };
+  }
   validateOperatorInput(operatorInput);
   const spec = operatorInput.candidate;
   const created = createOrganismLearningCandidate({
@@ -54,6 +69,7 @@ export function buildArtifactReplayDevelopmentDispatch({ store, operatorInput, m
   });
   return {
     workKind: work.kind,
+    get workSpecSha256() { return workSpecificationDigest(boundWork); },
     journal,
     // The controller supplies the reflection action id + its bound observation; the
     // work item is the operator-approved artifact-replay unit.
