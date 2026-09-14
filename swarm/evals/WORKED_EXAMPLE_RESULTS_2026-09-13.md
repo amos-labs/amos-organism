@@ -78,8 +78,11 @@ terminal return; all twelve verifier passes also met the completion contract.
 **The remaining problem includes recovery logic and generalization.** Syntax
 teaching makes native failures easier to observe, but does not itself teach
 when an uncertain write applied, when to inspect again, which revision to use,
-or how to recover without discarding a working branch. Returning to the last
-candidate alone does not preserve the strongest candidate encountered so far.
+or how to recover without discarding a working branch. Each retry regenerates
+from the demonstrations and bounded failure feedback. It does not receive the
+previous program or its passing cases. The observed regressions therefore do
+not test whether the model can edit a visible prior program successfully; this
+retry policy does not preserve the strongest candidate encountered so far.
 
 One example-arm reservation cell only inspected orders and stopped. It hardcoded
 two identifiers from the target TRAIN demonstrations instead of looping over the
