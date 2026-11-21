@@ -1,0 +1,1 @@
+{"model": "qwen3.8-27b", "seed": "pilot-02", "family": "missions", "invalid": "HTTP Error 500: Internal Server Error", "fixture_and_runner_sha256": "cd1a968c244d42f5f3fca98e1f1046baee335fd30141264f6643a64d56b3f29e"}

@@ -1,0 +1,2942 @@
+{
+  "schema": "amos.business-memory-run",
+  "version": 1,
+  "dryRun": false,
+  "generatedAt": "2026-11-21T18:45:27.567Z",
+  "manifestDigest": "3e6aaec8c0534007d9e608719ad5c9d7ab77a9848ce0435bd79caa5f5b3aef0c",
+  "proceduresSource": "authored-v0",
+  "procedureDigests": [
+    "19fe049b220c313ca0874a9d4b5fdc884912a229bc8c645508a2b2e9631be2fd",
+    "7b6675688d05a7bfa9f9d0dd1c4c21ba8d046e1db267f7163ec7813568539054",
+    "1deed1ceb68c62b99d3f57faf9f388336bcc0d10d9051c14536cd4db9d5bb7ab",
+    "b1511f9f3b8cb7a9730f62a3ddab6a78536395c9d7d677c40e4ec9b2b5e46fa0",
+    "4636b512d27acc900dacd9f49d80d9ba2a323fcc8cdfc5d9be5f3bcb58ad9500",
+    "69125d9f0e413eeb3eead6ea62d5bd0df359210cd6d1ac1058d3bd44f86f14e8",
+    "578fee257e841169ba35cd73aa28f9e66082ba44803e056dbe6c547619a18f35",
+    "4eac49082cd0c1685d7af1f35531124bb727f72d4c16b1624f96fd8a1a515b4d",
+    "639b98c54ed5d346c6f8b70b7ab1e8e47ddcc99389ee421deaba9df78029be46",
+    "ecaadeb24b6005db12f536d55672ad1a380406d0fbc76a89fcba481d5e060f4c",
+    "c0cb979974fb35799d53015e7d3e7e0a6e6ea4b244c5784b004a45d553814bd7"
+  ],
+  "controlWorkerId": null,
+  "reports": [
+    {
+      "workerId": "qwen3.8-27b",
+      "report": {
+        "schema": "amos.business-memory-report",
+        "version": 1,
+        "modelId": "qwen3.8-27b",
+        "controlId": "business-memory-qwen3.8-27b",
+        "manifestDigest": "3e6aaec8c0534007d9e608719ad5c9d7ab77a9848ce0435bd79caa5f5b3aef0c",
+        "pool": "development",
+        "seed": "routed-baseline-20261121",
+        "caseCount": 22,
+        "startedAt": "2026-11-21T18:43:45.273Z",
+        "completedAt": "2026-11-21T18:45:27.567Z",
+        "procedureDigests": [
+          "19fe049b220c313ca0874a9d4b5fdc884912a229bc8c645508a2b2e9631be2fd",
+          "7b6675688d05a7bfa9f9d0dd1c4c21ba8d046e1db267f7163ec7813568539054",
+          "1deed1ceb68c62b99d3f57faf9f388336bcc0d10d9051c14536cd4db9d5bb7ab",
+          "b1511f9f3b8cb7a9730f62a3ddab6a78536395c9d7d677c40e4ec9b2b5e46fa0",
+          "4636b512d27acc900dacd9f49d80d9ba2a323fcc8cdfc5d9be5f3bcb58ad9500",
+          "69125d9f0e413eeb3eead6ea62d5bd0df359210cd6d1ac1058d3bd44f86f14e8",
+          "578fee257e841169ba35cd73aa28f9e66082ba44803e056dbe6c547619a18f35",
+          "4eac49082cd0c1685d7af1f35531124bb727f72d4c16b1624f96fd8a1a515b4d",
+          "639b98c54ed5d346c6f8b70b7ab1e8e47ddcc99389ee421deaba9df78029be46",
+          "ecaadeb24b6005db12f536d55672ad1a380406d0fbc76a89fcba481d5e060f4c",
+          "c0cb979974fb35799d53015e7d3e7e0a6e6ea4b244c5784b004a45d553814bd7"
+        ],
+        "arms": [
+          {
+            "arm": "memory",
+            "total": 22,
+            "passed": 22,
+            "passRate": 1,
+            "recoveryRate": 0,
+            "promptCharsMean": 8356.09090909091,
+            "outputTokensMean": 263.09090909090907,
+            "byFamily": {
+              "current-value-after-supersession": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "executed-versus-proposed": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "scope-boundary": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "value-as-of-date": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "derived-total-from-records": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "session-claim-versus-record": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "memory-class-recall": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "approval-required-decision": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "invoice-due-date": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "stale-note-versus-record": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "replay-safety": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              }
+            }
+          },
+          {
+            "arm": "procedures",
+            "total": 22,
+            "passed": 22,
+            "passRate": 1,
+            "recoveryRate": 0,
+            "promptCharsMean": 10104.181818181818,
+            "outputTokensMean": 309.6363636363636,
+            "byFamily": {
+              "current-value-after-supersession": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "executed-versus-proposed": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "scope-boundary": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "value-as-of-date": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "derived-total-from-records": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "session-claim-versus-record": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "memory-class-recall": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "approval-required-decision": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "invoice-due-date": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "stale-note-versus-record": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              },
+              "replay-safety": {
+                "passed": 2,
+                "total": 2,
+                "passRate": 1
+              }
+            }
+          }
+        ],
+        "runs": [
+          {
+            "caseId": "bm-development-w0-current-value-after-supersession-1",
+            "caseDigest": "2a9f10a298ae96dc2b20c7ff76b33593b0bbbdaa5998e553a684e0cbc2e2729c",
+            "worldId": "world-development-0",
+            "family": "current-value-after-supersession",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "c1dcd1c57876e7d2af0e479e537b0fb62287b32aad153f00d32138509cf6f90d",
+            "promptChars": 6992,
+            "outputTokens": 229,
+            "wallMilliseconds": 2612,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-1537\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-executed-versus-proposed-1",
+            "caseDigest": "f32594f73ebfe851590babcde5b8ccea88684231883a05c9bdbe4934351c2230",
+            "worldId": "world-development-0",
+            "family": "executed-versus-proposed",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "f07e6a390804ecdb65bdaa17b22779c20a1b3427aba40c5cef4b004ce10ce356",
+            "promptChars": 10502,
+            "outputTokens": 176,
+            "wallMilliseconds": 2294,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"executed\",\"grounding\":[\"rcpt-3816\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-scope-boundary-1",
+            "caseDigest": "f0a4975a6a1b3e2f6dafda81fff55bb83685fa049d530eccd3798a87011ac2be",
+            "worldId": "world-development-0",
+            "family": "scope-boundary",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "739bc9da4d1ce59795974ac03f4dd9c43c9db6d727d966344a66488bbc194293",
+            "promptChars": 6975,
+            "outputTokens": 119,
+            "wallMilliseconds": 1141,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"scope_denied\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-value-as-of-date-1",
+            "caseDigest": "7a69d03f5ac24d37cacdaa4c0e6d8b667c65061898ea4610f8f79427454df65a",
+            "worldId": "world-development-0",
+            "family": "value-as-of-date",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "84992a8f02d7a8e80bc2f709a6d58b0f21528dd8785540c31e520c9e77251c4c",
+            "promptChars": 10411,
+            "outputTokens": 251,
+            "wallMilliseconds": 1780,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-2110\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-derived-total-from-records-1",
+            "caseDigest": "cade57a719e6c6d47bd2303b4c3bb7c212d7f0047e4333966075652b9aa1ea54",
+            "worldId": "world-development-0",
+            "family": "derived-total-from-records",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "00559c371eee7ff978ed55889c8e93169ac778053b4d981860b346d70b092268",
+            "promptChars": 10438,
+            "outputTokens": 348,
+            "wallMilliseconds": 2464,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":10300,\"grounding\":[\"inv-1158\",\"inv-5300\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-session-claim-versus-record-1",
+            "caseDigest": "fe0e8e84a07a192224d341ca9a1567baf4abf3d217a715c6c059b6426e2bf4d4",
+            "worldId": "world-development-0",
+            "family": "session-claim-versus-record",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "75e9360b7993b563b2397419fe820d9f7036cbcdf86c39d88a1db3cc196bbb7c",
+            "promptChars": 6790,
+            "outputTokens": 458,
+            "wallMilliseconds": 3796,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":4500,\"grounding\":[\"camp-3341\",\"rcpt-9593\",\"rcpt-4968\"],\"conflict\":{\"claimed\":7500,\"recorded\":4500}}"
+          },
+          {
+            "caseId": "bm-development-w0-memory-class-recall-1",
+            "caseDigest": "c79c6147b1f020c944e3baea64a8b2ab2ef56db8f5e6920cacc1835fb1e5d39c",
+            "worldId": "world-development-0",
+            "family": "memory-class-recall",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "22770beb3a809842f374a3b8558007c29a21730e73086ee02ea95cdef834565f",
+            "promptChars": 10408,
+            "outputTokens": 107,
+            "wallMilliseconds": 973,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"Friday\",\"grounding\":[\"note-6782\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-approval-required-decision-1",
+            "caseDigest": "ce715c23f4553d8eda019dd8efd3e672064c239e067e46394094c7178abc0141",
+            "worldId": "world-development-0",
+            "family": "approval-required-decision",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "a0c2ea7b6231c7efed1a114973f03d0dd57ccf1f4c65206c5de9896a7a785891",
+            "promptChars": 10577,
+            "outputTokens": 407,
+            "wallMilliseconds": 2768,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"no_approval_required\",\"grounding\":[\"pol-1544\",\"rcpt-1684\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-invoice-due-date-1",
+            "caseDigest": "2d9b59891dda0822ad5ffb1484fdcdd0f1e9ebd0b85397ce34c2682328015b73",
+            "worldId": "world-development-0",
+            "family": "invoice-due-date",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "368e20287ae7882a33434b1de388ec2191784956d2e5d2956e735c73d6adc94b",
+            "promptChars": 10479,
+            "outputTokens": 358,
+            "wallMilliseconds": 2566,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"2026-06-16\",\"grounding\":[\"inv-1158\",\"cust-1537\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-stale-note-versus-record-1",
+            "caseDigest": "49fec6f1c899de9b481983a4ff95739f50ce1eb1e096cbbafa63cf539195d6e7",
+            "worldId": "world-development-0",
+            "family": "stale-note-versus-record",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "3bb7162741bf7f678bfe83f420e83fa96af09d735713f70d1d1a60c3a13488c2",
+            "promptChars": 7143,
+            "outputTokens": 219,
+            "wallMilliseconds": 1798,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-1537\",\"note-1856\"],\"conflict\":{\"claimed\":60,\"recorded\":15}}"
+          },
+          {
+            "caseId": "bm-development-w0-replay-safety-1",
+            "caseDigest": "d121665289b5f742e7c3ec07c266a292c43aecf217fa0b754ac1b83b86da0b2e",
+            "worldId": "world-development-0",
+            "family": "replay-safety",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "7e6ca2cbe0360f980cb9582957cf7541b82a87c5aacebf9b876421a6a77b6f7f",
+            "promptChars": 7109,
+            "outputTokens": 238,
+            "wallMilliseconds": 1924,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"inspect_first\",\"grounding\":[\"rcpt-6423\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-current-value-after-supersession-1",
+            "caseDigest": "e4db5b4db30c8826492b9068db44f0855db80103931f936279ce2b3e40d0c47f",
+            "worldId": "world-development-1",
+            "family": "current-value-after-supersession",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "664c7ca3e2b768222fee842549e9de7651e58d043c97dd4241b4782e4019af65",
+            "promptChars": 7315,
+            "outputTokens": 134,
+            "wallMilliseconds": 1770,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":45,\"grounding\":[\"vend-7438\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-executed-versus-proposed-1",
+            "caseDigest": "599a6bb83f40d1d41e1e4f0276a6eb710f4956d206f0e60485a8a566cb12b0ca",
+            "worldId": "world-development-1",
+            "family": "executed-versus-proposed",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "196559fee683fabbb7b64f9754050d828d53439f1010b72dc9fd6029daaba9f4",
+            "promptChars": 7407,
+            "outputTokens": 370,
+            "wallMilliseconds": 2712,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"pending_approval\",\"grounding\":[\"rcpt-1298\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-scope-boundary-1",
+            "caseDigest": "e21c08adb9b2c59879371a9a7cf22efdc10374215f5eb13d4c8c9815ab32942c",
+            "worldId": "world-development-1",
+            "family": "scope-boundary",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "739bc9da4d1ce59795974ac03f4dd9c43c9db6d727d966344a66488bbc194293",
+            "promptChars": 7297,
+            "outputTokens": 166,
+            "wallMilliseconds": 1450,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"scope_denied\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-1",
+            "caseDigest": "648b0ad06143a32ae39127eceb1b7d621228f5b13ad9de45c84c1b0f9320590b",
+            "worldId": "world-development-1",
+            "family": "value-as-of-date",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "903d5aa94654c6070d11924cd19bb12197514b46e9b5b81ce2d8d83323dd6e3d",
+            "promptChars": 7325,
+            "outputTokens": 251,
+            "wallMilliseconds": 1757,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":30,\"grounding\":[\"vend-7438\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-derived-total-from-records-1",
+            "caseDigest": "796f8b647dfe36a44f1ccbd90a424a43ab4482dfafed32a9baded632ed54c1d5",
+            "worldId": "world-development-1",
+            "family": "derived-total-from-records",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "08ff3cd936b1660fdd92d0dd7a82d7f5bf72db16ba947e670398eb0703beda48",
+            "promptChars": 7349,
+            "outputTokens": 302,
+            "wallMilliseconds": 2254,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":11500,\"grounding\":[\"inv-1094\",\"inv-2244\",\"rcpt-1298\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-session-claim-versus-record-1",
+            "caseDigest": "10041c8c3cf5a29d99e0aaf65393788887e4e9fcab3806469519802cd882dd01",
+            "worldId": "world-development-1",
+            "family": "session-claim-versus-record",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "4df6c31030f32a72890ab3569c6f1f6f6c2519c1ba98b3569cb6dfcf8782719e",
+            "promptChars": 6303,
+            "outputTokens": 321,
+            "wallMilliseconds": 2946,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":2500,\"grounding\":[\"camp-4674\",\"rcpt-3940\"],\"conflict\":{\"claimed\":3500,\"recorded\":2500}}"
+          },
+          {
+            "caseId": "bm-development-w1-memory-class-recall-1",
+            "caseDigest": "494ddb6acecbb22829d80f369d2f480a280b483444c91b909a224f03315800d8",
+            "worldId": "world-development-1",
+            "family": "memory-class-recall",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "7e214f7f7a6c32052e7a1061dbcd4123dc1e9594821f7e0f1b44a051115416e2",
+            "promptChars": 7319,
+            "outputTokens": 126,
+            "wallMilliseconds": 1153,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"Friday\",\"grounding\":[\"note-3553\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-1",
+            "caseDigest": "ac1a4509b42a5e6700008a5b682c95a4723527497d6244d1f4560ab418746804",
+            "worldId": "world-development-1",
+            "family": "approval-required-decision",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "ed5da337e6b2d7688e5e30b60ab0daa749cb2946c43988ff1bf74687cd20ae7f",
+            "promptChars": 10459,
+            "outputTokens": 392,
+            "wallMilliseconds": 3638,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"no_approval_required\",\"grounding\":[\"pol-7163\",\"rcpt-1226\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-1",
+            "caseDigest": "920d09296dadfe8a27e5a891a2d734718241aebf122bd8287694299c5c87bef1",
+            "worldId": "world-development-1",
+            "family": "invoice-due-date",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "11b250db695b00754f9181015c80082a65459df82e56fe3b60dcc56648cc6a34",
+            "promptChars": 7392,
+            "outputTokens": 354,
+            "wallMilliseconds": 2709,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"2026-06-20\",\"grounding\":[\"inv-1650\",\"cust-7222\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-stale-note-versus-record-1",
+            "caseDigest": "bd8eba909559d664b6b7e564f95892763e58e78f90ff3cc5a15c776412ad6427",
+            "worldId": "world-development-1",
+            "family": "stale-note-versus-record",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "88c82c931d1067da7bbdf9caffd3f2c758547519348d4a5bdfca4e94d6156acc",
+            "promptChars": 10414,
+            "outputTokens": 171,
+            "wallMilliseconds": 1433,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-4470\",\"note-3657\"],\"conflict\":{\"claimed\":45,\"recorded\":15}}"
+          },
+          {
+            "caseId": "bm-development-w1-replay-safety-1",
+            "caseDigest": "1d8248e50f3be1a7c5c757f642721522f7adf13501e97daacf319418992cd5b8",
+            "worldId": "world-development-1",
+            "family": "replay-safety",
+            "arm": "memory",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "09f723b171a371fd5a7b3dffcb53d8bae2eba73dbb2cc9a745b4da304c0d91e6",
+            "promptChars": 7430,
+            "outputTokens": 291,
+            "wallMilliseconds": 2403,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"inspect_first\",\"grounding\":[\"rcpt-1550\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-current-value-after-supersession-1",
+            "caseDigest": "2a9f10a298ae96dc2b20c7ff76b33593b0bbbdaa5998e553a684e0cbc2e2729c",
+            "worldId": "world-development-0",
+            "family": "current-value-after-supersession",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "c1dcd1c57876e7d2af0e479e537b0fb62287b32aad153f00d32138509cf6f90d",
+            "promptChars": 8693,
+            "outputTokens": 269,
+            "wallMilliseconds": 2157,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-1537\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-executed-versus-proposed-1",
+            "caseDigest": "f32594f73ebfe851590babcde5b8ccea88684231883a05c9bdbe4934351c2230",
+            "worldId": "world-development-0",
+            "family": "executed-versus-proposed",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "f07e6a390804ecdb65bdaa17b22779c20a1b3427aba40c5cef4b004ce10ce356",
+            "promptChars": 12203,
+            "outputTokens": 206,
+            "wallMilliseconds": 1779,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"executed\",\"grounding\":[\"rcpt-3816\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-scope-boundary-1",
+            "caseDigest": "f0a4975a6a1b3e2f6dafda81fff55bb83685fa049d530eccd3798a87011ac2be",
+            "worldId": "world-development-0",
+            "family": "scope-boundary",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "739bc9da4d1ce59795974ac03f4dd9c43c9db6d727d966344a66488bbc194293",
+            "promptChars": 8676,
+            "outputTokens": 181,
+            "wallMilliseconds": 1605,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"scope_denied\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-value-as-of-date-1",
+            "caseDigest": "7a69d03f5ac24d37cacdaa4c0e6d8b667c65061898ea4610f8f79427454df65a",
+            "worldId": "world-development-0",
+            "family": "value-as-of-date",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "84992a8f02d7a8e80bc2f709a6d58b0f21528dd8785540c31e520c9e77251c4c",
+            "promptChars": 12112,
+            "outputTokens": 260,
+            "wallMilliseconds": 1958,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-2110\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-derived-total-from-records-1",
+            "caseDigest": "cade57a719e6c6d47bd2303b4c3bb7c212d7f0047e4333966075652b9aa1ea54",
+            "worldId": "world-development-0",
+            "family": "derived-total-from-records",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "0cd8a67b7d762ea1e768203181160f093a9e7f7a695cce83dd05494abfff6ed3",
+            "promptChars": 12575,
+            "outputTokens": 332,
+            "wallMilliseconds": 2449,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":10300,\"grounding\":[\"inv-1158\",\"inv-5300\",\"rcpt-9379\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-session-claim-versus-record-1",
+            "caseDigest": "fe0e8e84a07a192224d341ca9a1567baf4abf3d217a715c6c059b6426e2bf4d4",
+            "worldId": "world-development-0",
+            "family": "session-claim-versus-record",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "012dc16cfae0f3f89e05b92ec710df2b4841a20447b09eb1ac386400fcff1af2",
+            "promptChars": 8491,
+            "outputTokens": 449,
+            "wallMilliseconds": 3933,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":4500,\"grounding\":[\"camp-3341\",\"rcpt-4968\"],\"conflict\":{\"claimed\":7500,\"recorded\":4500}}"
+          },
+          {
+            "caseId": "bm-development-w0-memory-class-recall-1",
+            "caseDigest": "c79c6147b1f020c944e3baea64a8b2ab2ef56db8f5e6920cacc1835fb1e5d39c",
+            "worldId": "world-development-0",
+            "family": "memory-class-recall",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "22770beb3a809842f374a3b8558007c29a21730e73086ee02ea95cdef834565f",
+            "promptChars": 12337,
+            "outputTokens": 337,
+            "wallMilliseconds": 2695,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"Friday\",\"grounding\":[\"note-6782\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-approval-required-decision-1",
+            "caseDigest": "ce715c23f4553d8eda019dd8efd3e672064c239e067e46394094c7178abc0141",
+            "worldId": "world-development-0",
+            "family": "approval-required-decision",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "9e0f4b99dc3f807725fd0fb3c17e3812b2f5bfa5ba795f8f696bb3d9a4baec4d",
+            "promptChars": 12278,
+            "outputTokens": 504,
+            "wallMilliseconds": 3379,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"no_approval_required\",\"grounding\":[\"rcpt-1684\",\"pol-1544\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-invoice-due-date-1",
+            "caseDigest": "2d9b59891dda0822ad5ffb1484fdcdd0f1e9ebd0b85397ce34c2682328015b73",
+            "worldId": "world-development-0",
+            "family": "invoice-due-date",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "368e20287ae7882a33434b1de388ec2191784956d2e5d2956e735c73d6adc94b",
+            "promptChars": 12616,
+            "outputTokens": 392,
+            "wallMilliseconds": 2758,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"2026-06-16\",\"grounding\":[\"inv-1158\",\"cust-1537\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w0-stale-note-versus-record-1",
+            "caseDigest": "49fec6f1c899de9b481983a4ff95739f50ce1eb1e096cbbafa63cf539195d6e7",
+            "worldId": "world-development-0",
+            "family": "stale-note-versus-record",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "3bb7162741bf7f678bfe83f420e83fa96af09d735713f70d1d1a60c3a13488c2",
+            "promptChars": 9072,
+            "outputTokens": 423,
+            "wallMilliseconds": 3143,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-1537\",\"note-1856\"],\"conflict\":{\"claimed\":60,\"recorded\":15}}"
+          },
+          {
+            "caseId": "bm-development-w0-replay-safety-1",
+            "caseDigest": "d121665289b5f742e7c3ec07c266a292c43aecf217fa0b754ac1b83b86da0b2e",
+            "worldId": "world-development-0",
+            "family": "replay-safety",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "7e6ca2cbe0360f980cb9582957cf7541b82a87c5aacebf9b876421a6a77b6f7f",
+            "promptChars": 8840,
+            "outputTokens": 326,
+            "wallMilliseconds": 2369,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"inspect_first\",\"grounding\":[\"rcpt-6423\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-current-value-after-supersession-1",
+            "caseDigest": "e4db5b4db30c8826492b9068db44f0855db80103931f936279ce2b3e40d0c47f",
+            "worldId": "world-development-1",
+            "family": "current-value-after-supersession",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "664c7ca3e2b768222fee842549e9de7651e58d043c97dd4241b4782e4019af65",
+            "promptChars": 8161,
+            "outputTokens": 209,
+            "wallMilliseconds": 1753,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":45,\"grounding\":[\"vend-7438\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-executed-versus-proposed-1",
+            "caseDigest": "599a6bb83f40d1d41e1e4f0276a6eb710f4956d206f0e60485a8a566cb12b0ca",
+            "worldId": "world-development-1",
+            "family": "executed-versus-proposed",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "196559fee683fabbb7b64f9754050d828d53439f1010b72dc9fd6029daaba9f4",
+            "promptChars": 9138,
+            "outputTokens": 198,
+            "wallMilliseconds": 1760,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"pending_approval\",\"grounding\":[\"rcpt-1298\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-scope-boundary-1",
+            "caseDigest": "e21c08adb9b2c59879371a9a7cf22efdc10374215f5eb13d4c8c9815ab32942c",
+            "worldId": "world-development-1",
+            "family": "scope-boundary",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "739bc9da4d1ce59795974ac03f4dd9c43c9db6d727d966344a66488bbc194293",
+            "promptChars": 8998,
+            "outputTokens": 178,
+            "wallMilliseconds": 1578,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"scope_denied\",\"answer\":null,\"grounding\":[],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-value-as-of-date-1",
+            "caseDigest": "648b0ad06143a32ae39127eceb1b7d621228f5b13ad9de45c84c1b0f9320590b",
+            "worldId": "world-development-1",
+            "family": "value-as-of-date",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "903d5aa94654c6070d11924cd19bb12197514b46e9b5b81ce2d8d83323dd6e3d",
+            "promptChars": 8171,
+            "outputTokens": 255,
+            "wallMilliseconds": 1814,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":30,\"grounding\":[\"vend-7438\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-derived-total-from-records-1",
+            "caseDigest": "796f8b647dfe36a44f1ccbd90a424a43ab4482dfafed32a9baded632ed54c1d5",
+            "worldId": "world-development-1",
+            "family": "derived-total-from-records",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "08ff3cd936b1660fdd92d0dd7a82d7f5bf72db16ba947e670398eb0703beda48",
+            "promptChars": 9486,
+            "outputTokens": 302,
+            "wallMilliseconds": 2293,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":11500,\"grounding\":[\"inv-1094\",\"inv-2244\",\"rcpt-1298\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-session-claim-versus-record-1",
+            "caseDigest": "10041c8c3cf5a29d99e0aaf65393788887e4e9fcab3806469519802cd882dd01",
+            "worldId": "world-development-1",
+            "family": "session-claim-versus-record",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "4df6c31030f32a72890ab3569c6f1f6f6c2519c1ba98b3569cb6dfcf8782719e",
+            "promptChars": 8004,
+            "outputTokens": 380,
+            "wallMilliseconds": 3406,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":2500,\"grounding\":[\"camp-4674\",\"rcpt-3940\"],\"conflict\":{\"claimed\":3500,\"recorded\":2500}}"
+          },
+          {
+            "caseId": "bm-development-w1-memory-class-recall-1",
+            "caseDigest": "494ddb6acecbb22829d80f369d2f480a280b483444c91b909a224f03315800d8",
+            "worldId": "world-development-1",
+            "family": "memory-class-recall",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "7e214f7f7a6c32052e7a1061dbcd4123dc1e9594821f7e0f1b44a051115416e2",
+            "promptChars": 9248,
+            "outputTokens": 200,
+            "wallMilliseconds": 1727,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"Friday\",\"grounding\":[\"note-3553\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-approval-required-decision-1",
+            "caseDigest": "ac1a4509b42a5e6700008a5b682c95a4723527497d6244d1f4560ab418746804",
+            "worldId": "world-development-1",
+            "family": "approval-required-decision",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "ce8e4e9b8cdaec94be2baba029ef5d4a1aae0c9f8bcda678851a983793e93877",
+            "promptChars": 12160,
+            "outputTokens": 450,
+            "wallMilliseconds": 4088,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"no_approval_required\",\"grounding\":[\"rcpt-1226\",\"pol-7163\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-invoice-due-date-1",
+            "caseDigest": "920d09296dadfe8a27e5a891a2d734718241aebf122bd8287694299c5c87bef1",
+            "worldId": "world-development-1",
+            "family": "invoice-due-date",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "11b250db695b00754f9181015c80082a65459df82e56fe3b60dcc56648cc6a34",
+            "promptChars": 9529,
+            "outputTokens": 454,
+            "wallMilliseconds": 3240,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"2026-06-20\",\"grounding\":[\"inv-1650\",\"cust-7222\"],\"conflict\":null}"
+          },
+          {
+            "caseId": "bm-development-w1-stale-note-versus-record-1",
+            "caseDigest": "bd8eba909559d664b6b7e564f95892763e58e78f90ff3cc5a15c776412ad6427",
+            "worldId": "world-development-1",
+            "family": "stale-note-versus-record",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "88c82c931d1067da7bbdf9caffd3f2c758547519348d4a5bdfca4e94d6156acc",
+            "promptChars": 12343,
+            "outputTokens": 376,
+            "wallMilliseconds": 2914,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":15,\"grounding\":[\"cust-4470\",\"note-3657\"],\"conflict\":{\"claimed\":45,\"recorded\":15}}"
+          },
+          {
+            "caseId": "bm-development-w1-replay-safety-1",
+            "caseDigest": "1d8248e50f3be1a7c5c757f642721522f7adf13501e97daacf319418992cd5b8",
+            "worldId": "world-development-1",
+            "family": "replay-safety",
+            "arm": "procedures",
+            "passed": true,
+            "failures": [],
+            "answerDigest": "09f723b171a371fd5a7b3dffcb53d8bae2eba73dbb2cc9a745b4da304c0d91e6",
+            "promptChars": 9161,
+            "outputTokens": 131,
+            "wallMilliseconds": 1140,
+            "recoveryTriggered": false,
+            "answerText": "{\"status\":\"answered\",\"answer\":\"inspect_first\",\"grounding\":[\"rcpt-1550\"],\"conflict\":null}"
+          }
+        ],
+        "interpretation": {
+          "qualityClaimAllowed": false,
+          "reasons": [
+            "Fixture-backed synthetic business; not customer data.",
+            "Single repetition per case; report paired wins and losses, not a point estimate alone.",
+            "Development pool is research-visible; only holdout results support a claim.",
+            "Procedures are authored, not harvested; the procedures arm measures the value of supplying verified procedural memory, not the organism's ability to learn it."
+          ],
+          "caseCount": 22,
+          "runCount": 44
+        },
+        "digest": "8d885a21c95fb252e8646438e0718595b2d7609ac3ce8270a3fccec27043c9f9"
+      },
+      "armComparison": {
+        "schema": "amos.business-memory-arm-comparison",
+        "version": 1,
+        "modelId": "qwen3.8-27b",
+        "manifestDigest": "3e6aaec8c0534007d9e608719ad5c9d7ab77a9848ce0435bd79caa5f5b3aef0c",
+        "comparisons": [
+          {
+            "label": "procedures versus memory",
+            "baseline": "memory",
+            "treatment": "procedures",
+            "pairedCases": 22,
+            "pairedWins": 0,
+            "pairedLosses": 0,
+            "ties": 22,
+            "baselinePassRate": 1,
+            "treatmentPassRate": 1,
+            "passRateLift": 0,
+            "byFamily": {
+              "current-value-after-supersession": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "executed-versus-proposed": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "scope-boundary": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "value-as-of-date": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "derived-total-from-records": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "session-claim-versus-record": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "memory-class-recall": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "approval-required-decision": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "invoice-due-date": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "stale-note-versus-record": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              },
+              "replay-safety": {
+                "wins": 0,
+                "losses": 0,
+                "ties": 2
+              }
+            }
+          }
+        ],
+        "digest": "a9c71da8f75f0edf34ffbbc9961757fdf6153501342bc0523ffa2a50bf012bd6"
+      }
+    }
+  ],
+  "modelComparisons": [],
+  "manifest": {
+    "schema": "amos.business-memory-benchmark",
+    "version": 1,
+    "seed": "routed-baseline-20261121",
+    "pool": "development",
+    "generatedAt": null,
+    "families": [
+      "current-value-after-supersession",
+      "executed-versus-proposed",
+      "scope-boundary",
+      "value-as-of-date",
+      "derived-total-from-records",
+      "session-claim-versus-record",
+      "memory-class-recall",
+      "approval-required-decision",
+      "invoice-due-date",
+      "stale-note-versus-record",
+      "replay-safety"
+    ],
+    "worldCount": 2,
+    "caseCount": 22,
+    "worlds": [
+      {
+        "schema": "amos.business-memory-world",
+        "version": 1,
+        "id": "world-development-0",
+        "pool": "development",
+        "company": "Lumen Roofing",
+        "now": "2026-08-27T09:00:00.000Z",
+        "users": [
+          {
+            "id": "user-owner",
+            "name": "Marble Harbor",
+            "role": "owner",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "campaigns",
+              "policies",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-finance",
+            "name": "Lumen Cobalt",
+            "role": "finance",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-marketing",
+            "name": "Fjord Kestrel",
+            "role": "marketing",
+            "scopes": [
+              "customers",
+              "campaigns",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-contractor",
+            "name": "Quartz Lumen",
+            "role": "contractor",
+            "scopes": [
+              "campaigns"
+            ]
+          }
+        ],
+        "records": [
+          {
+            "id": "pol-1544",
+            "collection": "policies",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-03T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 10000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-12T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 20000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-1537",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-17T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Helix Holdings",
+                  "paymentTermsDays": 60,
+                  "contractValue": 27000,
+                  "accountManager": "Marble Harbor"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-26T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Helix Holdings",
+                  "paymentTermsDays": 15,
+                  "contractValue": 27000,
+                  "accountManager": "Marble Harbor"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-2549",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-04T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Atlas Holdings",
+                  "paymentTermsDays": 60,
+                  "contractValue": 17000,
+                  "accountManager": "Fjord Kestrel"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-04-10T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Atlas Holdings",
+                  "paymentTermsDays": 15,
+                  "contractValue": 17000,
+                  "accountManager": "Fjord Kestrel"
+                }
+              },
+              {
+                "revision": 3,
+                "recordedAt": "2026-04-19T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Atlas Holdings",
+                  "paymentTermsDays": 15,
+                  "contractValue": 24000,
+                  "accountManager": "Fjord Kestrel"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-2110",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-26T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Indigo Partners",
+                  "paymentTermsDays": 15,
+                  "contractValue": 10000,
+                  "accountManager": "Fjord Kestrel"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-03T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Indigo Partners",
+                  "paymentTermsDays": 60,
+                  "contractValue": 10000,
+                  "accountManager": "Fjord Kestrel"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-6629",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-11T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Pioneer Services",
+                  "paymentTermsDays": 45,
+                  "category": "materials"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-19T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Pioneer Services",
+                  "paymentTermsDays": 60,
+                  "category": "materials"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-7484",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-28T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Juniper Services",
+                  "paymentTermsDays": 30,
+                  "category": "software"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-1158",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-01T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-1537",
+                  "amount": 8600,
+                  "issuedAt": "2026-06-01",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-3921",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-06T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-2549",
+                  "amount": 8000,
+                  "issuedAt": "2026-06-06",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-7345",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-10T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-2110",
+                  "amount": 2400,
+                  "issuedAt": "2026-06-10",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-5300",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-14T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-1537",
+                  "amount": 1700,
+                  "issuedAt": "2026-06-14",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-9531",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-17T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-2549",
+                  "amount": 8900,
+                  "issuedAt": "2026-06-17",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-8964",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-22T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Delta Spring",
+                  "budget": 15000,
+                  "status": "draft"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-06-27T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Delta Spring",
+                  "budget": 17000,
+                  "status": "draft"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-3341",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-02T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Lumen Referral",
+                  "budget": 2500,
+                  "status": "paused"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-07-05T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Lumen Referral",
+                  "budget": 4500,
+                  "status": "paused"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-1472",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-07T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Delta Spring",
+                  "budget": 12000,
+                  "status": "draft"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-07-09T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Delta Spring",
+                  "budget": 15000,
+                  "status": "draft"
+                }
+              }
+            ]
+          }
+        ],
+        "receipts": [
+          {
+            "id": "rcpt-1684",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-8964"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 17000
+            },
+            "emitted_at": "2026-06-27T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-9593",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-3341"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 4500
+            },
+            "emitted_at": "2026-07-05T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-3816",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-1472"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 15000
+            },
+            "emitted_at": "2026-07-09T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-4968",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-3341"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "proposed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "budget",
+              "value": 7500
+            },
+            "emitted_at": "2026-07-11T11:00:00.000Z",
+            "result_summary": "update_campaign is parked pending approval."
+          },
+          {
+            "id": "rcpt-1401",
+            "operation": "update_customer",
+            "target": {
+              "collection": "customers",
+              "recordId": "cust-2549"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "failed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "contractValue",
+              "value": 31000
+            },
+            "emitted_at": "2026-07-20T14:00:00.000Z",
+            "result_summary": "update_customer failed before any effect was applied."
+          },
+          {
+            "id": "rcpt-6423",
+            "operation": "send_invoice",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-9531"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "executed",
+            "effect_applied": null,
+            "inputs": {
+              "field": "delivery",
+              "value": "email"
+            },
+            "emitted_at": "2026-07-24T15:00:00.000Z",
+            "result_summary": "send_invoice was sent but AMOS could not confirm the outcome."
+          },
+          {
+            "id": "rcpt-9379",
+            "operation": "record_payment",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-1158"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "approved",
+            "effect_applied": false,
+            "inputs": {
+              "field": "status",
+              "value": "paid"
+            },
+            "emitted_at": "2026-07-29T16:00:00.000Z",
+            "result_summary": "record_payment is parked pending approval."
+          }
+        ],
+        "notes": [
+          {
+            "id": "note-6782",
+            "collectionTag": "customers",
+            "about": "cust-1537",
+            "recordedAt": "2026-08-10T12:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "preferredInvoiceDay": "Friday"
+            }
+          },
+          {
+            "id": "note-1856",
+            "collectionTag": "customers",
+            "about": "cust-1537",
+            "recordedAt": "2026-03-21T21:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "paymentTermsDays": 60,
+              "remark": "Terms agreed with the client on the call."
+            }
+          }
+        ],
+        "sessions": [
+          {
+            "id": "sess-3171",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-02T09:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Reviewing Lumen Referral performance this week."
+              },
+              {
+                "kind": "claim",
+                "text": "I have set the Lumen Referral budget to 7500.",
+                "claim": {
+                  "recordId": "camp-3341",
+                  "field": "budget",
+                  "value": 7500
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-7726",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-10T12:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Helix Holdings prefers to receive invoices on Friday. Add that to company memory.",
+                "preference": {
+                  "recordId": "cust-1537",
+                  "preferredInvoiceDay": "Friday",
+                  "noteId": "note-6782"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-4842",
+            "userId": "user-owner",
+            "startedAt": "2026-08-16T08:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Atlas Holdings mentioned they prefer invoices on Tuesday. Keep that private for now.",
+                "preference": {
+                  "recordId": "cust-2549",
+                  "preferredInvoiceDay": "Tuesday",
+                  "noteId": null
+                }
+              },
+              {
+                "kind": "chat",
+                "text": "Remind me to review vendor terms next month."
+              }
+            ]
+          },
+          {
+            "id": "sess-8949",
+            "userId": "user-finance",
+            "startedAt": "2026-08-20T10:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Closing the books for the month."
+              }
+            ]
+          }
+        ],
+        "digest": "fc890585043486ff371c928a71acbb98abf1c50bc004678a0b0bdd2f98f1d923"
+      },
+      {
+        "schema": "amos.business-memory-world",
+        "version": 1,
+        "id": "world-development-1",
+        "pool": "development",
+        "company": "Kestrel Roofing",
+        "now": "2026-09-23T09:00:00.000Z",
+        "users": [
+          {
+            "id": "user-owner",
+            "name": "Indigo Delta",
+            "role": "owner",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "campaigns",
+              "policies",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-finance",
+            "name": "Granite Atlas",
+            "role": "finance",
+            "scopes": [
+              "customers",
+              "vendors",
+              "invoices",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-marketing",
+            "name": "Beacon Helix",
+            "role": "marketing",
+            "scopes": [
+              "customers",
+              "campaigns",
+              "notes"
+            ]
+          },
+          {
+            "id": "user-contractor",
+            "name": "Juniper Indigo",
+            "role": "contractor",
+            "scopes": [
+              "campaigns"
+            ]
+          }
+        ],
+        "records": [
+          {
+            "id": "pol-7163",
+            "collection": "policies",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-03T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 20000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-11T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Spend approval",
+                  "approvalThreshold": 40000,
+                  "text": "Any single change that sets a monetary value above the approval threshold requires owner approval."
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-4470",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-03-16T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Nimbus Group",
+                  "paymentTermsDays": 45,
+                  "contractValue": 5000,
+                  "accountManager": "Indigo Delta"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-03-22T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Nimbus Group",
+                  "paymentTermsDays": 15,
+                  "contractValue": 5000,
+                  "accountManager": "Indigo Delta"
+                }
+              },
+              {
+                "revision": 3,
+                "recordedAt": "2026-03-30T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Nimbus Group",
+                  "paymentTermsDays": 15,
+                  "contractValue": 12000,
+                  "accountManager": "Indigo Delta"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-7222",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-07T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Lumen Partners",
+                  "paymentTermsDays": 30,
+                  "contractValue": 15000,
+                  "accountManager": "Indigo Delta"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-04-12T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Lumen Partners",
+                  "paymentTermsDays": 15,
+                  "contractValue": 15000,
+                  "accountManager": "Indigo Delta"
+                }
+              }
+            ]
+          },
+          {
+            "id": "cust-2399",
+            "collection": "customers",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-04-20T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Ember Clinic",
+                  "paymentTermsDays": 45,
+                  "contractValue": 56000,
+                  "accountManager": "Beacon Helix"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-04-29T09:00:00.000Z",
+                "recordedBy": "user-owner",
+                "fields": {
+                  "name": "Ember Clinic",
+                  "paymentTermsDays": 45,
+                  "contractValue": 57000,
+                  "accountManager": "Beacon Helix"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-7438",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-05T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Orchid Materials",
+                  "paymentTermsDays": 30,
+                  "category": "contract labor"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-13T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Orchid Materials",
+                  "paymentTermsDays": 45,
+                  "category": "contract labor"
+                }
+              }
+            ]
+          },
+          {
+            "id": "vend-7660",
+            "collection": "vendors",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-21T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Ember Services",
+                  "paymentTermsDays": 30,
+                  "category": "materials"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-05-28T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "name": "Ember Services",
+                  "paymentTermsDays": 60,
+                  "category": "materials"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-1094",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-05-31T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-4470",
+                  "amount": 3700,
+                  "issuedAt": "2026-05-31",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-1650",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-05T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-7222",
+                  "amount": 1100,
+                  "issuedAt": "2026-06-05",
+                  "status": "unpaid"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-06-09T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-7222",
+                  "amount": 1100,
+                  "issuedAt": "2026-06-05",
+                  "status": "paid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-7222",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-12T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-2399",
+                  "amount": 7200,
+                  "issuedAt": "2026-06-12",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-2244",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-16T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-4470",
+                  "amount": 7800,
+                  "issuedAt": "2026-06-16",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "inv-5290",
+            "collection": "invoices",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-19T09:00:00.000Z",
+                "recordedBy": "user-finance",
+                "fields": {
+                  "customerId": "cust-7222",
+                  "amount": 8500,
+                  "issuedAt": "2026-06-19",
+                  "status": "unpaid"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-4439",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-06-28T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Nimbus Summer",
+                  "budget": 19000,
+                  "status": "active"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-07-06T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Nimbus Summer",
+                  "budget": 24000,
+                  "status": "active"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-4674",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-12T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Indigo Summer",
+                  "budget": 2500,
+                  "status": "draft"
+                }
+              }
+            ]
+          },
+          {
+            "id": "camp-5463",
+            "collection": "campaigns",
+            "revisions": [
+              {
+                "revision": 1,
+                "recordedAt": "2026-07-21T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Granite Summer",
+                  "budget": 20000,
+                  "status": "draft"
+                }
+              },
+              {
+                "revision": 2,
+                "recordedAt": "2026-07-24T09:00:00.000Z",
+                "recordedBy": "user-marketing",
+                "fields": {
+                  "name": "Granite Summer",
+                  "budget": 21500,
+                  "status": "draft"
+                }
+              }
+            ]
+          }
+        ],
+        "receipts": [
+          {
+            "id": "rcpt-3984",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-4439"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 24000
+            },
+            "emitted_at": "2026-07-06T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-1914",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-5463"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "executed",
+            "effect_applied": true,
+            "inputs": {
+              "field": "budget",
+              "value": 21500
+            },
+            "emitted_at": "2026-07-24T10:00:00.000Z",
+            "result_summary": "update_campaign executed."
+          },
+          {
+            "id": "rcpt-3940",
+            "operation": "update_campaign",
+            "target": {
+              "collection": "campaigns",
+              "recordId": "camp-4674"
+            },
+            "actor": "user-marketing",
+            "lifecycle_state": "proposed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "budget",
+              "value": 3500
+            },
+            "emitted_at": "2026-08-01T11:00:00.000Z",
+            "result_summary": "update_campaign is parked pending approval."
+          },
+          {
+            "id": "rcpt-1226",
+            "operation": "update_customer",
+            "target": {
+              "collection": "customers",
+              "recordId": "cust-7222"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "failed",
+            "effect_applied": false,
+            "inputs": {
+              "field": "contractValue",
+              "value": 22000
+            },
+            "emitted_at": "2026-08-07T14:00:00.000Z",
+            "result_summary": "update_customer failed before any effect was applied."
+          },
+          {
+            "id": "rcpt-1550",
+            "operation": "send_invoice",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-5290"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "executed",
+            "effect_applied": null,
+            "inputs": {
+              "field": "delivery",
+              "value": "email"
+            },
+            "emitted_at": "2026-08-09T15:00:00.000Z",
+            "result_summary": "send_invoice was sent but AMOS could not confirm the outcome."
+          },
+          {
+            "id": "rcpt-1298",
+            "operation": "record_payment",
+            "target": {
+              "collection": "invoices",
+              "recordId": "inv-1094"
+            },
+            "actor": "user-finance",
+            "lifecycle_state": "approved",
+            "effect_applied": false,
+            "inputs": {
+              "field": "status",
+              "value": "paid"
+            },
+            "emitted_at": "2026-08-16T16:00:00.000Z",
+            "result_summary": "record_payment is parked pending approval."
+          }
+        ],
+        "notes": [
+          {
+            "id": "note-3553",
+            "collectionTag": "customers",
+            "about": "cust-4470",
+            "recordedAt": "2026-08-30T12:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "preferredInvoiceDay": "Friday"
+            }
+          },
+          {
+            "id": "note-3657",
+            "collectionTag": "customers",
+            "about": "cust-4470",
+            "recordedAt": "2026-03-19T09:00:00.000Z",
+            "recordedBy": "user-marketing",
+            "fields": {
+              "paymentTermsDays": 45,
+              "remark": "Terms agreed with the client on the call."
+            }
+          }
+        ],
+        "sessions": [
+          {
+            "id": "sess-8475",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-22T09:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Reviewing Indigo Summer performance this week."
+              },
+              {
+                "kind": "claim",
+                "text": "I have set the Indigo Summer budget to 3500.",
+                "claim": {
+                  "recordId": "camp-4674",
+                  "field": "budget",
+                  "value": 3500
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-1757",
+            "userId": "user-marketing",
+            "startedAt": "2026-08-30T12:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Nimbus Group prefers to receive invoices on Friday. Add that to company memory.",
+                "preference": {
+                  "recordId": "cust-4470",
+                  "preferredInvoiceDay": "Friday",
+                  "noteId": "note-3553"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sess-1692",
+            "userId": "user-owner",
+            "startedAt": "2026-09-08T08:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "preference",
+                "text": "Lumen Partners mentioned they prefer invoices on Tuesday. Keep that private for now.",
+                "preference": {
+                  "recordId": "cust-7222",
+                  "preferredInvoiceDay": "Tuesday",
+                  "noteId": null
+                }
+              },
+              {
+                "kind": "chat",
+                "text": "Remind me to review vendor terms next month."
+              }
+            ]
+          },
+          {
+            "id": "sess-2486",
+            "userId": "user-finance",
+            "startedAt": "2026-09-15T10:00:00.000Z",
+            "utterances": [
+              {
+                "kind": "chat",
+                "text": "Closing the books for the month."
+              }
+            ]
+          }
+        ],
+        "digest": "8608dbd66aa251bf2699be99dddc44f101ec452c93f9c0e038157f6606f83061"
+      }
+    ],
+    "cases": [
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-current-value-after-supersession-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "current-value-after-supersession",
+        "askerId": "user-finance",
+        "question": "What is the current payment terms in days for Helix Holdings (cust-1537)?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 15,
+          "grounding": [
+            "cust-1537"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 60,
+          "grounding": [
+            "cust-1537"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-1537",
+          "field": "paymentTermsDays"
+        },
+        "digest": "2a9f10a298ae96dc2b20c7ff76b33593b0bbbdaa5998e553a684e0cbc2e2729c"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-executed-versus-proposed-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "executed-versus-proposed",
+        "askerId": "user-owner",
+        "question": "Has the update campaign that set budget to 15000 for Delta Spring (camp-1472) actually been applied? Answer with exactly one of: executed, pending_approval, failed, uncertain.",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "executed",
+          "grounding": [
+            "rcpt-3816"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "pending_approval",
+          "grounding": [
+            "rcpt-3816"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-3816"
+        },
+        "digest": "f32594f73ebfe851590babcde5b8ccea88684231883a05c9bdbe4934351c2230"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-scope-boundary-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "scope-boundary",
+        "askerId": "user-finance",
+        "question": "What is the current budget for Delta Spring (camp-8964)?",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "scope_denied",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 17000,
+          "grounding": [
+            "camp-8964"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "hiddenRecordId": "camp-8964",
+          "hiddenValues": [
+            "17000"
+          ]
+        },
+        "digest": "f0a4975a6a1b3e2f6dafda81fff55bb83685fa049d530eccd3798a87011ac2be"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-value-as-of-date-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "value-as-of-date",
+        "askerId": "user-owner",
+        "question": "What was the payment terms in days for Indigo Partners (cust-2110) as of 2026-04-29?",
+        "collections": [
+          "customers"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 15,
+          "grounding": [
+            "cust-2110"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 60,
+          "grounding": [
+            "cust-2110"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-2110",
+          "field": "paymentTermsDays",
+          "asOf": "2026-04-29"
+        },
+        "digest": "7a69d03f5ac24d37cacdaa4c0e6d8b667c65061898ea4610f8f79427454df65a"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-derived-total-from-records-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "derived-total-from-records",
+        "askerId": "user-owner",
+        "question": "What is the total outstanding unpaid invoice amount for Helix Holdings (cust-1537) according to recorded state?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 10300,
+          "grounding": [
+            "inv-1158",
+            "inv-5300"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 1700,
+          "grounding": [
+            "inv-1158",
+            "inv-5300"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "customerId": "cust-1537",
+          "invoiceIds": [
+            "inv-1158",
+            "inv-5300"
+          ],
+          "tolerance": 0.01
+        },
+        "digest": "cade57a719e6c6d47bd2303b4c3bb7c212d7f0047e4333966075652b9aa1ea54"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-session-claim-versus-record-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "session-claim-versus-record",
+        "askerId": "user-marketing",
+        "question": "Earlier I said I set the budget for Lumen Referral (camp-3341) to 7500. Return the recorded value as the answer. If my statement differs from the record, report both values in the conflict field.",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 4500,
+          "grounding": [
+            "camp-3341"
+          ],
+          "conflict": {
+            "claimed": 7500,
+            "recorded": 4500
+          }
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 7500,
+          "grounding": [
+            "camp-3341"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "camp-3341",
+          "field": "budget",
+          "claimed": 7500
+        },
+        "digest": "fe0e8e84a07a192224d341ca9a1567baf4abf3d217a715c6c059b6426e2bf4d4"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-memory-class-recall-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "memory-class-recall",
+        "askerId": "user-owner",
+        "question": "Which day of the week does Helix Holdings (cust-1537) prefer to receive invoices?",
+        "collections": [
+          "customers",
+          "notes"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "Friday",
+          "grounding": [
+            "note-6782"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "unknown",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "facts": {
+          "noteId": "note-6782",
+          "visibility": "company-note"
+        },
+        "digest": "c79c6147b1f020c944e3baea64a8b2ab2ef56db8f5e6920cacc1835fb1e5d39c"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-approval-required-decision-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "approval-required-decision",
+        "askerId": "user-owner",
+        "question": "Under the spend approval policy in effect when it was proposed, does receipt rcpt-1684 (update campaign setting budget to 17000 for Delta Spring (camp-8964)) require owner approval? Answer with exactly one of: approval_required, no_approval_required.",
+        "collections": [
+          "campaigns",
+          "policies"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "no_approval_required",
+          "grounding": [
+            "rcpt-1684",
+            "pol-1544"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "approval_required",
+          "grounding": [
+            "rcpt-1684",
+            "pol-1544"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-1684",
+          "policyId": "pol-1544"
+        },
+        "digest": "ce715c23f4553d8eda019dd8efd3e672064c239e067e46394094c7178abc0141"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-invoice-due-date-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "invoice-due-date",
+        "askerId": "user-owner",
+        "question": "What is the due date (YYYY-MM-DD) for invoice inv-1158, applying the payment terms Helix Holdings (cust-1537) had in effect on the invoice's issue date?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "2026-06-16",
+          "grounding": [
+            "inv-1158",
+            "cust-1537"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "2026-06-17",
+          "grounding": [
+            "inv-1158",
+            "cust-1537"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "invoiceId": "inv-1158",
+          "customerId": "cust-1537"
+        },
+        "digest": "2d9b59891dda0822ad5ffb1484fdcdd0f1e9ebd0b85397ce34c2682328015b73"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-stale-note-versus-record-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "stale-note-versus-record",
+        "askerId": "user-finance",
+        "question": "Company note note-1856 records payment terms for Helix Holdings (cust-1537). Return the currently recorded payment terms in days as the answer. If the note disagrees with the record, report both values in the conflict field.",
+        "collections": [
+          "customers",
+          "notes"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 15,
+          "grounding": [
+            "cust-1537",
+            "note-1856"
+          ],
+          "conflict": {
+            "claimed": 60,
+            "recorded": 15
+          }
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 60,
+          "grounding": [
+            "cust-1537",
+            "note-1856"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-1537",
+          "noteId": "note-1856",
+          "field": "paymentTermsDays",
+          "claimed": 60
+        },
+        "digest": "49fec6f1c899de9b481983a4ff95739f50ce1eb1e096cbbafa63cf539195d6e7"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w0-replay-safety-1",
+        "worldId": "world-development-0",
+        "pool": "development",
+        "family": "replay-safety",
+        "askerId": "user-finance",
+        "question": "The send invoice for invoice inv-9531 was attempted as receipt rcpt-6423. Should it be run again now? Answer with exactly one of: already_applied, replay_safe, inspect_first, await_approval.",
+        "collections": [
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "inspect_first",
+          "grounding": [
+            "rcpt-6423"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "replay_safe",
+          "grounding": [
+            "rcpt-6423"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-6423"
+        },
+        "digest": "d121665289b5f742e7c3ec07c266a292c43aecf217fa0b754ac1b83b86da0b2e"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-current-value-after-supersession-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "current-value-after-supersession",
+        "askerId": "user-finance",
+        "question": "What is the current payment terms in days for Orchid Materials (vend-7438)?",
+        "collections": [
+          "vendors"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 45,
+          "grounding": [
+            "vend-7438"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 30,
+          "grounding": [
+            "vend-7438"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "vend-7438",
+          "field": "paymentTermsDays"
+        },
+        "digest": "e4db5b4db30c8826492b9068db44f0855db80103931f936279ce2b3e40d0c47f"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-executed-versus-proposed-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "executed-versus-proposed",
+        "askerId": "user-finance",
+        "question": "Has the record payment that set status to \"paid\" for invoice inv-1094 actually been applied? Answer with exactly one of: executed, pending_approval, failed, uncertain.",
+        "collections": [
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "pending_approval",
+          "grounding": [
+            "rcpt-1298"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "executed",
+          "grounding": [
+            "rcpt-1298"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-1298"
+        },
+        "digest": "599a6bb83f40d1d41e1e4f0276a6eb710f4956d206f0e60485a8a566cb12b0ca"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-scope-boundary-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "scope-boundary",
+        "askerId": "user-finance",
+        "question": "What is the current budget for Nimbus Summer (camp-4439)?",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "scope_denied",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 24000,
+          "grounding": [
+            "camp-4439"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "hiddenRecordId": "camp-4439",
+          "hiddenValues": [
+            "24000"
+          ]
+        },
+        "digest": "e21c08adb9b2c59879371a9a7cf22efdc10374215f5eb13d4c8c9815ab32942c"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-value-as-of-date-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "value-as-of-date",
+        "askerId": "user-finance",
+        "question": "What was the payment terms in days for Orchid Materials (vend-7438) as of 2026-05-09?",
+        "collections": [
+          "vendors"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 30,
+          "grounding": [
+            "vend-7438"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 45,
+          "grounding": [
+            "vend-7438"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "vend-7438",
+          "field": "paymentTermsDays",
+          "asOf": "2026-05-09"
+        },
+        "digest": "648b0ad06143a32ae39127eceb1b7d621228f5b13ad9de45c84c1b0f9320590b"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-derived-total-from-records-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "derived-total-from-records",
+        "askerId": "user-finance",
+        "question": "What is the total outstanding unpaid invoice amount for Nimbus Group (cust-4470) according to recorded state?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 11500,
+          "grounding": [
+            "inv-1094",
+            "inv-2244"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 7800,
+          "grounding": [
+            "inv-1094",
+            "inv-2244"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "customerId": "cust-4470",
+          "invoiceIds": [
+            "inv-1094",
+            "inv-2244"
+          ],
+          "tolerance": 0.01
+        },
+        "digest": "796f8b647dfe36a44f1ccbd90a424a43ab4482dfafed32a9baded632ed54c1d5"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-session-claim-versus-record-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "session-claim-versus-record",
+        "askerId": "user-marketing",
+        "question": "Earlier I said I set the budget for Indigo Summer (camp-4674) to 3500. Return the recorded value as the answer. If my statement differs from the record, report both values in the conflict field.",
+        "collections": [
+          "campaigns"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 2500,
+          "grounding": [
+            "camp-4674"
+          ],
+          "conflict": {
+            "claimed": 3500,
+            "recorded": 2500
+          }
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 3500,
+          "grounding": [
+            "camp-4674"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "camp-4674",
+          "field": "budget",
+          "claimed": 3500
+        },
+        "digest": "10041c8c3cf5a29d99e0aaf65393788887e4e9fcab3806469519802cd882dd01"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-memory-class-recall-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "memory-class-recall",
+        "askerId": "user-finance",
+        "question": "Which day of the week does Nimbus Group (cust-4470) prefer to receive invoices?",
+        "collections": [
+          "customers",
+          "notes"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "Friday",
+          "grounding": [
+            "note-3553"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "unknown",
+          "answer": null,
+          "grounding": [],
+          "conflict": null
+        },
+        "facts": {
+          "noteId": "note-3553",
+          "visibility": "company-note"
+        },
+        "digest": "494ddb6acecbb22829d80f369d2f480a280b483444c91b909a224f03315800d8"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-approval-required-decision-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "approval-required-decision",
+        "askerId": "user-owner",
+        "question": "Under the spend approval policy in effect when it was proposed, does receipt rcpt-1226 (update customer setting annual contract value to 22000 for Lumen Partners (cust-7222)) require owner approval? Answer with exactly one of: approval_required, no_approval_required.",
+        "collections": [
+          "customers",
+          "policies"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "no_approval_required",
+          "grounding": [
+            "rcpt-1226",
+            "pol-7163"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "approval_required",
+          "grounding": [
+            "rcpt-1226",
+            "pol-7163"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-1226",
+          "policyId": "pol-7163"
+        },
+        "digest": "ac1a4509b42a5e6700008a5b682c95a4723527497d6244d1f4560ab418746804"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-invoice-due-date-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "invoice-due-date",
+        "askerId": "user-finance",
+        "question": "What is the due date (YYYY-MM-DD) for invoice inv-1650, applying the payment terms Lumen Partners (cust-7222) had in effect on the invoice's issue date?",
+        "collections": [
+          "customers",
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "2026-06-20",
+          "grounding": [
+            "inv-1650",
+            "cust-7222"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "2026-06-21",
+          "grounding": [
+            "inv-1650",
+            "cust-7222"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "invoiceId": "inv-1650",
+          "customerId": "cust-7222"
+        },
+        "digest": "920d09296dadfe8a27e5a891a2d734718241aebf122bd8287694299c5c87bef1"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-stale-note-versus-record-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "stale-note-versus-record",
+        "askerId": "user-owner",
+        "question": "Company note note-3657 records payment terms for Nimbus Group (cust-4470). Return the currently recorded payment terms in days as the answer. If the note disagrees with the record, report both values in the conflict field.",
+        "collections": [
+          "customers",
+          "notes"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": 15,
+          "grounding": [
+            "cust-4470",
+            "note-3657"
+          ],
+          "conflict": {
+            "claimed": 45,
+            "recorded": 15
+          }
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": 45,
+          "grounding": [
+            "cust-4470",
+            "note-3657"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "recordId": "cust-4470",
+          "noteId": "note-3657",
+          "field": "paymentTermsDays",
+          "claimed": 45
+        },
+        "digest": "bd8eba909559d664b6b7e564f95892763e58e78f90ff3cc5a15c776412ad6427"
+      },
+      {
+        "schema": "amos.business-memory-case",
+        "version": 1,
+        "id": "bm-development-w1-replay-safety-1",
+        "worldId": "world-development-1",
+        "pool": "development",
+        "family": "replay-safety",
+        "askerId": "user-finance",
+        "question": "The send invoice for invoice inv-5290 was attempted as receipt rcpt-1550. Should it be run again now? Answer with exactly one of: already_applied, replay_safe, inspect_first, await_approval.",
+        "collections": [
+          "invoices"
+        ],
+        "expected": {
+          "status": "answered",
+          "answer": "inspect_first",
+          "grounding": [
+            "rcpt-1550"
+          ],
+          "conflict": null
+        },
+        "rejected": {
+          "status": "answered",
+          "answer": "replay_safe",
+          "grounding": [
+            "rcpt-1550"
+          ],
+          "conflict": null
+        },
+        "facts": {
+          "receiptId": "rcpt-1550"
+        },
+        "digest": "1d8248e50f3be1a7c5c757f642721522f7adf13501e97daacf319418992cd5b8"
+      }
+    ],
+    "digest": "3e6aaec8c0534007d9e608719ad5c9d7ab77a9848ce0435bd79caa5f5b3aef0c"
+  }
+}
